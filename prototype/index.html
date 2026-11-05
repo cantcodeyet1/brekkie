@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brekkie, Champions Toastmasters Club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#004165; --blue-d:#00304b; --maroon:#772432; --yellow:#F2DF74; --gray:#A9B2B1;
+  --ink:#14232B; --mute:#5E6B70; --paper:#fff; --tint:#F2F5F5; --line:#E3E7E7; --green:#3F7D5C;
+  --head:'Montserrat',system-ui,sans-serif; --body:'Source Sans 3',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--body);color:var(--ink);background:#F1F3F3;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0;text-align:inherit}
+
+/* ───────── canvas chrome ───────── */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;padding:12px 28px;background:#fff;border-bottom:1px solid var(--line)}
+.bar .tag{color:var(--mute);font-size:14px;font-style:italic;flex:1}
+.mode{display:flex;border:1px solid var(--line);border-radius:999px;background:#fff;padding:3px}
+.mode button{padding:6px 14px;border-radius:999px;font:600 13px var(--head)}
+.mode button.on{background:var(--blue);color:#fff}
+.wm{font:800 20px/1 var(--head);letter-spacing:-.03em;color:var(--blue);display:inline-flex;align-items:baseline;gap:2px}
+.wm i{display:inline-block;width:.34em;height:.34em;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 1.5px var(--blue) inset}
+.intro{padding:34px 40px 6px;max-width:900px}
+.intro h1{font:800 34px/1.1 var(--head);letter-spacing:-.03em;margin:0 0 10px;color:var(--blue)}
+.intro p{margin:0;color:var(--mute);font-size:16px;max-width:62ch}
+.legend{display:flex;gap:18px;margin-top:16px;font-size:13px;color:var(--mute);flex-wrap:wrap}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+section.sec{padding:30px 0 6px}
+.sec-h{padding:0 40px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.sec-h h2{font:700 13px var(--head);letter-spacing:.14em;text-transform:uppercase;margin:0;color:var(--maroon)}
+.sec-h p{margin:0;color:var(--mute);font-size:14px}
+.row{display:flex;gap:30px;overflow-x:auto;padding:16px 40px 28px;align-items:flex-start}
+figure{margin:0;flex:none}
+figcaption{font:600 12px var(--head);color:var(--mute);margin:0 0 8px 4px;letter-spacing:.02em}
+figcaption b{color:var(--ink)}
+
+#proto{display:none;padding:18px 16px 30px;flex-direction:column;align-items:center;gap:14px}
+body.proto #boards{display:none} body.proto #proto{display:flex}
+.pick{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.pick button{padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;font:600 13px var(--head)}
+.pick button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pick.sub button{font:500 13px var(--body);padding:5px 12px}
+.pick .lbl{align-self:center;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.1em}
+
+/* ───────── the artboard ───────── */
+.frame{position:relative;width:360px;height:720px;background:var(--paper);border-radius:22px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(20,35,43,.1),0 18px 36px -20px rgba(20,35,43,.3)}
+.screen{height:100%;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;padding:4px 20px 24px;scrollbar-width:thin}
+#proto .frame{width:min(390px,100%);height:min(800px,calc(100dvh - 190px));min-height:560px}
+.toast{position:absolute;left:50%;bottom:78px;transform:translate(-50%,12px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;white-space:nowrap;z-index:9}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* live responsive app */
+body.proto{background:#fff}
+body.proto #proto{padding:0;gap:0;min-height:calc(100dvh - 58px);align-items:stretch}
+body.proto .picks{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line)}
+body.proto #proto.fixed{align-items:center;background:#F1F3F3;padding:18px 16px 30px;gap:14px}
+body.proto #proto.fixed .picks{background:none;border:0;padding:0}
+#proto .frame.auto{width:100%!important;height:auto!important;flex:1;min-height:0;border-radius:0;box-shadow:none}
+#proto{height:calc(100dvh - 58px)}
+#proto.fixed{height:auto}
+
+
+/* tables, stage, word card */
+.desk .in.wide{max-width:1100px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.desk .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start}
+.warn{color:var(--maroon)} .num{text-align:right;font-variant-numeric:tabular-nums}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{font:700 10.5px var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--ink)}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl td.num,.tbl th.num{text-align:right}
+.tbl tr.sec td{background:var(--tint);font:700 10.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);padding:7px 10px}
+.tbl input{border:1px solid transparent;background:transparent;border-radius:6px;padding:6px 8px;width:100%;font:inherit;color:inherit}
+.tbl input:hover{border-color:#D3D9D9} .tbl input:focus{border-color:var(--blue);background:#fff;outline:0}
+.tbl tbody tr:hover td{background:#FAFBFB}
+.tbl .lnk{font-weight:700;padding:4px 0}
+.tbl .x{width:26px;height:26px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:12px;margin:10px 0 18px}
+.stats div{padding:12px 14px;border-right:1px solid var(--line)} .stats div:last-child{border:0}
+.stats b{display:block;font:800 22px var(--head);letter-spacing:-.03em;color:var(--blue)} .stats small{color:var(--mute);font-size:12.5px;line-height:1.25;display:block}
+.meter{display:inline-block;width:78px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;vertical-align:middle}
+.meter i{display:block;height:100%} .meter i.hi{background:var(--blue)} .meter i.mid{background:var(--gray)} .meter i.lo{background:var(--maroon)}
+.wcard{border:1px solid var(--line);border-top:4px solid var(--yellow);border-radius:12px;padding:16px 18px 6px;background:#fff;margin:8px 0 6px}
+.wcard h3{font:800 24px/1.1 var(--head);color:var(--blue);margin:0;text-transform:uppercase;letter-spacing:-.01em}
+.wcard h3 i{font:italic 400 16px var(--body);color:var(--mute);text-transform:none;letter-spacing:0}
+.wcard .pr{font-style:italic;color:var(--mute);margin:4px 0 12px}
+.wcard p{margin:0 0 11px;font-size:15px;line-height:1.4}
+.wcard p b{color:var(--blue);font-family:var(--head);font-size:14px}
+.wcard .ex{color:var(--blue);font-weight:700;font-size:14px}
+.wcard .syn{font-weight:700}
+.qrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:14.5px;line-height:1.3}
+.yn{display:flex;gap:4px;flex:none}
+.yn button{padding:6px 12px;border-radius:8px;border:1px solid #D3D9D9;font:600 12.5px var(--body);color:var(--mute)}
+.yn .on.y{background:var(--blue);color:#fff;border-color:var(--blue)} .yn .on.n{background:var(--maroon);color:#fff;border-color:var(--maroon)}
+.stage{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;transition:background .7s,color .7s;background:#fff;color:var(--ink);position:relative}
+.stage.green{background:var(--green);color:#fff} .stage.yellow{background:var(--yellow);color:var(--ink)} .stage.red{background:var(--maroon);color:#fff}
+.stage .st-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:6px;padding:14px 12px;text-align:left;line-height:1.25}
+.stage .st-top .back{color:inherit} .stage .st-top span{opacity:.75;font-size:14px}
+.stage .clk{font:800 92px/1 var(--head);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.desk .stage .clk{font-size:170px}
+.stage .cardname{font:700 17px var(--head)} .stage .thr{font-size:14px;opacity:.75}
+.stage .st-btns{display:flex;flex-direction:column;gap:10px;width:min(320px,100%);margin-top:26px}
+.stage:not(.under) .btn:not(.ghost){background:#fff;color:var(--ink)}
+.stage .btn.ghost{background:transparent;color:inherit;box-shadow:0 0 0 1.5px currentColor inset}
+
+/* desktop artboard */
+.frame.desk{width:1180px;height:720px;border-radius:14px}
+#proto .frame.desk{width:min(1180px,calc(100vw - 32px));height:min(780px,calc(100dvh - 190px))}
+.desk .screen{flex-direction:row}
+.side{width:218px;flex:none;border-right:1px solid var(--line);padding:22px 12px 16px;display:flex;flex-direction:column;gap:2px}
+.side .wm{padding:2px 10px 22px;font-size:22px}
+.side button{display:flex;gap:11px;align-items:center;padding:10px 10px;border-radius:9px;font:600 14px var(--head);color:var(--mute)}
+.side button:hover{background:var(--tint)}
+.side button.on{background:var(--tint);color:var(--blue)}
+.side .sl{font:700 10.5px var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--gray);padding:16px 10px 6px}
+.side .me{margin-top:auto;padding:12px 10px 0;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.side .me b{display:block;color:var(--ink);font-weight:600;font-size:14px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.desk .scroll{padding:6px 44px 36px}
+.desk .in{max-width:960px;margin:0 auto}
+.desk .foot{padding:14px 44px}
+.desk .foot .btn{width:auto;min-width:230px;padding:0 24px}
+.desk .foot.col{flex-direction:row;justify-content:flex-start}
+.desk h1.pg{font-size:30px}
+.desk .hdr-r{display:flex;align-items:center;justify-content:space-between;padding:18px 44px 0}
+.desk .top{padding:18px 40px 0}
+.split{display:block}
+.desk .split{display:grid;grid-template-columns:340px minmax(0,1fr);gap:48px;align-items:start}
+.desk .split.wide{grid-template-columns:380px minmax(0,1fr)}
+.desk .ref{position:sticky;top:0}
+.desk .cols2{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.desk .list.g2{display:grid;grid-template-columns:1fr 1fr;column-gap:48px}
+.desk .three{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:36px;align-items:start}
+.desk .three>div>.lab:first-child{margin-top:8px}
+
+/* header bits */
+.brand{display:flex;justify-content:space-between;align-items:center;padding:20px 20px 6px}
+.brand .who{font-size:13px;color:var(--mute)}
+.brand .who b{color:var(--ink);font-weight:600}
+.top{display:flex;align-items:center;gap:6px;padding:14px 12px 4px 10px;min-height:54px}
+.top .back{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;color:var(--blue)}
+.top .back:hover{background:var(--tint)}
+.top .ttl{font:700 13px var(--head);letter-spacing:.01em;color:var(--mute)}
+h1.pg{font:800 27px/1.12 var(--head);letter-spacing:-.03em;margin:8px 0 6px;color:var(--ink)}
+h1.pg.sm{font-size:22px}
+.lede{color:var(--mute);margin:0 0 18px;font-size:15.5px;line-height:1.4}
+.lab{font:700 11px var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:24px 0 8px}
+.lab.blue{color:var(--blue)} .lab.maroon{color:var(--maroon)}
+
+/* lists */
+.list{border-top:1px solid var(--line)}
+.li{display:flex;align-items:center;gap:12px;padding:15px 2px;border-bottom:1px solid var(--line);width:100%}
+.li .grow{flex:1;min-width:0}
+.li .t{font:700 16px var(--head);letter-spacing:-.01em;display:block}
+.li .s{color:var(--mute);font-size:14px;display:block;margin-top:2px}
+.li .n{font:800 22px var(--head);letter-spacing:-.03em;color:var(--blue)}
+.li svg{color:var(--gray);flex:none}
+button.li:hover{background:var(--tint)}
+.li.sel{background:var(--tint);box-shadow:inset 3px 0 0 var(--blue)}
+
+/* controls */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:12px;background:var(--blue);color:#fff;font:700 15px var(--head);letter-spacing:-.005em}
+.btn:hover{background:var(--blue-d)}
+.btn.ghost{background:transparent;color:var(--blue);box-shadow:0 0 0 1.5px var(--blue) inset}
+.btn.ghost:hover{background:#00416510}
+.btn.sm{height:36px;width:auto;padding:0 14px;font-size:13px;border-radius:9px}
+.btn.yel{background:var(--yellow);color:var(--ink)}
+.btn.yel:hover{background:#ecd54f}
+.foot{padding:12px 20px 16px;border-top:1px solid var(--line);background:#fff;display:flex;gap:10px}
+.foot.col{flex-direction:column;gap:8px}
+.nav{display:flex;border-top:1px solid var(--line);background:#fff;padding:0 8px 8px}
+.nav button{flex:1;text-align:center;padding:10px 0 4px;font:600 12px var(--head);color:var(--mute);position:relative}
+.nav button svg{display:block;margin:0 auto 3px}
+.nav button.on{color:var(--blue)}
+.nav button.on::before{content:"";position:absolute;top:-1px;left:30%;right:30%;height:3px;background:var(--yellow);border-radius:0 0 3px 3px}
+.inp{width:100%;background:#fff;border:1px solid #D3D9D9;border-radius:10px;padding:11px 12px;font-size:15.5px;outline:none;transition:.15s;appearance:none}
+select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%235E6B70' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+.inp:focus{border-color:var(--blue);box-shadow:0 0 0 3px #00416518}
+textarea.inp{resize:none;min-height:66px;line-height:1.35}
+.inp.mono{font-variant-numeric:tabular-nums}
+.fl{display:block;font-size:13px;font-weight:600;color:var(--mute);margin:12px 0 5px}
+.fl.blue{color:var(--blue)} .fl.maroon{color:var(--maroon)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;border:1px solid #D3D9D9;background:#fff;font-size:13.5px;font-weight:600}
+button.chip:hover{background:var(--tint)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.ok{background:#3F7D5C14;border-color:#3F7D5C40;color:var(--green)}
+.chip.wait{background:#F2DF7455;border-color:#d9c44f;color:#6b5a00}
+.chip .xx{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;color:var(--mute);margin-right:-4px}
+.chip .xx:hover{background:var(--tint);color:var(--maroon)}
+.seg{display:flex;background:#fff;border:1px solid #D3D9D9;border-radius:10px;padding:3px;gap:2px}
+.seg button{flex:1;text-align:center;padding:7px 4px;border-radius:7px;font:600 12.5px var(--body);color:var(--mute)}
+.seg button.on{background:var(--blue);color:#fff}
+.addrow{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1.5px dashed var(--gray);border-radius:12px;color:var(--blue);font-weight:700;margin-top:14px}
+.addrow:hover{background:var(--tint)}
+.lnk{color:var(--blue);font-weight:600;font-size:13.5px;padding:6px 0}
+.lnk:hover{text-decoration:underline}
+.blk{padding:16px 0 18px;border-bottom:1px solid var(--line)}
+.blk:first-child{padding-top:6px}
+.blk-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.blk-h .no{font:700 11px var(--head);letter-spacing:.12em;color:var(--mute)}
+.x{color:var(--gray);width:28px;height:28px;display:grid;place-items:center;border-radius:50%} .x:hover{color:var(--maroon);background:#7724320f}
+.addname{display:flex;gap:8px;margin-top:8px}
+.addname .inp{flex:1}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;align-items:center}
+.pill-row .inp{width:150px;padding:6px 11px;border-radius:999px;font-size:14px}
+
+/* word of the day / script */
+.wotd{padding:18px 18px 16px;background:var(--yellow);border-radius:14px;margin-bottom:6px}
+.wotd small{font:700 11px var(--head);letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.wotd b{display:block;font:800 30px/1.1 var(--head);letter-spacing:-.03em;margin-top:6px}
+.script{border:1px solid var(--line);border-radius:12px;margin:14px 0 6px;overflow:hidden}
+.script>button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;font:700 13px var(--head);letter-spacing:.02em;color:var(--blue);background:var(--tint)}
+.script>button svg{transition:.2s}.script.open>button svg{transform:rotate(90deg)}
+.script .sb{display:none;padding:2px 14px 12px}
+.script.open .sb{display:block}
+.script h5{font:700 10.5px var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--maroon);margin:14px 0 4px}
+.script p{margin:0;font-size:15px;line-height:1.45;color:#26363d}
+.script p em{font-style:normal;background:var(--yellow);padding:0 3px;border-radius:3px}
+
+/* counters */
+.cnts{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px;margin-top:10px}
+.cnt{background:#fff;border:1px solid var(--line);border-radius:10px;text-align:center;padding:8px 0 6px}
+.cnt small{display:block;font:700 11px var(--head);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 3px}
+.cnt b{display:block;font:800 24px/1.2 var(--head);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.cnt div{display:flex;justify-content:center;gap:4px;margin-top:2px}
+.cnt div button{width:26px;height:26px;border-radius:8px;background:var(--tint);display:grid;place-items:center;color:var(--blue)}
+.cnt div button:last-child{background:var(--blue);color:#fff}
+.cnt.z b{color:var(--gray)}
+.total{font:700 13px var(--head);color:var(--blue)}
+
+/* timer */
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--gray);vertical-align:-1px}
+.dot.green{background:var(--green)} .dot.yellow{background:var(--yellow);box-shadow:0 0 0 1px #c9b43c inset} .dot.red{background:var(--maroon)}
+.tm{display:flex;gap:10px;align-items:center;margin-top:10px}
+.tm .inp{width:104px;font:800 22px var(--head);text-align:center;letter-spacing:-.02em}
+.tm .res{font-size:14px;color:var(--mute);line-height:1.3}
+.tm .res b{color:var(--ink);font-weight:700}
+
+/* purpose / objectives */
+.obj{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:4px 12px 12px 4px;padding:14px 14px 12px;margin-top:10px}
+.obj small{font:700 11px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--blue)}
+.obj p{margin:6px 0 8px;font-size:14.5px;color:#34444b;line-height:1.4}
+.obj ul{list-style:none;margin:0 0 4px;padding:0}
+.obj li{display:flex;gap:9px;padding:4px 0;font-size:14.5px;line-height:1.35}
+.obj li svg{flex:none;color:var(--blue);margin-top:2px}
+.obj h6{font:700 10.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--maroon);margin:12px 0 2px}
+.meta{display:flex;gap:6px 14px;flex-wrap:wrap;color:var(--mute);font-size:14px;margin:0 0 4px}
+.meta b{color:var(--ink);font-weight:600}
+.rate-row{padding:12px 0;border-bottom:1px solid var(--line)}
+.rate-row>span{display:block;font-size:14.5px;line-height:1.3;margin-bottom:8px;color:#34444b}
+.rate-row>span b{color:var(--ink)}
+.nums{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.nums button{height:38px;border-radius:9px;border:1px solid #D3D9D9;text-align:center;font:800 16px var(--head);color:var(--blue)}
+.nums button:hover{background:var(--tint)}
+.nums button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.rate-row .lv{font-size:13.5px;color:var(--mute);margin-top:7px;min-height:18px}
+.rate-row .lv b{color:var(--blue)}
+.rate-row textarea{margin-top:6px;min-height:54px}
+
+/* history entry */
+.ent{padding:16px 0 16px;border-bottom:1px solid var(--line)}
+.ent-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ent-h b{font:700 15px var(--head);letter-spacing:-.01em}
+.ent-h span{font-size:13px;color:var(--mute)}
+.ent .by{color:var(--mute);font-size:14px;margin:2px 0 8px}
+.ent .by b{color:var(--ink);font-weight:600}
+.note{font-size:15px;line-height:1.38;margin:6px 0 0;padding-left:11px;border-left:3px solid var(--gray)}
+.note.g{border-color:var(--blue)} .note.m{border-color:var(--maroon)}
+.note i{display:block;font:700 10.5px var(--head);letter-spacing:.12em;text-transform:uppercase;font-style:normal;margin-bottom:2px;color:var(--mute)}
+.note.g i{color:var(--blue)} .note.m i{color:var(--maroon)}
+.scale{display:flex;gap:3px}
+.scale u{width:13px;height:6px;border-radius:3px;background:var(--line);text-decoration:none}
+.scale u.hi{background:var(--blue)} .scale u.mid{background:var(--gray)} .scale u.lo{background:var(--maroon)}
+.rrow{padding:10px 2px;border-bottom:1px solid var(--line)}
+.rrow .rh{display:flex;align-items:center;gap:10px}
+.rrow .rh b{flex:1;font-size:15px}
+.rrow .rh span.v{font-size:13px;color:var(--mute);width:96px;text-align:right}
+.rrow p{margin:5px 0 0;font-size:14px;color:var(--mute);line-height:1.35}
+.big{font:800 34px/1 var(--head);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.ent .cnts{margin-top:4px}
+.ent .cnt{padding:6px 0 4px} .ent .cnt b{font-size:20px}
+
+/* progress / hero */
+.prog{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:10px 0 4px}
+.prog i{display:block;height:100%;background:var(--blue);border-radius:3px}
+.hero{background:var(--blue);color:#fff;border-radius:16px;padding:18px 18px 16px;margin-top:6px}
+.hero small{font:700 11px var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--yellow)}
+.hero h2{font:800 25px/1.12 var(--head);letter-spacing:-.03em;margin:6px 0 2px}
+.hero p{margin:0;color:#ffffffc0;font-size:14.5px}
+.hero .prog{background:#ffffff30} .hero .prog i{background:var(--yellow)}
+.hero .btn{margin-top:14px;background:#fff;color:var(--blue)}
+.hero .btn:hover{background:var(--yellow)}
+.linkrow{display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1px solid var(--line)}
+.linkrow .grow{flex:1;min-width:0}
+.linkrow code{display:block;font:500 12.5px ui-monospace,Consolas,monospace;color:var(--mute);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkrow b{font-weight:700;font-size:15.5px}
+.linkrow small{color:var(--mute);font-size:13.5px}
+.rolerow{padding:12px 0;border-bottom:1px solid var(--line)}
+.rolerow .rl{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.rolerow .rl b{font:700 12px var(--head);letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+.rolerow .rl span{font-size:12.5px;color:var(--mute)}
+.rolerow .inp{padding:9px 12px}
+.rolerow .inp+.inp{margin-top:6px}
+.done{padding:70px 6px 20px;text-align:center}
+.desk .done{padding:110px 6px 20px}
+.done .tick{width:64px;height:64px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;margin:0 auto 22px;color:var(--blue)}
+.link-hero{padding:60px 4px 10px}
+.desk .link-hero{padding:100px 4px 10px;max-width:640px;margin:0 auto}
+.link-hero .tag{font:700 11px var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--maroon)}
+.link-hero h1{font:800 31px/1.1 var(--head);letter-spacing:-.035em;margin:10px 0 12px}
+.desk .link-hero h1{font-size:40px}
+.link-hero h1 span{background:linear-gradient(transparent 62%,var(--yellow) 62%)}
+.link-hero p{color:var(--mute);margin:0 0 6px;font-size:16px;line-height:1.4}
+.pdfwrap{margin:6px -20px 0;overflow:auto;background:#E7EBEB;padding:14px}
+.desk .pdfwrap{margin:0;border-radius:12px;max-height:520px}
+.pdfwrap .doc{display:flex;flex-direction:column;gap:14px;width:816px;margin:0 auto}
+.pdfwrap .page{box-shadow:0 2px 14px rgba(0,0,0,.16)}
+
+/* ───────── evaluation form, Letter, 3 pages (laid out like the Pathways form) ───────── */
+.page{width:816px;height:1056px;background:#fff;position:relative;overflow:hidden;color:#26323a;font:300 14.5px/1.45 var(--body)}
+.page *{box-sizing:border-box}
+.ph{display:flex;gap:10px;height:72px;margin-top:48px;align-items:stretch}
+.ph i{display:block;flex:none} .ph .m{width:60px;background:#772432} .ph .g{width:84px;background:#A9B2B1}
+.ph .hb{flex:1;background:#004165;color:#fff;padding:0 26px;display:flex;flex-direction:column;justify-content:center}
+.ph .hb h1{font:400 26px/1.1 var(--head);letter-spacing:.03em;margin:0;text-transform:uppercase}
+.ph .hb p{margin:3px 0 0;font:400 16px var(--head)}
+.ph.sm{height:26px;margin-top:40px;margin-left:300px}
+.ph.sm .g{width:26px} .ph.sm .hb{padding:0 22px;flex-direction:row;align-items:center;gap:6px;font:400 14px var(--head)}
+.ph.sm .hb b{font-weight:600;letter-spacing:.03em}
+.pbody{padding:0 72px}
+.fld{display:flex;align-items:flex-end;gap:6px;margin-top:22px}
+.fld span{white-space:nowrap}
+.fld u{flex:1;border-bottom:1px solid #8a969b;text-decoration:none;padding:0 6px 1px;min-height:22px;font-weight:500;color:#111}
+.frow{display:grid;grid-template-columns:1.25fr 1fr;gap:42px}
+.page h4{font:700 15px var(--head);color:#772432;margin:26px 0 8px}
+.page ul.tri{list-style:none;margin:0;padding:0}
+.page ul.tri li{position:relative;padding:0 0 6px 20px}
+.page ul.tri li::before{content:"";position:absolute;left:3px;top:6px;border-left:6px solid #004165;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent}
+.page p{margin:0 0 7px}
+.gc{margin-top:6px;height:92px;white-space:pre-wrap;color:#111;font-weight:500;font-size:13.5px}
+.gc span{font-weight:300;color:#26323a;display:block}
+.pf{position:absolute;left:72px;right:72px;bottom:34px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#5E6B70}
+.pf b{font:800 15px var(--head);color:#004165;letter-spacing:-.03em}
+.pf b i{display:inline-block;width:.34em;height:.34em;border-radius:50%;background:#F2DF74;box-shadow:0 0 0 1.5px #004165 inset;margin-left:1px}
+.sc{display:grid;grid-template-columns:repeat(5,78px);background:#004165;color:#fff;width:442px;padding:14px 26px 10px 26px;margin:30px 0 20px;text-align:center}
+.sc div{font:700 17px var(--head)} .sc div small{display:block;font:600 8.5px var(--head);letter-spacing:.02em}
+.cr{display:grid;grid-template-columns:1fr 190px;background:#F2F5F5;margin-bottom:5px;height:84px}
+.cr:nth-child(even){background:#fff}
+.cr .l{padding:10px 14px 0 10px;font-size:13px;position:relative}
+.cr .l b{font-weight:700}
+.cr .n{display:grid;grid-template-columns:repeat(5,78px);position:absolute;left:10px;top:46px;text-align:center}
+.cr .n s{text-decoration:none;font:700 17px var(--head);color:#004165;display:grid;place-items:center;height:30px;width:30px;margin:0 auto;border-radius:50%}
+.cr .n s.on{background:#004165;color:#fff}
+.cr .c{padding:10px 10px;font-size:12px;color:#111;font-weight:500;border-left:5px solid #fff;overflow:hidden;line-height:1.35}
+.cr .c span{font-weight:300;color:#26323a;display:block}
+.rub{columns:2;column-gap:36px;padding-top:8px;font-size:12px;line-height:1.35}
+.rub div{break-inside:avoid;margin-bottom:14px}
+.rub b{display:block;font:700 12.5px var(--head);color:#004165;margin-bottom:3px}
+.rub p{margin:0 0 2px;padding-left:16px;text-indent:-16px}
+.rub p i{font-style:normal;font-weight:700;color:#004165;margin-right:6px}
+
+#print-root{display:none}
+@media print{
+  @page{size:letter;margin:0}
+  body{background:#fff!important}
+  body>*:not(#print-root){display:none!important}
+  #print-root{display:block}
+  #print-root .doc{display:block}
+  #print-root .page{break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (max-width:560px){
+  .bar{padding:10px 14px;gap:10px} .bar .tag{display:none} .bar .wm{flex:1}
+  .intro{padding:22px 18px 0} .intro h1{font-size:26px}
+  .sec-h{padding:0 18px} .row{padding:12px 18px 22px}
+  #proto{padding:10px 0 0}
+  #proto .frame{width:100vw;height:calc(100dvh - 190px);border-radius:0}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="wm">Brekkie<i></i></span>
+  <span class="tag">Feedback is the breakfast of Champions.</span>
+  <div class="mode"><button data-mode="boards" class="on">Artboards</button><button data-mode="proto">Live app</button></div>
+</header>
+
+<main id="boards">
+  <div class="intro">
+    <h1>Brekkie, phase 1</h1>
+    <p>Champions Toastmasters Club. A paper process, made digital: role players log notes at the meeting, members open Brekkie afterwards and find them waiting. Every artboard below is live, so tap through. All data is made up.</p>
+    <div class="legend"><span><b style="background:var(--blue)"></b>Loyal Blue: primary</span><span><b style="background:var(--maroon)"></b>True Maroon: “improve on”</span><span><b style="background:var(--yellow)"></b>Happy Yellow: highlight</span><span><b style="background:var(--gray)"></b>Cool Gray: quiet</span></div>
+  </div>
+  <div id="boards-body"></div>
+</main>
+<main id="proto"></main>
+<div id="print-root"></div>
+
+<script>
+/* ═════════ helpers ═════════ */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const J=o=>esc(JSON.stringify(o));
+const go=(s,p={})=>`data-go="${s}" data-p="${J(p)}"`;
+const act=(a,args={})=>`data-act="${a}" data-a="${J(args)}"`;
+const get=(o,path)=>path.split('.').reduce((a,k)=>a?.[k],o);
+const set=(o,path,v)=>{const ks=path.split('.');const last=ks.pop();const t=ks.reduce((a,k)=>a[k],o);t[last]=v};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const sv=(d,w=20,s=1.8)=>`<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${s}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const I={
+  back:sv('<path d="M15 5l-7 7 7 7"/>',22,2),chev:sv('<path d="M9 5l7 7-7 7"/>',18,2),
+  plus:sv('<path d="M12 5v14M5 12h14"/>',18,2),minus:sv('<path d="M5 12h14"/>',16,2.2),
+  copy:sv('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>',17),
+  dl:sv('<path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/>',19,2),
+  check:sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>',17,2.4),close:sv('<path d="M6 6l12 12M18 6L6 18"/>',14,2),
+  home:sv('<path d="M4 11l8-7 8 7v8a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/>',20),
+  doc:sv('<path d="M7 3h7l5 5v12a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',20),
+  cal:sv('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',20),
+  ppl:sv('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 5.2a3.2 3.2 0 010 5.6M18.5 14.8c1.6.8 2.5 2.4 2.5 5.2"/>',20),
+  send:sv('<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>',17),
+  mic:sv('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',20),
+  hash:sv('<path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/>',20),
+  clock:sv('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',20),
+};
+
+/* ═════════ mock data ═════════ */
+const CLUB='Champions Toastmasters Club';
+const MEMBERS=['Aisha Bello','Devon Park','Grace Liu','Hannah Doyle','Jonah Adeyemi','Lena Fischer','Marcus Cole','Omar Haddad','Priya Raman','Ravi Menon','Sofia Marquez','Tom Whitfield'];
+const EMAIL=n=>n.toLowerCase().replace(/\s+/g,'.')+'@mail.com';
+const G57=[300,360,420];
+const PROJECTS={
+ 'Ice Breaker':{lvl:1,path:'Presentation Mastery',form:'Ice Breaker',len:'4–6 minutes',g:[240,300,360],
+  purpose:['Introduce yourself to the club and learn the basic structure of a speech.','The speaker presents a first speech and receives feedback from the evaluator.'],
+  notes:'This is the speaker’s very first speech. Keep it kind and specific, and speak with them beforehand about what they hope to hear.',
+  about:['A short speech about the speaker, on any angle they choose','Look for a clear opening, body and close','Suggest one or two improvements they can apply next time']},
+ 'Evaluation and Feedback':{lvl:1,path:'Presentation Mastery',form:'Evaluation and Feedback, First Speech',len:'5–7 minutes',g:G57,
+  purpose:['The purpose of this project is to practise applying feedback and to serve as a speech evaluator during a club meeting.','The purpose of this speech is for the member to present a speech and receive feedback from the evaluator.'],
+  notes:'If you know ahead of the meeting that you will be the evaluator, talk to the speaker about their goals for this speech. Set aside time after the speech to go through your evaluation and answer questions.',
+  about:['The member delivers a well-organised speech on any topic','Focus on speaking style, and recommend improvements the member can apply to the next speech','The speech may be humorous, informational, or any style the member chooses','The member will ask you to evaluate their second speech at a future meeting']},
+ 'Researching and Presenting':{lvl:1,path:'Presentation Mastery',form:'Researching and Presenting',len:'5–7 minutes',g:G57,
+  purpose:['Research a topic from credible sources and present it clearly.','The speaker practises organising findings and naming where they came from.'],
+  notes:'Check whether sources were named in the speech or in a hand-out. Comment on how well the content was structured, not only on delivery.',
+  about:['A researched topic of the speaker’s choice','Look for a clear structure and named sources','Suggest how to make dense material easier to follow']},
+ 'Effective Body Language':{lvl:2,path:'Presentation Mastery',form:'Effective Body Language',len:'5–7 minutes',g:G57,
+  purpose:['Use movement, gesture and expression to carry a message.','The speaker practises matching body language to the words.'],
+  notes:'Watch more than you listen. Note where movement helped, and where it distracted.',
+  about:['Look for gestures that reinforce the message','Look for purposeful movement around the stage','Check that facial expression and eye contact match the content']},
+ 'Introduction to Vocal Variety':{lvl:2,path:'Presentation Mastery',form:'Introduction to Vocal Variety',len:'5–7 minutes',g:G57,
+  purpose:['Explore pace, pitch, volume and pause to bring a speech to life.','The speaker practises using the voice as a deliberate tool.'],
+  notes:'Listen for contrast. A voice that never changes is the most common thing to flag; so are pauses that work well.',
+  about:['Look for deliberate changes in pace, pitch and volume','Notice where pauses were used for effect','Check the voice matched the emotion of the story']},
+};
+const pname=n=>PROJECTS[n].form;
+const CRIT=[
+ ['Clarity','Spoken language is clear and is easily understood',['Unclear or not easily understood','Somewhat unclear or challenging to follow','Clear and easily understood','Excels at communicating with the spoken word','Exemplary speaker who is always understood']],
+ ['Vocal Variety','Uses tone, speed, and volume as tools',['Ineffective use of tone, speed and volume','Use of tone, speed and volume needs practice','Uses tone, speed and volume as tools','Excels at using tone, speed and volume','Uses tone, speed and volume to perfection']],
+ ['Eye Contact','Effectively uses eye contact to engage audience',['Little or no eye contact','Eye contact needs improvement','Effectively engages the audience','Gauges audience reaction through eye contact','Conveys emotion and draws a response']],
+ ['Gestures','Uses physical gestures effectively',['Very distracting gestures, or none','Limited or somewhat distracting gestures','Uses gestures effectively','Uses gestures to enhance the speech','Gestures fully integrated with content']],
+ ['Audience Awareness','Demonstrates awareness of audience engagement and needs',['Little or no attempt to engage','Awareness of audience needs more practice','Aware of audience engagement and needs','Fully aware and responds effectively','Engages completely and anticipates needs']],
+ ['Comfort Level','Appears comfortable with the audience',['Highly uncomfortable','Uncomfortable','Comfortable','Fully at ease','Completely self-assured']],
+ ['Interest','Engages audience with interesting, well-constructed content',['Neither interesting nor well constructed','Interesting or well constructed, not both','Interesting, well-constructed content','Highly compelling, well-constructed content','Exemplary, well-constructed content']],
+];
+const LEVELN={5:'Exemplary',4:'Excels',3:'Accomplished',2:'Emerging',1:'Developing'};
+const EVALS=[
+ {id:'e143',mtg:143,date:'15 Oct 2026',project:'Effective Body Language',title:'Standing Tall',by:'Devon Park',time:'6:12',
+  r:[4,5,5,5,3,5,4],c:['','Pace and volume built to the ending.','Held each side of the room in turn.','Big and deliberate, never looked rehearsed.','Missed a few cues from the room while checking notes.','',''],
+  excelled:'Deliberate stage movement: you walked to a new spot each time the topic changed. Gestures were big and never looked rehearsed.',work:'Your weight shifted foot to foot when you lost your place around the three-minute mark. A pause would have hidden it.',challenge:'Deliver your next speech without notes and away from the lectern.'},
+ {id:'e142',mtg:142,date:'8 Oct 2026',project:'Researching and Presenting',title:'Why Bees Need Weeds',by:'Hannah Doyle',time:'5:48',
+  r:[4,3,4,3,4,3,5],c:['Sources named out loud made every claim land.','','Eyes across the whole room, not just the front.','','Slowed down when the room looked lost.','','A surprising opening and a tidy close.'],
+  excelled:'Three sources, all named out loud, which made the claims land. Great eye contact across the whole room.',work:'The middle section was dense. Cut the second statistic; it repeated the first.',challenge:'Try one slide or a hand-out listing the sources.'},
+ {id:'e141',mtg:141,date:'1 Oct 2026',project:'Evaluation and Feedback',title:'The Quiet Planner',by:'Tom Whitfield',time:'7:21',
+  r:[3,3,4,3,3,4,4],c:['','Even pace all the way; slow down before key lines.','Good with the left side, less with the right.','','','Settled quickly after the first minute.','The missed-train story did the heavy lifting.'],
+  excelled:'Honest, specific self-reflection. The story about the missed train showed your style better than any label could.',work:'You ran 21 seconds over. Trim one example and slow down before the key line.',challenge:'Speak to a style you find difficult, then tell us how it felt.'},
+ {id:'e139',mtg:139,date:'17 Sep 2026',project:'Ice Breaker',title:'Three Doors',by:'Marcus Cole',time:'4:31',
+  r:[4,3,3,2,3,2,5],c:['Easy to follow thanks to the three-doors structure.','','','Hands stayed clasped for most of it.','','Nervous at the start, steadier by the second door.','The line about the stuck lift got the whole room.'],
+  excelled:'The three-doors structure made your story easy to follow, and the line about the stuck lift got the whole room.',work:'Hands stayed clasped for most of the speech. Let them move when you describe something big.',challenge:'Open with the moment itself, then step back to explain.'},
+];
+const HIST={
+ gram:[
+  {mtg:143,date:'15 Oct',by:'Priya Raman',word:'Anchor',used:true,good:'“Rooted in what you couldn’t control” is a lovely turn of phrase.',improve:'“Me and my team was” → “my team and I were”.'},
+  {mtg:142,date:'8 Oct',by:'Tom Whitfield',word:'Candid',used:true,good:'Strong opening metaphor about the kitchen table.',improve:'“Less people” → “fewer people”.'},
+  {mtg:141,date:'1 Oct',by:'Devon Park',word:'Momentum',used:false,good:'Clear, plain language the whole way through.',improve:'The word of the day was available, so try slipping it in.'},
+  {mtg:139,date:'17 Sep',by:'Marcus Cole',word:'Tenacity',used:false,good:'Warm, confident introduction.',improve:'“Gonna” crept in twice; “going to” sounds sharper here.'}],
+ ah:[
+  {mtg:143,date:'15 Oct',by:'Grace Liu',c:{um:2,ah:0,so:3,like:0,but:1,mmm:1},note:'Almost no ums in the opening. “So” crept in each time you changed topic.'},
+  {mtg:142,date:'8 Oct',by:'Ravi Menon',c:{um:4,ah:1,so:2,like:0,but:0},note:'Ums dropped by half. Try a silent pause before the story.'},
+  {mtg:141,date:'1 Oct',by:'Hannah Doyle',c:{um:5,ah:2,so:3,like:1,but:2},note:'Most fillers came in the first minute.'},
+  {mtg:139,date:'17 Sep',by:'Jonah Adeyemi',c:{um:7,ah:2,so:4,like:2,but:3,'you know':1},note:'Plenty of ums while you were thinking. Pausing instead will help.'}],
+ time:[
+  {mtg:143,date:'15 Oct',by:'Sofia Marquez',t:'6:12',project:'Effective Body Language',note:'Landed in yellow, with the close well timed.'},
+  {mtg:142,date:'8 Oct',by:'Omar Haddad',t:'5:48',project:'Researching and Presenting',note:'Right in the green window the whole way.'},
+  {mtg:141,date:'1 Oct',by:'Lena Fischer',t:'7:21',project:'Evaluation and Feedback',note:'Over by 21 seconds; the second example could go.'},
+  {mtg:139,date:'17 Sep',by:'Devon Park',t:'4:31',project:'Ice Breaker',note:'Comfortably inside the Ice Breaker window.'}],
+};
+const FUNC={gram:{name:'Grammarian',lede:'Language notes, and whether you used the word of the day.'},ah:{name:'Ah Counter',lede:'Filler words counted during your speeches.'},time:{name:'Timer',lede:'How long you spoke, against the card lights.'}};
+const DEFAULT_FILLERS=[['ah','Ah'],['um','Um'],['er','Er'],['well','Well'],['so','So'],['like','Like'],['but','But'],['repeats','Repeats'],['other','Other']];
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const sum=(c,keys)=>Object.entries(c).reduce((a,[k,v])=>a+((!keys||keys.includes(k))?v:0),0);
+
+const ROLEDEF=[['Toastmaster',''],['Grammarian','fb'],['Ah Counter','fb'],['Timer','fb'],['Topicsmaster','fb'],['Speaker 1','sp'],['Speaker 2','sp'],['Speaker 3','sp'],['General Evaluator','fb'],['Speech Evaluator 1','fb'],['Speech Evaluator 2','fb'],['Speech Evaluator 3','fb']];
+const ASSIGN=['Devon Park','Priya Raman','Grace Liu','Ravi Menon','Hannah Doyle','Sofia Marquez','Jonah Adeyemi','Aisha Bello','Tom Whitfield','Marcus Cole','Lena Fischer',''];
+const SPEECH144=['Ice Breaker','Researching and Presenting','Introduction to Vocal Variety'];
+const SPEAKERS144=['Sofia Marquez','Jonah Adeyemi','Aisha Bello'];
+const TITLE144={'Sofia Marquez':'The Long Way Round','Jonah Adeyemi':'Why Bees Need Weeds, Again','Aisha Bello':'Say It Louder'};
+const W=(word,pos,pron,meaning,example,syn)=>({word,pos,pron,meaning,example,syn});
+const NOW=()=>W('','','','','','');
+const MEETINGS=[
+ {n:147,iso:'2026-11-12',theme:'',w:NOW()},
+ {n:146,iso:'2026-11-05',theme:'Open Doors',w:NOW()},
+ {n:145,iso:'2026-10-29',theme:'Second Chances',w:W('Resilient','adj.','rih-ZIL-yent','Able to recover quickly after a setback.','A resilient speaker loses their place, smiles, and carries on.','Tough, Adaptable, Buoyant')},
+ {n:144,iso:'2026-10-22',theme:'Fresh Starts',w:W('Assiduous','adj.','uh-SIJ-oo-us','Showing steady, careful and persistent effort.','An assiduous speaker rehearses, welcomes feedback and returns to the lectern better each time.','Diligent, Studious, Persevering')},
+ {n:143,iso:'2026-10-15',theme:'Standing Tall',w:W('Anchor','noun','ANG-ker','Something that keeps you steady and grounded.','Her opening story was the anchor for the whole speech.','Foundation, Mainstay, Support')},
+ {n:142,iso:'2026-10-08',theme:'Know Yourself',w:W('Candid','adj.','KAN-did','Honest and direct, without hiding anything.','A candid evaluation is kind and specific.','Frank, Open, Straightforward')},
+ {n:141,iso:'2026-10-01',theme:'Do Your Homework',w:W('Momentum','noun','moh-MEN-tum','The force that keeps something moving once it has started.','Each rehearsal added momentum to the final speech.','Drive, Impetus, Progress')}];
+const fmtD=iso=>new Date(iso+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).replace(',','');
+const mstatus=m=>m.n===144?'Next':m.n>144?'Planned':'Done';
+const wordHTML=w=>w.word?`<div class="wcard"><h3>${esc(w.word)} ${w.pos?`<i>(${esc(w.pos)})</i>`:''}</h3><div class="pr">${esc(w.pron)}</div><p><b>Meaning:</b> ${esc(w.meaning)}</p>${w.example?`<p class="ex">Example: ${esc(w.example)}</p>`:''}<p><b>Synonyms:</b><br><span class="syn">${esc(w.syn)}</span></p></div>`:`<div class="wcard"><p style="color:var(--mute);margin:0">No word set yet.</p></div>`;
+const wordOf=(f,n)=>f.st.vpe.meetings.find(m=>m.n===n)?.w||NOW();
+const mkRoles=(n,blank)=>ROLEDEF.map(([role,k],i)=>{
+  const who=blank?'':(n===144?ASSIGN[i]:(ASSIGN[(i+n)%ASSIGN.length]||ASSIGN[0]));
+  const proj=k==='sp'?(n===144?SPEECH144[i-5]:Object.keys(PROJECTS)[(i+n)%5]):'';
+  return {role,k,who,proj,title:k==='sp'?(TITLE144[who]||''):''};});
+const needsLink=r=>r.k==='fb';
+const hash=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return h.toString(36).padStart(4,'0').slice(0,4)};
+const linkFor=(n,r)=>`brekkie.club/r/${n}-${r.role.toLowerCase().replace(/\W+/g,'-')}-${hash(r.who+r.role+n)}`;
+
+const ROLEP={
+ gram:{who:'Priya Raman',role:'Grammarian',sheet:'rp_gram',blurb:'Introduce the word of the day, then log language you liked and language to polish, person by person.'},
+ ah:{who:'Grace Liu',role:'Ah Counter',sheet:'rp_ah',blurb:'Tap to count filler words as you hear them, and add any of your own.'},
+ time:{who:'Ravi Menon',role:'Timer',sheet:'rp_time',blurb:'Start the timer for each person. The screen turns green, yellow, then red by itself.'},
+ tt:{who:'Hannah Doyle',role:'Topicsmaster',sheet:'rp_tt',blurb:'Your script, the theme, and a log of who spoke on which topic.'},
+ eval:{who:'Marcus Cole',role:'Speech Evaluator',sheet:'rp_eval',blurb:'Your speaker’s project, objectives and the evaluation form, in one place.'},
+ ge:{who:'Tom Whitfield',role:'General Evaluator',sheet:'rp_ge',blurb:'Your script and the meeting checklist, section by section.'},
+};
+const GE_SECTIONS=[
+ ['Before the meeting',['Was the room and equipment set up on time?','Were guests welcomed upon arrival?','Were guests informed about Toastmasters and the meeting format?']],
+ ['Meeting opening',['Was the presiding officer prepared and organized?','Did the meeting start on time?','Was everyone properly introduced?','Was the Toastmaster properly introduced?']],
+ ['Toastmaster',['Did the Toastmaster fill all roles prior to the meeting starting?','Did the Toastmaster introduce and explain the meeting’s theme?','Did the Toastmaster introduce the General Evaluator?','Did the Toastmaster properly introduce the Topicsmaster?']],
+ ['General Evaluator',['Did the General Evaluator properly introduce the Grammarian?','Was the Grammarian prepared and did they introduce their role within the allotted time?','Did the Grammarian properly introduce the Word of the Day?','Was the Word of the Day challenging, appropriate, and fitting for the theme of the meeting?','Did the General Evaluator properly introduce the Timer?','Was the Timer prepared and did they introduce their role within the allotted time?','Did the General Evaluator properly introduce the Ah-Counter?','Was the Ah-Counter prepared and did they introduce their role within the allotted time?','Was the General Evaluator’s report given?']],
+ ['Topicsmaster',['Was the purpose and timing of Table Topics properly explained?','Was the topic selected appropriate and did it fit the meeting theme?','Did the Topicsmaster call on people who did not have a meeting role first during Table Topics?','Were guests invited to participate?','Did the Topicsmaster track time to ensure the meeting stayed on schedule?','Was control properly returned to the Toastmaster?']],
+];
+/* scripts: [label, text], {w} word of the day, {s} speaker, {t} title */
+const SCRIPTS={
+ gram:[['When introduced by the Toastmaster','“Mr./Madam Toastmaster, fellow Toastmasters, and guests. As Grammarian, it is my responsibility to pay close attention to all speakers, listening carefully to their language usage. I’ll take note of any misuses of the English language, as well as any outstanding words, quotes, sayings, or thoughts. As Grammarian, it is also my duty to introduce the Word of the Day. For today’s meeting, the Word is {w}, which means {m}. [Display the Word of the Day at the front of the room.] An example of using the word is: {x}. Each speaker is encouraged to use the Word of the Day. I will give a Word of the Day report and grammatical usage report when called upon during the meeting. Thank you, Mr./Madam Toastmaster.”']],
+ ah:[['When introduced by the Toastmaster','“Greetings Mr./Madam Toastmaster, fellow Toastmasters, and guests. The purpose of the Ah-Counter is to note words and sounds that are used as a “crutch” or “pause filler” by anyone who speaks. During the meeting, I will listen for overused words, including and, well, but, so, and you know. I will also listen for filler sounds, including ah, um, and er. I will also note when a speaker repeats a word or phrase, such as “I, I” or “This means, this means.” At the end of the meeting, I will report the number of times that each speaker used these expressions. Thank you, Mr./Madam Toastmaster.”']],
+ time:[['When introduced by the Toastmaster','“Greetings Mr./Madam Toastmaster, fellow Toastmasters, and guests. As Timer, I will time the Table Topics speakers, formal speeches, and the evaluations. I will also alert each speaker of the time they have left, using the green, yellow, and red cards, which denote specific times remaining.”'],
+       ['Table Topics','Speakers should limit their remarks to no more than 2 minutes. At 1 minute, I will raise the green card. At 1 minute and 30 seconds, the yellow card. At 2 minutes, the red card.'],
+       ['Speeches','Ice Breaker speeches should be 4 to 6 minutes: green at 4, yellow at 5, red at 6. Most other speeches should be 5 to 7 minutes: green at 5, yellow at 6, red at 7.'],
+       ['Evaluations','Individual evaluations should be between 2 and 3 minutes. At 2 minutes, I will raise the green card. At 2 minutes and 30 seconds, the yellow card. At 3 minutes, the red card. Thank you Mr./Madam Toastmaster.']],
+ tt:[['When introduced by the Toastmaster','“Greetings Mr./Madam Toastmaster, fellow Toastmasters, and guests. The purpose of the Topicsmaster is to facilitate Table Topics, where guests and members will have the opportunity to practice their impromptu speaking. I will introduce a topic and call on speakers, who will be given two minutes to speak on the subject. Thank you Mr./Madam Toastmaster.”']],
+ eval:[['Opening your evaluation','Thank you, Toastmaster. Thank you, {s}, for “{t}”. I’ll share what worked, one or two things to try next, and a way to stretch yourself.'],
+       ['Structure to follow','Start with what excelled, with one example. Give one or two growth areas, each with a suggestion. End on encouragement. Keep it to between 2 and 3 minutes, and return the floor to the General Evaluator.']],
+ ge:[['When introduced by the Toastmaster','“Greetings Mr./Madam Toastmaster, fellow Toastmasters, and guests. The purpose of the General Evaluator is to evaluate everything that takes place throughout the meeting. During the meeting, I will take notes on everything that happens and doesn’t happen. I will evaluate each participant on the meeting program and look for good examples of preparation, organization, delivery, enthusiasm, observation, and performance of duties. At the end of the meeting, I will give my report. Thank you, Mr./Madam Toastmaster.”']],
+};
+const AGENDA=ASSIGN.filter(Boolean).sort();
+const TIMER={'Speaker':[300,360,420],'Table Topics':[60,90,120],'Evaluator':[120,150,180]};
+const secs=t=>{const m=/^(\d+):(\d{1,2})$/.exec((t||'').trim());return m?+m[1]*60+ +m[2]:null};
+const mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const cardOf=(s,[g,y,r])=>s==null?null:s>=r?'red':s>=y?'yellow':s>=g?'green':'under';
+const CARDTXT={under:'Under time',green:'Green card',yellow:'Yellow card',red:'Red card · over'};
+/* ───── generated member history (fake) ───── */
+const rngf=seed=>()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+const nseed=s=>[...s].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
+const POOL_WORK=['Slow down and let key sentences land.','Vary pace and volume, especially in the middle.','Look at the far side of the room more often.','Let your hands move when describing something big.','Check in with the room and pause for reactions.','Settle sooner; the first minute felt rushed.','Tighten the opening so the point arrives sooner.'];
+const POOL_GOOD=['A clear, memorable opening.','Strong variety in pace and tone.','Warm, steady eye contact.','Natural, confident gestures.','Read the room well.','Looked relaxed on stage.','The story kept everyone listening.'];
+const POOL_GRAM=['Watch “less” and “fewer”.','Tense shifted mid-story.','“Gonna” and “wanna” crept in.','Try the word of the day.','Two run-on sentences in the close.','“Me and him” became “he and I”.'];
+const PORDER=['Ice Breaker','Evaluation and Feedback','Researching and Presenting','Effective Body Language','Introduction to Vocal Variety'];
+const PTITLES=['First Steps','The Garden Plan','Third Shift','Lost in Translation','Small Rooms'];
+const DATES=['10 Sep','17 Sep','1 Oct','8 Oct','15 Oct'];
+const PCACHE={};
+const mean=a=>a.reduce((x,y)=>x+y,0)/(a.length||1);
+function prof(name){
+  if(PCACHE[name])return PCACHE[name];
+  let p;
+  if(name==='Aisha Bello'){
+    p={speeches:[...EVALS].reverse().map(e=>({date:e.date.replace(' 2026',''),project:e.project,title:e.title,by:e.by,r:e.r,c:e.c,work:e.work,excelled:e.excelled,time:e.time})),
+      fillers:[...HIST.ah].reverse().map(h=>({date:h.date,c:h.c,total:sum(h.c)})),
+      timing:[...HIST.time].reverse().map(h=>({date:h.date,t:h.t,project:h.project})),
+      gram:HIST.gram.map(h=>({date:h.date,improve:h.improve}))};
+  }else if(!MEMBERS.includes(name)||name==='Sofia Marquez'){
+    p={speeches:[],fillers:[],timing:[],gram:[]};
+  }else{
+    const R=rngf(nseed(name)),n=1+Math.floor(R()*5),w=Math.floor(R()*7),s0=(w+3)%7,sp=[],fi=[],ti=[],gr=[];
+    for(let i=0;i<n;i++){
+      const base=2.7+i*.25+R()*.7,date=DATES[5-n+i],project=PORDER[i],by=MEMBERS[Math.floor(R()*12)];
+      const r=CRIT.map((_,k)=>Math.max(1,Math.min(5,Math.round(base+(R()-.5)*1.4-(k===w?1.1:0)+(k===s0?.7:0)))));
+      const tt=Math.round(300+(R()-.35)*160),tot=Math.max(2,Math.round((14-i*2.5)*(.7+R()*.6)));
+      const c={um:Math.round(tot*.5),ah:Math.round(tot*.2),so:Math.round(tot*.2),like:Math.round(tot*.1)};
+      sp.push({date,project,title:PTITLES[i],by,r,c:r.map((v,k)=>k===w&&v<=3?POOL_WORK[k]:v>=5?POOL_GOOD[k]:''),work:POOL_WORK[w],excelled:POOL_GOOD[s0],time:mmss(tt)});
+      fi.push({date,c,total:sum(c)});ti.push({date,t:mmss(tt),project});gr.push({date,improve:POOL_GRAM[Math.floor(R()*6)]});
+    }
+    p={speeches:sp,fillers:fi,timing:ti,gram:gr.reverse()};
+  }
+  return PCACHE[name]=p;
+}
+function stats(p){
+  const n=p.speeches.length,avgs=CRIT.map((_,k)=>n?mean(p.speeches.map(s=>s.r[k])):0);
+  const order=avgs.map((_,k)=>k).sort((a,b)=>avgs[a]-avgs[b]);
+  return {n,avgs,avg:n?mean(avgs):0,focus:n?order.slice(0,3).filter(k=>avgs[k]<4):[],
+    first:n?p.speeches[0].r:[],last:n?p.speeches.at(-1).r:[],
+    over:p.timing.filter(t=>secs(t.t)>=PROJECTS[t.project].g[2]).length,
+    lvl:n?Math.max(...p.speeches.map(s=>PROJECTS[s.project].lvl)):0};
+}
+const meter=v=>`<span class="meter"><i class="${v<3?'lo':v<4?'mid':'hi'}" style="width:${v/5*100}%"></i></span>`;
+
+const newState=()=>({
+  guests:[],copied:{},reminded:{},pdfZoom:false,tab:'details',sel:'e143',
+  fillers:DEFAULT_FILLERS.map(([k,l])=>({k,l,custom:false})),addF:false,newF:'',
+  gr:{rows:[
+    {person:'Aisha Bello',used:true,good:'“Rooted in what you couldn’t control” is a lovely phrase.',improve:'',suggest:'',adding:false,newName:''},
+    {person:'Jonah Adeyemi',used:false,good:'',improve:'',suggest:'',adding:false,newName:''}]},
+  ah:{rows:[
+    {person:'Sofia Marquez',c:{um:3,ah:1,so:2,like:0,but:1},comment:'Fillers mostly in the opening.',adding:false,newName:''},
+    {person:'Jonah Adeyemi',c:{um:1,ah:0,so:0,like:2,but:0},comment:'',adding:false,newName:''}]},
+  tm:{rows:[
+    {person:'Sofia Marquez',role:'Speaker 1',kind:'Speaker',fixed:true,sec:342,comment:'Strong close, landed on time.',adding:false,newName:''},
+    {person:'Jonah Adeyemi',role:'Speaker 2',kind:'Speaker',fixed:true,sec:null,comment:'',adding:false,newName:''},
+    {person:'Aisha Bello',role:'Speaker 3',kind:'Speaker',fixed:true,sec:null,comment:'',adding:false,newName:''},
+    {person:'Marcus Cole',role:'Speech Evaluator 1',kind:'Evaluator',fixed:true,sec:null,comment:'',adding:false,newName:''},
+    {person:'Lena Fischer',role:'Speech Evaluator 2',kind:'Evaluator',fixed:true,sec:null,comment:'',adding:false,newName:''},
+    {person:'Tom Whitfield',role:'General Evaluator',kind:'Evaluator',fixed:true,sec:null,comment:'',adding:false,newName:''},
+    {person:'Omar Haddad',role:'',kind:'Table Topics',fixed:false,sec:108,comment:'',min:'',max:'',adding:false,newName:''}]},
+  tt:{topics:'1. A door that opened for you\n2. Something you would do again',rows:[{person:'Omar Haddad',topic:'A door that opened for you',adding:false,newName:''},{person:'Grace Liu',topic:'',adding:false,newName:''}]},
+  ge:GE_SECTIONS.map(([n,qs])=>({a:qs.map((_,i)=>i<2?'y':null),notes:''})),
+  ev:{cur:'Sofia Marquez',d:Object.fromEntries(SPEAKERS144.map(n=>[n,{r:Array(7).fill(0),c:Array(7).fill(''),o:Array(7).fill(false),excelled:'',work:'',challenge:''}]))},
+  vpe:{m:{},msort:'attn',newMember:{name:'',email:''},meetings:clone(MEETINGS),members:MEMBERS.slice()},
+});
+const seedEval=st=>{const d=st.ev.d['Sofia Marquez'];d.r=[4,3,3,0,3,0,0];d.c[0]='Clear opening, easy to follow.';d.excelled='You opened with the lost-luggage moment, then stepped back to explain. It pulled us in straight away.'};
+const allNames=f=>[...AGENDA,...f.st.guests];
+const getMeet=(f,n)=>f.st.vpe.m[n]??(f.st.vpe.m[n]={roles:mkRoles(n,n>144)});
+
+/* ═════════ chrome helpers ═════════ */
+const brand=(f,who)=>f.desk&&f.portal!=='r'?'':`<div class="brand"><span class="wm">Brekkie<i></i></span><span class="who">${who}</span></div>`;
+const hdr=(f,title='')=>`${f.desk&&f.portal==='r'?`<div class="hdr-r"><span class="wm">Brekkie<i></i></span><span style="font-size:13px;color:var(--mute)">${CLUB}</span></div>`:''}<div class="top">${f.stack.length>1?`<button class="back" data-back aria-label="Back">${I.back}</button>`:'<span style="width:12px"></span>'}<span class="ttl">${esc(title)}</span></div>`;
+const tabs=(f,items,on)=>f.desk?'':`<nav class="nav">${items.map(([s,l,ic])=>`<button class="${s===on?'on':''}" data-root="${s}">${ic}${l}</button>`).join('')}</nav>`;
+const NAV={m:[['m_home','Home',I.home],['m_evals','Evaluations',I.doc]],v:[['v_home','Meetings',I.cal],['v_members','Members',I.ppl]]};
+const SIDE={
+ m:[['m_home',{},'Home',I.home],'By role',['m_func',{key:'gram'},'Grammarian',I.mic],['m_func',{key:'ah'},'Ah Counter',I.hash],['m_func',{key:'time'},'Timer',I.clock],'Speeches',['m_evals',{},'Evaluations',I.doc]],
+ v:[['v_home',{},'Meetings',I.cal],['v_members',{},'Members',I.ppl]]};
+const secOf=([n,p])=>n==='m_func'?'m_func'+p.key:({m_eval:'m_evals',m_pdf:'m_evals',v_meet:'v_home',v_member:'v_members',v_addmember:'v_members'}[n]||n);
+function sidebar(f){
+  const cur=secOf(f.stack.at(-1));
+  const me=f.portal==='m'?['Aisha Bello','Member']:['Devon Park','VPE'];
+  return `<aside class="side"><span class="wm">Brekkie<i></i></span>${SIDE[f.portal].map(it=>typeof it==='string'?`<div class="sl">${it}</div>`:`<button class="${secOf([it[0],it[1]])===cur?'on':''}" data-root="${it[0]}" data-p="${J(it[1])}">${it[3]}${it[2]}</button>`).join('')}<div class="me"><b>${me[0]}</b>${me[1]} · ${CLUB}</div></aside>`;
+}
+const sel=(path,val,opts,ph='Select')=>`<select class="inp" data-bind="${path}" data-re="1"><option value="">${ph}</option>${opts.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+const personField=(f,rp,row)=>`
+  <select class="inp" data-bind="${rp}.person" data-re="1" aria-label="Person">
+    <option value="">Who is this about?</option>
+    ${allNames(f).map(o=>`<option ${o===row.person?'selected':''}>${esc(o)}</option>`).join('')}
+    <option value="__new">＋ Add new name…</option>
+  </select>
+  ${row.adding?`<div class="addname"><input class="inp" placeholder="Full name (guest or new member)" data-bind="${rp}.newName" value="${esc(row.newName)}"><button class="btn sm" ${act('addname',{rp})}>Add</button><button class="x" ${act('cancelname',{rp})} aria-label="Cancel">${I.close}</button></div>`:''}`;
+const rowHead=(i,list,n)=>`<div class="blk-h"><span class="no">PERSON ${i+1}</span>${n>1?`<button class="x" ${act('delrow',{list,i})} aria-label="Remove">${I.close}</button>`:''}</div>`;
+
+/* scripts + reference */
+const fillScript=(t,v)=>esc(t).replace(/\{(\w)\}/g,(_,k)=>`<em>${esc(v[k]??'…')}</em>`);
+const scriptBlock=(f,r,vars)=>{const open=f.st.script??f.desk;return `<div class="script ${open?'open':''}"><button ${act('tog',{path:'script',def:f.desk})}>Your script${I.chev}</button><div class="sb">${SCRIPTS[r].map(([h,t])=>`<h5>${h}</h5><p>${fillScript(t,vars)}</p>`).join('')}</div></div>`;};
+const split=(f,ref,form,cls='')=>`<div class="split ${cls}"><aside class="ref">${ref}</aside><div class="formcol">${form}</div></div>`;
+const purposeBlock=(p,pn)=>`<div class="obj"><small>${pn} · ${p.len}</small>
+  <h6 style="margin-top:8px">Purpose</h6><ul>${p.purpose.map(o=>`<li>${I.check}<span>${o}</span></li>`).join('')}</ul>
+  <h6>Notes for the evaluator</h6><p style="margin-top:4px">${p.notes}</p>
+  <h6>About this speech</h6><ul>${p.about.map(o=>`<li>${I.check}<span>${o}</span></li>`).join('')}</ul></div>`;
+
+/* ═════════ screens ═════════ */
+const S={};
+const roleCards=()=>Object.entries(FUNC).map(([k,v])=>`<button class="li" ${go('m_func',{key:k})}><span class="grow"><span class="t">${v.name}</span><span class="s">Latest ${HIST[k][0].date} · by ${HIST[k][0].by}</span></span><span class="n">${HIST[k].length}</span>${I.chev}</button>`).join('');
+
+/* ───── MEMBER ───── */
+S.m_home=f=>{
+  const e=EVALS[0];
+  const recent=`<button class="ent" style="width:100%;border-top:1px solid var(--line)" ${go('m_eval',{id:e.id})}>
+     <div class="ent-h"><b>${pname(e.project)}</b><span>${e.date}</span></div>
+     <div class="by">“${esc(e.title)}” · by <b>${e.by}</b></div>
+     <div class="note g"><i>You excelled at</i>${esc(e.excelled)}</div></button>`;
+  const left=`<div class="lab">By role</div><div class="list">${roleCards()}</div>
+   <div class="lab">Speeches</div>
+   <div class="list"><button class="li" ${go('m_evals')}><span class="grow"><span class="t">Evaluations</span><span class="s">Download any evaluation as a PDF</span></span><span class="n">${EVALS.length}</span>${I.chev}</button></div>`;
+  const right=`<div class="lab blue">Most recent evaluation</div>${recent}`;
+  return {head:brand(f,'Member · <b>Aisha Bello</b>'),
+  body:`<h1 class="pg">Your feedback, kept.</h1><p class="lede">Everything said about your speaking at ${CLUB}, in one place.</p>
+   ${f.desk?`<div class="cols2"><div>${left}</div><div>${right}</div></div>`:left+right}`,
+  foot:tabs(f,NAV.m,'m_home')}};
+
+S.m_func=(f,{key})=>{
+  const rows=HIST[key], F=FUNC[key];
+  const trend=key==='ah'?`<div class="lab blue">Fillers per speech, oldest → newest</div><p style="margin:0 0 4px;font:800 20px var(--head);letter-spacing:-.02em">${[...rows].reverse().map(r=>sum(r.c)).join(' <span style="color:var(--gray)">→</span> ')}</p>`:'';
+  return {head:hdr(f,'Your feedback'),
+  body:`<h1 class="pg">${F.name}</h1><p class="lede">${F.lede}</p>${trend}<div class="lab">${rows.length} meetings</div>
+  <div class="list g2">${rows.map(r=>{
+    const hd=`<div class="ent-h"><b>${r.date} 2026</b><span>Meeting ${r.mtg}</span></div><div class="by">${F.name}: <b>${r.by}</b></div>`;
+    if(key==='gram')return `<div class="ent" style="border-bottom:1px solid var(--line)">${hd}
+      <span class="chip ${r.used?'ok':''}" style="margin-bottom:6px">${r.used?I.check:''}Word “${r.word}” ${r.used?'used':'not used'}</span>
+      <div class="note g"><i>Done well</i>${esc(r.good)}</div><div class="note m" style="margin-top:10px"><i>Improve on</i>${esc(r.improve)}</div></div>`;
+    if(key==='ah'){const ks=[...DEFAULT_FILLERS.map(x=>x[0]),...Object.keys(r.c).filter(k=>!DEFAULT_FILLERS.some(x=>x[0]===k))].filter(k=>r.c[k]);
+      return `<div class="ent" style="border-bottom:1px solid var(--line)">${hd}
+      <div style="display:flex;align-items:flex-end;gap:12px"><div class="cnts" style="flex:1">${ks.map(k=>`<div class="cnt ${r.c[k]?'':'z'}"><small>${esc(cap(k))}</small><b>${r.c[k]||0}</b></div>`).join('')}</div>
+      <div style="text-align:right"><span class="total">TOTAL</span><div class="big">${sum(r.c)}</div></div></div>${r.note?`<div class="note" style="margin-top:10px"><i>Comment</i>${esc(r.note)}</div>`:''}</div>`;}
+    const p=PROJECTS[r.project], c=cardOf(secs(r.t),p.g);
+    return `<div class="ent" style="border-bottom:1px solid var(--line)">${hd}
+      <div style="display:flex;align-items:center;justify-content:space-between"><div class="big">${r.t}</div>
+      <div style="text-align:right;font-size:14px"><span class="dot ${c}"></span> <b>${CARDTXT[c]}</b><br><span style="color:var(--mute)">Target ${p.len.replace(' minutes',' min')}</span></div></div>
+      <div class="by" style="margin:8px 0 0">${pname(r.project)}</div>${r.note?`<div class="note" style="margin-top:6px"><i>Comment</i>${esc(r.note)}</div>`:''}</div>`;}).join('')}</div>`,
+  foot:''}};
+
+const evalRow=(f,e)=>`<button class="li ${f.desk&&f.st.sel===e.id?'sel':''}" ${f.desk?act('set',{path:'sel',v:e.id}):go('m_eval',{id:e.id})}><span class="grow"><span class="t">${pname(e.project)}</span><span class="s">Level ${PROJECTS[e.project].lvl} · “${esc(e.title)}” · ${e.date}</span><span class="s">Evaluator: ${e.by}</span></span>${f.desk?'':I.chev}</button>`;
+
+S.m_evals=f=>{
+  const e=EVALS.find(x=>x.id===f.st.sel)||EVALS[0];
+  const list=`<div class="list">${EVALS.map(x=>evalRow(f,x)).join('')}</div>`;
+  const side=`<div class="meta" style="margin-bottom:10px"><span><b>${pname(e.project)}</b></span><span>${e.date}</span></div>
+    <div class="pdfwrap"><div style="zoom:.55">${sheetHTML(e)}</div></div>
+    <div style="display:flex;gap:10px;margin-top:14px"><button class="btn" style="width:auto;padding:0 22px" ${act('pdf',{id:e.id})}>${I.dl} Download PDF</button><button class="btn ghost" style="width:auto;padding:0 22px" ${go('m_eval',{id:e.id})}>Open full evaluation</button></div>`;
+  return {head:brand(f,'Member · <b>Aisha Bello</b>'),
+  body:`<h1 class="pg">Evaluations</h1><p class="lede">One per speech. ${f.desk?'Pick one to preview the sheet.':'Open one to read it or download the sheet.'}</p>
+   ${f.desk?`<div class="split wide"><div>${list}</div><div>${side}</div></div>`:list}`,
+  foot:tabs(f,NAV.m,'m_evals')}};
+
+const ratingList=e=>`<div class="list">${CRIT.map(([n],i)=>{const v=e.r[i],cl=v>=4?'hi':v===3?'mid':'lo';return `<div class="rrow"><div class="rh"><b>${n}</b><span class="scale">${[1,2,3,4,5].map(k=>`<u class="${k<=v?cl:''}"></u>`).join('')}</span><span class="v">${v} · ${LEVELN[v]}</span></div>${e.c[i]?`<p>${esc(e.c[i])}</p>`:''}</div>`}).join('')}</div>`;
+
+S.m_eval=(f,{id})=>{
+  const e=EVALS.find(x=>x.id===id), p=PROJECTS[e.project];
+  const left=`<h1 class="pg sm">${pname(e.project)}</h1>
+   <div class="meta"><span>Level ${p.lvl} · ${p.path}</span></div>
+   <div class="meta"><span>“<b>${esc(e.title)}</b>”</span><span>${e.date}</span><span>Time <b>${e.time}</b> of ${p.len.replace(' minutes',' min')}</span></div>
+   <div class="meta"><span>Evaluator <b>${e.by}</b></span></div>
+   <div class="lab">Ratings</div>${ratingList(e)}
+   <div class="lab blue">You excelled at</div><p class="note g" style="margin:0">${esc(e.excelled)}</p>
+   <div class="lab maroon">You may want to work on</div><p class="note m" style="margin:0">${esc(e.work)}</p>
+   <div class="lab">To challenge yourself</div><p class="note" style="margin:0">${esc(e.challenge)}</p>`;
+  const right=`<div class="pdfwrap"><div style="zoom:.55">${sheetHTML(e)}</div></div>`;
+  return {head:hdr(f,'Evaluation'),
+  body:f.desk?`<div class="split wide"><div>${left}</div><div class="ref">${right}</div></div>`:left,
+  foot:`<div class="foot col"><button class="btn" ${act('pdf',{id})}>${I.dl} Download evaluation sheet (PDF)</button>${f.desk?'':`<button class="btn ghost" ${go('m_pdf',{id})}>Preview sheet</button>`}</div>`}};
+
+S.m_pdf=(f,{id})=>{
+  const e=EVALS.find(x=>x.id===id), z=f.st.pdfZoom;
+  return {head:hdr(f,'Evaluation sheet'),
+  body:`<div class="pdfwrap"><div style="zoom:${z?.62:.36}">${sheetHTML(e)}</div></div>
+  <p class="lede" style="margin:12px 0 0;font-size:14px">Three pages, laid out like the Pathways evaluation form. Print or save as PDF.</p>`,
+  foot:`<div class="foot"><button class="btn ghost" style="flex:0 0 112px" ${act('tog',{path:'pdfZoom'})}>${z?'Fit page':'Zoom in'}</button><button class="btn" ${act('pdf',{id})}>${I.dl} Download PDF</button></div>`}};
+
+/* the 3-page form, Letter size */
+function sheetHTML(e){
+  const p=PROJECTS[e.project], fn=p.form, n=(i)=>`<div class="pf"><span><b>Brekkie<i></i></b> · ${CLUB}</span><span>Page ${i} of 3</span></div>`;
+  const p1=`<div class="page"><div class="ph"><i class="m"></i><i class="g"></i><div class="hb"><h1>Evaluation Form</h1><p>${fn}</p></div></div>
+   <div class="pbody">
+    <div class="frow"><div class="fld"><span>Member Name</span><u>Aisha Bello</u></div><div class="fld"><span>Date</span><u>${e.date}</u></div></div>
+    <div class="frow"><div class="fld"><span>Evaluator</span><u>${e.by}</u></div><div class="fld"><span>Speech Length: <b style="font-weight:600">${p.len}</b></span></div></div>
+    <div class="fld"><span>Speech Title</span><u>${esc(e.title)}</u></div>
+    <h4>Purpose Statements</h4><ul class="tri">${p.purpose.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <h4>Notes for the Evaluator</h4><p>${p.notes}</p><p>About this speech:</p><ul class="tri">${p.about.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <h4>General Comments</h4>
+    <div class="gc"><span>You excelled at:</span>${esc(e.excelled)}</div>
+    <div class="gc"><span>You may want to work on:</span>${esc(e.work)}</div>
+    <div class="gc"><span>To challenge yourself:</span>${esc(e.challenge)}</div>
+   </div>${n(1)}</div>`;
+  const p2=`<div class="page"><div class="ph sm"><i class="g"></i><div class="hb"><b>EVALUATION FORM –</b> ${fn}</div></div>
+   <div class="pbody" style="padding-top:34px"><p>For the evaluator: In addition to your verbal evaluation, please complete this form.</p>
+   <div class="sc">${[5,4,3,2,1].map(v=>`<div>${v}<small>${LEVELN[v].toUpperCase()}</small></div>`).join('')}</div>
+   ${CRIT.map(([cn,d],i)=>`<div class="cr"><div class="l"><b>${cn}:</b> ${d}<div class="n">${[5,4,3,2,1].map(v=>`<s class="${e.r[i]===v?'on':''}">${v}</s>`).join('')}</div></div><div class="c"><span>Comment:</span>${esc(e.c[i])}</div></div>`).join('')}
+   </div>${n(2)}</div>`;
+  const p3=`<div class="page"><div class="ph sm"><i class="g"></i><div class="hb"><b>EVALUATION FORM –</b> ${fn}</div></div>
+   <div class="pbody" style="padding-top:34px"><p>This criteria lists the specific goals and expectations for the speech. Review each level to help you complete the evaluation.</p>
+   <div class="rub">${CRIT.map(([cn,d,lv])=>`<div><b>${cn}</b>${[5,4,3,2,1].map(v=>`<p><i>${v} –</i>${lv[v-1]}</p>`).join('')}</div>`).join('')}</div>
+   </div>${n(3)}</div>`;
+  return `<div class="doc">${p1}${p2}${p3}</div>`;
+}
+
+/* ───── ROLE PLAYER ───── */
+S.rp_land=(f,{r})=>{const R=ROLEP[r];return {head:f.desk?'':`<div class="brand"><span class="wm">Brekkie<i></i></span><span class="who">${CLUB}</span></div>`,
+  body:`<div class="link-hero"><div class="tag">Meeting 144 · Thu 22 Oct 2026</div>
+   <h1>Hi ${R.who.split(' ')[0]}, you’re tonight’s <span>${R.role}</span>.</h1>
+   <p>${R.blurb}</p><p style="margin-top:14px">Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p></div>`,
+  foot:`<div class="foot col"><button class="btn" ${go(R.sheet,{r})}>Open my sheet</button></div>`}};
+
+const roleHead=(f,r)=>hdr(f,ROLEP[r].role);
+const sheetTitle=(r)=>{const R=ROLEP[r];return `<h1 class="pg sm">${R.role} sheet</h1><div class="meta"><span>${R.who}</span><span>Meeting 144 · 22 Oct</span></div>`};
+const submit=(r)=>`<div class="foot"><button class="btn" ${go('rp_done',{r})}>Submit notes</button></div>`;
+
+S.rp_gram=(f)=>({head:roleHead(f,'gram'),
+  body:split(f,`${sheetTitle('gram')}<div style="margin-top:12px">${wordHTML(wordOf(f,144))}</div>${scriptBlock(f,'gram',{w:wordOf(f,144).word,m:wordOf(f,144).meaning,x:wordOf(f,144).example})}`,
+  `<div class="lab" style="margin-top:${f.desk?4:24}px">Notes by person</div>
+   ${f.st.gr.rows.map((row,i)=>`<div class="blk">${rowHead(i,'gr.rows',f.st.gr.rows.length)}${personField(f,'gr.rows.'+i,row)}
+     <div class="pill-row"><button class="chip ${row.used?'on':''}" ${act('tog',{path:`gr.rows.${i}.used`})}>${row.used?I.check:''}Used the word of the day</button></div>
+     <label class="fl blue">Quote, saying or word you liked</label><textarea class="inp" data-bind="gr.rows.${i}.good" placeholder="What did they say?">${esc(row.good)}</textarea>
+     <label class="fl maroon">Improper use</label><textarea class="inp" data-bind="gr.rows.${i}.improve" placeholder="What was said">${esc(row.improve)}</textarea>
+     <label class="fl">Suggestion</label><textarea class="inp" data-bind="gr.rows.${i}.suggest" placeholder="A better way to say it">${esc(row.suggest||'')}</textarea></div>`).join('')}
+   <button class="addrow" ${act('addrow',{list:'gr.rows',tpl:'gr'})}>${I.plus} Add another person</button>`),
+  foot:submit('gram')});
+
+S.rp_ah=(f)=>{
+  const keys=f.st.fillers.map(x=>x.k);
+  const bar=`<div class="lab" style="margin-top:${f.desk?4:20}px">Words you’re counting</div>
+   <div class="pill-row" style="margin-top:0">${f.st.fillers.map(x=>`<span class="chip">${esc(x.l)}${x.custom?`<button class="xx" ${act('delfiller',{k:x.k})} aria-label="Remove ${esc(x.l)}">${I.close}</button>`:''}</span>`).join('')}
+   ${f.st.addF?`<input class="inp" placeholder="e.g. mmm" data-bind="newF" value="${esc(f.st.newF)}" aria-label="New filler word"><button class="btn sm" ${act('addfiller')}>Add</button><button class="x" ${act('cancelfiller')} aria-label="Cancel">${I.close}</button>`:`<button class="chip" ${act('openfiller')}>${I.plus} Add a word</button>`}</div>
+   <p style="margin:8px 0 0;font-size:13.5px;color:var(--mute)">Heard something that isn’t listed? Add it and it appears for everyone you’re counting.</p>`;
+  return {head:roleHead(f,'ah'),
+  body:split(f,`${sheetTitle('ah')}${scriptBlock(f,'ah',{})}`,
+  `${bar}<div class="lab">Count by person</div>
+   ${f.st.ah.rows.map((row,i)=>`<div class="blk">${rowHead(i,'ah.rows',f.st.ah.rows.length)}${personField(f,'ah.rows.'+i,row)}
+     <div class="cnts">${f.st.fillers.map(({k,l})=>`<div class="cnt ${row.c[k]?'':'z'}"><small>${esc(l)}</small><b>${row.c[k]||0}</b><div><button ${act('inc',{rp:'ah.rows.'+i,k,d:-1})} aria-label="Minus ${esc(l)}">${I.minus}</button><button ${act('inc',{rp:'ah.rows.'+i,k,d:1})} aria-label="Plus ${esc(l)}">${I.plus}</button></div></div>`).join('')}</div>
+     <div style="text-align:right;margin-top:8px" class="total">Total ${sum(row.c,keys)}</div>
+     <label class="fl">Comment</label><textarea class="inp" data-bind="ah.rows.${i}.comment" placeholder="Anything to tell ${esc(row.person||'them')}? (optional)">${esc(row.comment||'')}</textarea></div>`).join('')}
+   <button class="addrow" ${act('addrow',{list:'ah.rows',tpl:'ah'})}>${I.plus} Add another person</button>`),
+  foot:submit('ah')}};
+
+/* timer: live stopwatch, the screen goes white, green, yellow, red */
+const thr=r=>r.kind==='Other'?(()=>{const mn=secs(r.min)||60,mx=secs(r.max)||120;return [mn,Math.round((mn+mx)/2),mx]})():TIMER[r.kind];
+const curSec=(f,i)=>{const r=f.st.tm.rows[i];return (r.sec||0)+(f.run&&f.run.i===i?(Date.now()-f.run.start)/1000:0)};
+const stageTxt=(c,s,run)=>c==='under'?(s<=0&&!run?'Ready when you are':'Counting up to green'):CARDTXT[c];
+const LIVE=new Set();
+function paintStage(f){
+  const el=f.el.querySelector('.stage');if(!el)return;
+  const i=+el.dataset.i,r=f.st.tm.rows[i],s=Math.floor(curSec(f,i)),c=cardOf(s,thr(r));
+  el.className='stage '+c;el.querySelector('.clk').textContent=mmss(s);el.querySelector('.cardname').textContent=stageTxt(c,s,!!f.run);
+}
+setInterval(()=>LIVE.forEach(paintStage),200);
+
+S.rp_stage=(f,{i})=>{
+  const r=f.st.tm.rows[i],s=Math.floor(curSec(f,i)),g=thr(r),c=cardOf(s,g),run=!!f.run&&f.run.i===i;
+  return {full:true,body:`<div class="stage ${c}" data-i="${i}">
+    <div class="st-top"><button class="back" data-back aria-label="Back">${I.back}</button><div><b>${esc(r.person)}</b><br><span>${esc(r.role||r.kind)}</span></div></div>
+    <div class="clk">${mmss(s)}</div><div class="cardname">${stageTxt(c,s,run)}</div>
+    <div class="thr">Green ${mmss(g[0])} · Yellow ${mmss(g[1])} · Red ${mmss(g[2])}</div>
+    <div class="st-btns"><button class="btn" ${act('trun',{i})}>${run?'Pause':(s>0?'Resume':'Start')}</button>
+      <div style="display:flex;gap:10px"><button class="btn ghost" ${act('treset',{i})}>Reset</button><button class="btn ghost" ${act('tsave')}>Save time</button></div></div></div>`}};
+
+S.rp_time=f=>{
+  const rows=f.st.tm.rows;
+  const row=(r,i)=>{
+    const c=r.sec!=null?cardOf(Math.floor(r.sec),thr(r)):null,g=thr(r);
+    const head=r.fixed
+      ?`<div class="blk-h"><span style="font:700 15px var(--head)">${esc(r.person)}</span><span class="chip">${esc(r.role)}</span></div>`
+      :`<div class="blk-h"><span class="no">ADDED BY YOU</span><button class="x" ${act('delrow',{list:'tm.rows',i})} aria-label="Remove">${I.close}</button></div>${personField(f,'tm.rows.'+i,r)}
+        <div class="seg" style="margin-top:8px">${['Table Topics','Speaker','Evaluator','Other'].map(k=>`<button class="${r.kind===k?'on':''}" ${act('set',{path:`tm.rows.${i}.kind`,v:k})}>${k}</button>`).join('')}</div>
+        ${r.kind==='Other'?`<div class="addname"><input class="inp mono" placeholder="Min, e.g. 1:00" data-bind="tm.rows.${i}.min" data-re="1" value="${esc(r.min)}"><input class="inp mono" placeholder="Max, e.g. 2:00" data-bind="tm.rows.${i}.max" data-re="1" value="${esc(r.max)}"></div>`:''}`;
+    return `<div class="blk">${head}
+      <div class="tm"><div class="big" style="min-width:96px;${r.sec==null?'color:var(--gray)':''}">${r.sec==null?'0:00':mmss(Math.floor(r.sec))}</div>
+        <div class="res">${c?`<span class="dot ${c}"></span> <b>${CARDTXT[c]}</b> · Within time: <b>${c!=='under'&&r.sec<=g[2]+30?'Yes':'No'}</b>`:'Not timed yet'}<br>Green ${mmss(g[0])} · Yellow ${mmss(g[1])} · Red ${mmss(g[2])}</div></div>
+      <button class="btn sm ${r.sec==null?'':'ghost'}" style="margin-top:10px" ${act('topen',{i,reset:r.sec!=null})}>${I.clock} ${r.sec==null?'Start timer':'Time again'}</button>
+      <label class="fl">Comment</label><textarea class="inp" data-bind="tm.rows.${i}.comment" placeholder="Anything to add about the timing? (optional)">${esc(r.comment||'')}</textarea></div>`;
+  };
+  const agenda=rows.map((r,i)=>[r,i]).filter(x=>x[0].fixed), extra=rows.map((r,i)=>[r,i]).filter(x=>!x[0].fixed);
+  return {head:roleHead(f,'time'),
+  body:split(f,`${sheetTitle('time')}${scriptBlock(f,'time',{})}
+    <div class="obj"><small>How it works</small><p style="margin-top:8px">The VPE sets the roles, so you only pick a name. Tap Start timer and the screen turns green, then yellow, then red as time runs.</p>
+    <ul style="margin-top:8px">${Object.entries(TIMER).map(([k,g])=>`<li><span style="width:104px;font-weight:600">${k}</span><span>${mmss(g[0])} · ${mmss(g[1])} · ${mmss(g[2])}</span></li>`).join('')}</ul><p style="margin:4px 0 0;font-size:13px;color:var(--mute)">Green · Yellow · Red</p></div>`,
+  `<div class="lab" style="margin-top:${f.desk?4:24}px">On the agenda</div>${agenda.map(x=>row(...x)).join('')}
+   <div class="lab">Not on the agenda</div>${extra.map(x=>row(...x)).join('')}
+   <button class="addrow" ${act('addrow',{list:'tm.rows',tpl:'tm'})}>${I.plus} Add a person (Table Topics or other)</button>`),
+  foot:submit('time')}};
+
+S.rp_tt=f=>{
+  const th=wordOf(f,144)&&f.st.vpe.meetings.find(m=>m.n===144).theme;
+  return {head:roleHead(f,'tt'),
+  body:split(f,`${sheetTitle('tt')}${scriptBlock(f,'tt',{})}<div class="obj"><small>Today’s meeting theme</small><p style="margin:6px 0 0;font:700 17px var(--head)">${esc(th||'Not set')}</p></div>`,
+  `<div class="lab" style="margin-top:${f.desk?4:24}px">Topics</div><textarea class="inp" style="min-height:92px" data-bind="tt.topics" placeholder="The topics you will use, one per line">${esc(f.st.tt.topics)}</textarea>
+   <div class="lab">Who spoke on what</div>
+   ${f.st.tt.rows.map((row,i)=>`<div class="blk">${rowHead(i,'tt.rows',f.st.tt.rows.length)}${personField(f,'tt.rows.'+i,row)}
+     <label class="fl">Topic</label><input class="inp" data-bind="tt.rows.${i}.topic" placeholder="The topic they were given" value="${esc(row.topic)}"></div>`).join('')}
+   <button class="addrow" ${act('addrow',{list:'tt.rows',tpl:'tt'})}>${I.plus} Add another speaker</button>`),
+  foot:submit('tt')}};
+
+S.rp_ge=f=>({head:roleHead(f,'ge'),
+  body:split(f,`${sheetTitle('ge')}${scriptBlock(f,'ge',{})}`,
+  GE_SECTIONS.map(([name,qs],si)=>`<div class="lab" style="margin-top:${si?26:(f.desk?4:24)}px">${name}</div><div class="list">${qs.map((q,qi)=>{const a=f.st.ge[si].a[qi];return `<div class="qrow"><span>${q}</span><div class="yn"><button class="${a==='y'?'on y':''}" ${act('set',{path:`ge.${si}.a.${qi}`,v:'y'})}>Yes</button><button class="${a==='n'?'on n':''}" ${act('set',{path:`ge.${si}.a.${qi}`,v:'n'})}>No</button></div></div>`}).join('')}</div>
+    <textarea class="inp" style="margin-top:8px" data-bind="ge.${si}.notes" placeholder="Notes">${esc(f.st.ge[si].notes)}</textarea>`).join(''),'wide'),
+  foot:submit('ge')});
+
+S.rp_eval=(f)=>{
+  const ev=f.st.ev, who=ev.cur, d=ev.d[who], pn=SPEECH144[SPEAKERS144.indexOf(who)], p=PROJECTS[pn], base=`ev.d.${who}`;
+  const ref=`${sheetTitle('eval')}
+   <label class="fl">Evaluating</label>
+   <select class="inp" data-bind="ev.cur" data-re="1">${SPEAKERS144.map(n=>`<option ${n===who?'selected':''}>${n}</option>`).join('')}</select>
+   <div class="meta" style="margin-top:10px"><span>“<b>${esc(TITLE144[who])}</b>”</span><span>Level ${p.lvl}</span></div>
+   ${purposeBlock(p,pname(pn))}${scriptBlock(f,'eval',{s:who.split(' ')[0],t:TITLE144[who]})}`;
+  const form=`<div class="lab" style="margin-top:${f.desk?4:24}px">Rate the speaker · 5 Exemplary → 1 Developing</div>
+   ${CRIT.map(([n,desc,lv],i)=>`<div class="rate-row"><span><b>${n}:</b> ${desc}</span>
+     <div class="nums">${[5,4,3,2,1].map(v=>`<button class="${d.r[i]===v?'on':''}" ${act('set',{path:`${base}.r.${i}`,v})}>${v}</button>`).join('')}</div>
+     <div class="lv">${d.r[i]?`<b>${LEVELN[d.r[i]]}</b>: ${lv[d.r[i]-1]}`:'Tap a number'}</div>
+     ${d.c[i]||d.o[i]?`<textarea class="inp" data-bind="${base}.c.${i}" placeholder="Comment">${esc(d.c[i])}</textarea>`:`<button class="lnk" ${act('set',{path:`${base}.o.${i}`,v:true})}>+ Add comment</button>`}</div>`).join('')}
+   <div class="lab blue" style="margin-top:28px">General comments</div>
+   <label class="fl blue">You excelled at</label><textarea class="inp" style="min-height:92px" data-bind="${base}.excelled" placeholder="What worked, with an example">${esc(d.excelled)}</textarea>
+   <label class="fl maroon">You may want to work on</label><textarea class="inp" style="min-height:92px" data-bind="${base}.work" placeholder="One or two things to improve">${esc(d.work)}</textarea>
+   <label class="fl">To challenge yourself</label><textarea class="inp" style="min-height:70px" data-bind="${base}.challenge" placeholder="A stretch for the next speech">${esc(d.challenge)}</textarea>`;
+  return {head:roleHead(f,'eval'),body:split(f,ref,form,'wide'),foot:submit('eval')}};
+
+S.rp_done=(f,{r})=>{const R=ROLEP[r];return {head:f.desk?hdr(f,''):'',
+  body:`<div class="done"><div class="tick">${sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>',30,2.6)}</div><h1 class="pg">Thanks, ${R.who.split(' ')[0]}.</h1>
+  <p class="lede">Your ${R.role.toLowerCase()} notes are in. Members will find them in their history from now on.</p></div>`,
+  foot:`<div class="foot col"><button class="btn ghost" data-back>Edit my notes</button></div>`}};
+
+/* ───── VPE ───── */
+const inpM=(f,mi,path,extra='')=>`data-bind="vpe.meetings.${mi}.${path}" ${extra}`;
+S.v_home=f=>{
+  const ms=f.st.vpe.meetings, up=ms.filter(m=>m.n>=144).sort((a,b)=>a.n-b.n), past=ms.filter(m=>m.n<144).sort((a,b)=>b.n-a.n);
+  const filled=getMeet(f,144).roles.filter(r=>r.who).length, wset=up.filter(m=>m.w.word).length;
+  const stats=`<div class="stats"><div><b>${filled}/12</b><small>Roles filled, next meeting</small></div><div><b>23/24</b><small>Feedback in, last 3 meetings</small></div><div><b>${wset}/${up.length}</b><small>Upcoming words set</small></div></div>`;
+  const cnt=m=>{const r=getMeet(f,m.n).roles;return r.filter(x=>x.who).length};
+  const fbk=m=>m.n>=144?'n/a':(m.n===143?'7/8':'8/8');
+  const st=m=>{const s=mstatus(m);return `<span class="chip ${s==='Done'?'':s==='Next'?'on':'wait'}">${s}</span>`};
+  const wordFlag=m=>m.w.word&&!m.w.meaning?'<small style="color:var(--maroon)">details missing</small>':(m.w.pos?`<small style="color:var(--mute)">${esc(m.w.pos)}</small>`:'');
+  let body;
+  if(f.desk){
+    const tr=m=>{const i=ms.indexOf(m);return `<tr><td><button class="lnk" ${go('v_meet',{n:m.n})}>No. ${m.n}</button></td>
+      <td><input type="date" ${inpM(f,i,'iso')} value="${m.iso}" aria-label="Date"></td>
+      <td><input ${inpM(f,i,'theme')} value="${esc(m.theme)}" placeholder="Theme" aria-label="Theme"></td>
+      <td><input ${inpM(f,i,'w.word','data-re="1"')} value="${esc(m.w.word)}" placeholder="Word of the day" aria-label="Word"></td><td>${wordFlag(m)}</td>
+      <td class="num ${cnt(m)<12&&m.n>=144?'warn':''}">${cnt(m)}/12</td><td class="num">${fbk(m)}</td><td>${st(m)}</td>
+      <td><button class="x" ${go('v_meet',{n:m.n})} aria-label="Open">${I.chev}</button></td></tr>`};
+    body=`<table class="tbl"><thead><tr><th style="width:72px">No.</th><th style="width:158px">Date</th><th>Theme</th><th style="width:190px">Word of the day</th><th style="width:90px"></th><th style="width:70px">Roles</th><th style="width:80px">Feedback</th><th style="width:84px">Status</th><th style="width:40px"></th></tr></thead>
+      <tbody><tr class="sec"><td colspan="9">Upcoming</td></tr>${up.map(tr).join('')}<tr class="sec"><td colspan="9">Past</td></tr>${past.map(tr).join('')}</tbody></table>`;
+  }else{
+    const blk=m=>{const i=ms.indexOf(m);return `<div class="blk"><div class="blk-h"><button class="lnk" style="font:700 15px var(--head)" ${go('v_meet',{n:m.n})}>No. ${m.n}</button>${st(m)}</div>
+      <div class="two"><div><label class="fl" style="margin-top:0">Date</label><input class="inp" type="date" ${inpM(f,i,'iso')} value="${m.iso}"></div><div><label class="fl" style="margin-top:0">Word</label><input class="inp" ${inpM(f,i,'w.word','data-re="1"')} value="${esc(m.w.word)}" placeholder="Not set"></div></div>
+      <label class="fl">Theme</label><input class="inp" ${inpM(f,i,'theme')} value="${esc(m.theme)}" placeholder="Theme">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="s" style="color:var(--mute);font-size:13.5px">Roles ${cnt(m)}/12 · Feedback ${fbk(m)} ${wordFlag(m)}</span><button class="btn sm ghost" ${go('v_meet',{n:m.n})}>Open</button></div></div>`};
+    body=`<div class="lab" style="margin-top:6px">Upcoming</div>${up.map(blk).join('')}<div class="lab">Past</div>${past.map(blk).join('')}`;
+  }
+  return {wide:true,head:brand(f,'VPE · <b>Devon Park</b>'),
+  body:`<h1 class="pg">Meetings</h1>${stats}${body}`,
+  foot:`<div class="foot" style="${f.desk?'':'border:0;padding-bottom:6px'}"><button class="btn yel" ${act('addmeeting')}>${I.plus} Add meeting</button></div>${tabs(f,NAV.v,'v_home')}`}};
+
+S.v_meet=(f,{n})=>{
+  const ms=f.st.vpe.meetings,mi=ms.findIndex(m=>m.n===n),M=ms[mi],roles=getMeet(f,n).roles,up=n>=144,base=`vpe.m.${n}.roles`,mb=`vpe.meetings.${mi}`,tab=f.st.tab;
+  const fb=roles.map((r,i)=>({r,i})).filter(x=>needsLink(x.r));
+  const rolesH=`<div class="list">${roles.map((r,i)=>`<div class="rolerow"><div class="rl"><b>${r.role}</b>${needsLink(r)?'<span>Gets a link</span>':''}</div>
+     ${up?sel(`${base}.${i}.who`,r.who,f.st.vpe.members,'Unassigned'):`<div style="font-size:16px;font-weight:600">${r.who||'None'}</div>`}
+     ${r.k==='sp'&&up?sel(`${base}.${i}.proj`,r.proj,Object.keys(PROJECTS),'Choose project'):(r.k==='sp'?`<div style="color:var(--mute);font-size:14px">${r.proj}</div>`:'')}</div>`).join('')}</div>`;
+  const linksH=`<div style="display:flex;gap:8px;margin:2px 0 6px"><button class="btn sm" style="flex:1" ${act('toast',{m:'Opened WhatsApp with all links (mock)'})}>${I.send} Send all</button><button class="btn sm ghost" style="flex:1" ${act('copy',{key:'all',text:'all links'})}>${f.st.copied.all?'Copied':'Copy all'}</button></div>
+    <div class="list">${fb.map(({r})=>{ if(!r.who) return `<div class="linkrow"><div class="grow"><b>${r.role}</b><br><small style="color:var(--maroon)">Assign someone to get a link</small></div></div>`;
+      const url=linkFor(n,r);return `<div class="linkrow"><div class="grow"><b>${r.role}</b> <small>· ${r.who}</small><code>${url}</code></div>
+      <button class="btn sm ${f.st.copied[r.role]?'':'ghost'}" ${act('copy',{key:r.role,text:url})}>${f.st.copied[r.role]?I.check+'Copied':I.copy+'Copy'}</button></div>`}).join('')}</div>`;
+  const recvH=(up?`<p class="lede" style="margin:2px 0 8px;font-size:14px">Opens up after the meeting. Here is who owes notes.</p>`:'')+`<div class="list">${fb.filter(x=>x.r.who).map(({r})=>{
+      const pend=up||(n===143&&r.role==='Timer');
+      return `<div class="linkrow"><div class="grow"><b>${r.role}</b><br><small>${r.who}</small></div>
+      ${pend?(f.st.reminded[n+r.role]?'<span class="chip wait">Reminded</span>':`<span class="chip wait">Pending</span><button class="btn sm ghost" ${act('remind',{key:n+r.role})}>Remind</button>`):`<span class="chip ok">${I.check}Submitted</span>`}</div>`}).join('')}</div>`;
+  const fld=(l,path,ph,type='text',live=true)=>`<label class="fl">${l}</label><input class="inp" type="${type}" ${live?`data-wlive="${mi}"`:''} data-bind="${mb}.${path}" value="${esc(get(M,path))}" placeholder="${ph}">`;
+  const ta=(l,path,ph)=>`<label class="fl">${l}</label><textarea class="inp" style="min-height:58px" data-wlive="${mi}" data-bind="${mb}.${path}" placeholder="${ph}">${esc(get(M,path))}</textarea>`;
+  const details=`<div class="dgrid"><div>${fld('Date','iso','','date',false)}${fld('Theme','theme','e.g. Fresh Starts','text',false)}
+    <div class="lab blue" style="margin-top:22px">Word of the day</div>${fld('Word','w.word','e.g. Assiduous')}
+    <div class="two">${fld('Part of speech','w.pos','adj.')}${fld('Pronunciation','w.pron','uh-SIJ-oo-us')}</div>
+    ${ta('Meaning','w.meaning','What it means')}${ta('Example','w.example','Use it in a sentence')}${fld('Synonyms','w.syn','Diligent, Studious')}</div>
+    <div><div class="lab" style="margin-top:${f.desk?4:22}px">What the grammarian sees</div><div class="wprev">${wordHTML(M.w)}</div></div></div>`;
+  const s=mstatus(M);
+  const headTxt=`<h1 class="pg sm">No. ${n} · ${fmtD(M.iso)}</h1><div class="meta"><span>${esc(M.theme||'No theme yet')}</span><span>Word <b>${esc(M.w.word||'not set')}</b></span><span class="chip ${s==='Next'?'on':s==='Planned'?'wait':''}">${s}</span></div>`;
+  const body=f.desk
+    ?`${headTxt}<div class="lab" style="margin-top:20px">Details</div>${details}<div class="three" style="margin-top:8px"><div><div class="lab">Roles</div>${rolesH}</div><div><div class="lab">Links</div>${linksH}</div><div><div class="lab">Feedback received</div>${recvH}</div></div>`
+    :`${headTxt}<div class="seg" style="margin:14px 0 6px">${[['details','Details'],['roles','Roles'],['links','Links'],['recv','Received']].map(([k,l])=>`<button class="${tab===k?'on':''}" ${act('set',{path:'tab',v:k})}>${l}</button>`).join('')}</div>${tab==='details'?details:tab==='roles'?rolesH:tab==='links'?linksH:recvH}`;
+  return {wide:true,head:hdr(f,`Meeting ${n}`),body,foot:''}};
+
+S.v_members=f=>{
+  const all=f.st.vpe.members.map(name=>{const p=prof(name);return {name,p,s:stats(p)}});
+  const sort=f.st.vpe.msort;
+  all.sort(sort==='name'?(a,b)=>a.name.localeCompare(b.name):(a,b)=>(a.s.n?a.s.avg:9)-(b.s.n?b.s.avg:9));
+  const focusTxt=s=>!s.n?'<span style="color:var(--mute)">No speeches yet</span>':s.focus.length?s.focus.slice(0,2).map(k=>CRIT[k][0]).join(', '):'<span class="chip ok">On track</span>';
+  const fill=p=>p.fillers.length?`${p.fillers[0].total} → ${p.fillers.at(-1).total}`:'';
+  const ctl=`<div class="seg" style="width:260px;margin:0 0 12px">${[['attn','Needs attention first'],['name','Name']].map(([k,l])=>`<button class="${sort===k?'on':''}" ${act('set',{path:'vpe.msort',v:k})}>${l}</button>`).join('')}</div>`;
+  const body=f.desk
+    ?`${ctl}<table class="tbl"><thead><tr><th>Member</th><th style="width:78px">Speeches</th><th style="width:60px">Level</th><th style="width:150px">Average</th><th>Focus areas</th><th style="width:110px">Fillers</th><th style="width:96px">Over time</th><th style="width:40px"></th></tr></thead><tbody>
+      ${all.map(({name,p,s})=>`<tr><td><button class="lnk" ${go('v_member',{name})}>${name}</button></td><td class="num">${s.n}</td><td class="num">${s.n?s.lvl:''}</td>
+        <td>${s.n?`${meter(s.avg)} <b class="${s.avg<3.3?'warn':''}" style="margin-left:6px">${s.avg.toFixed(1)}</b>`:''}</td><td>${focusTxt(s)}</td><td class="num">${fill(p)}</td>
+        <td class="num">${s.n?`${s.over} of ${p.timing.length}`:''}</td><td><button class="x" ${go('v_member',{name})} aria-label="Open">${I.chev}</button></td></tr>`).join('')}</tbody></table>`
+    :`${ctl.replace('width:260px','width:100%')}<div class="list">${all.map(({name,s})=>`<button class="li" ${go('v_member',{name})}><span class="grow"><span class="t" style="font-size:15.5px">${name}</span><span class="s">${s.n?`Focus: ${s.focus.slice(0,2).map(k=>CRIT[k][0]).join(', ')||'on track'}`:'No speeches yet'}</span></span>${s.n?`<span class="n ${s.avg<3.3?'warn':''}" style="font-size:18px">${s.avg.toFixed(1)}</span>`:''}${I.chev}</button>`).join('')}</div>`;
+  return {wide:true,head:brand(f,'VPE · <b>Devon Park</b>'),
+  body:`<h1 class="pg">Members</h1><p class="lede">${f.st.vpe.members.length} in the club. Open a member to see what they need to work on.</p>${body}`,
+  foot:`<div class="foot" style="${f.desk?'':'border:0;padding-bottom:6px'}"><button class="btn yel" ${go('v_addmember')}>${I.plus} Add member</button></div>${tabs(f,NAV.v,'v_members')}`}};
+
+S.v_member=(f,{name})=>{
+  const p=prof(name),s=stats(p),n=s.n;
+  const head=`<h1 class="pg sm">${name}</h1><div class="meta"><span>${EMAIL(name)}</span>${n?`<span>Level ${s.lvl}</span><span>${n} speech${n>1?'es':''}</span><span>Average <b>${s.avg.toFixed(1)}</b> of 5</span>`:''}</div>`;
+  if(!n)return {wide:true,head:hdr(f,'Member'),body:`${head}<p class="lede" style="margin-top:20px">No speeches yet. Evaluations and notes appear here after their first speech.</p>`,foot:''};
+  const latestComment=k=>{for(let i=n-1;i>=0;i--)if(p.speeches[i].c[k])return {t:p.speeches[i].c[k],d:p.speeches[i].date};return null};
+  const focus=s.focus.length?`<div class="list">${s.focus.map(k=>{const c=latestComment(k);return `<div class="rrow" style="padding:12px 2px"><div class="rh"><b>${CRIT[k][0]}</b>${meter(s.avgs[k])}<span class="v" style="width:60px"><b class="warn">${s.avgs[k].toFixed(1)}</b></span></div><p>${c?`${esc(c.t)} <span style="color:var(--gray)">(${c.d})</span>`:'No comment recorded yet.'}</p></div>`}).join('')}</div>
+     <div class="lab maroon">Latest “work on” from ${esc(p.speeches.at(-1).by)}</div><p class="note m" style="margin:0">${esc(p.speeches.at(-1).work)}</p>`
+    :`<p class="lede">All criteria average 4 or above. Nothing urgent.</p>`;
+  const crit=`<table class="tbl"><thead><tr><th>Criterion</th><th style="width:108px">Average</th><th style="width:50px">First</th><th style="width:50px">Latest</th><th style="width:60px">Change</th></tr></thead><tbody>${CRIT.map(([c],k)=>{const d=s.last[k]-s.first[k];return `<tr><td>${c}</td><td>${meter(s.avgs[k])} <span style="margin-left:4px">${s.avgs[k].toFixed(1)}</span></td><td class="num">${s.first[k]}</td><td class="num">${s.last[k]}</td><td class="num ${d<0?'warn':''}">${n>1?(d>0?'+':'')+d:''}</td></tr>`}).join('')}</tbody></table>`;
+  const words={};p.fillers.forEach(x=>Object.entries(x.c).forEach(([k,v])=>words[k]=(words[k]||0)+v));
+  const top=Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`${cap(k)} ${v}`).join(' · ');
+  const fillers=`<div class="lab" style="margin-top:0">Fillers per speech, oldest to newest</div><p style="margin:0 0 4px;font:800 20px var(--head);letter-spacing:-.02em">${p.fillers.map(x=>x.total).join(' <span style="color:var(--gray)">→</span> ')}</p><p style="margin:0;color:var(--mute);font-size:14px">Most common: ${top}</p>`;
+  const timing=`<div class="lab">Timing</div><table class="tbl"><tbody>${[...p.timing].reverse().map(t=>{const c=cardOf(secs(t.t),PROJECTS[t.project].g);return `<tr><td style="width:60px">${t.date}</td><td class="num" style="width:56px"><b>${t.t}</b></td><td><span class="dot ${c}"></span> ${CARDTXT[c]}</td><td style="color:var(--mute)">${pname(t.project)}</td></tr>`}).join('')}</tbody></table>`;
+  const gram=`<div class="lab">Grammar notes to polish</div><div class="list">${p.gram.slice(0,3).map(g=>`<div class="li" style="padding:10px 2px"><span class="grow" style="font-size:14.5px">${esc(g.improve)}</span><span class="s" style="font-size:13px;color:var(--mute)">${g.date}</span></div>`).join('')}</div>`;
+  const evals=`<div class="lab">Evaluations</div><table class="tbl"><tbody>${[...p.speeches].reverse().map(x=>`<tr><td style="width:60px">${x.date}</td><td><b>${pname(x.project)}</b><br><span style="color:var(--mute)">${esc(x.title)} · by ${esc(x.by)}</span></td><td class="num" style="width:50px">${mean(x.r).toFixed(1)}</td></tr>`).join('')}</tbody></table>`;
+  const left=`<div class="lab" style="margin-top:20px">What to work on</div>${focus}<div class="lab">Average by criterion</div>${crit}`;
+  const right=`<div style="margin-top:20px">${fillers}${timing}${gram}${evals}</div>`;
+  return {wide:true,head:hdr(f,'Member'),body:`${head}${f.desk?`<div class="cols2" style="grid-template-columns:1fr 1fr;gap:48px"><div>${left}</div><div>${right}</div></div>`:left+right}`,foot:''}};
+
+S.v_addmember=f=>({head:hdr(f,'New member'),
+  body:`<h1 class="pg sm">Add a member</h1><div style="max-width:460px">
+   <label class="fl">Full name</label><input class="inp" data-bind="vpe.newMember.name" placeholder="Name as it should appear" value="${esc(f.st.vpe.newMember.name)}">
+   <label class="fl">Email</label><input class="inp" type="email" data-bind="vpe.newMember.email" placeholder="name@mail.com" value="${esc(f.st.vpe.newMember.email)}"></div>`,
+  foot:`<div class="foot"><button class="btn" ${act('addmember')}>Add member</button></div>`});
+
+/* ═════════ frame engine ═════════ */
+function mkFrame(portal,screens,opts={}){
+  const el=document.createElement('div');el.className='frame'+(opts.desk?' desk':'');
+  el.innerHTML='<div class="screen"></div><div class="toast"></div>';
+  const f={el,portal,desk:!!opts.desk,st:newState(),stack:screens.map(s=>[s[0],s[1]||{}])};
+  seedEval(f.st);el._f=f;render(f);return f;
+}
+function render(f){
+  const [name,p]=f.stack.at(-1), key=name+JSON.stringify(p), scr=f.el.querySelector('.screen');
+  const old=scr.querySelector('.scroll'), keep=old&&f.key===key?old.scrollTop:0;
+  const o=S[name](f,p);
+  scr.innerHTML=o.full?o.body:f.desk
+    ?`${f.portal!=='r'?sidebar(f):''}<div class="main">${o.head||''}<div class="scroll"><div class="in${o.wide?' wide':''}">${o.body}</div></div>${o.foot||''}</div>`
+    :`${o.head||''}<div class="scroll">${o.body}</div>${o.foot||''}`;
+  const sc=scr.querySelector('.scroll');if(sc)sc.scrollTop=keep;f.key=key;
+}
+function toast(f,m){const t=f.el.querySelector('.toast');t.textContent=m;t.classList.add('on');clearTimeout(f.tt);f.tt=setTimeout(()=>t.classList.remove('on'),1900)}
+
+const A={
+  tog:(f,{path,def})=>set(f.st,path,!(get(f.st,path)??def)),
+  set:(f,{path,v})=>set(f.st,path,v),
+  inc:(f,{rp,k,d})=>{const c=get(f.st,rp).c;c[k]=Math.max(0,(c[k]||0)+d)},
+  openfiller:f=>{f.st.addF=true;f.st.newF=''},
+  cancelfiller:f=>{f.st.addF=false;f.st.newF=''},
+  addfiller:f=>{const l=(f.st.newF||'').trim();if(l){const k=l.toLowerCase();if(!f.st.fillers.some(x=>x.k===k))f.st.fillers.push({k,l,custom:true})}f.st.addF=false;f.st.newF=''},
+  delfiller:(f,{k})=>{f.st.fillers=f.st.fillers.filter(x=>x.k!==k)},
+  addrow:(f,{list,tpl})=>{const base={adding:false,newName:'',person:''};
+    get(f.st,list).push(tpl==='gr'?{...base,used:false,good:'',improve:'',suggest:''}:tpl==='ah'?{...base,c:{},comment:''}:tpl==='tt'?{...base,topic:''}:{...base,kind:'Table Topics',fixed:false,sec:null,comment:'',min:'',max:'',role:''})},
+  commit:f=>{if(f.run){const r=f.st.tm.rows[f.run.i];r.sec=curSec(f,f.run.i);f.run=null;LIVE.delete(f)}},
+  trun:(f,{i})=>{if(f.run&&f.run.i===i)A.commit(f);else{A.commit(f);f.run={i,start:Date.now()};LIVE.add(f)}},
+  treset:(f,{i})=>{A.commit(f);f.st.tm.rows[i].sec=0},
+  tsave:f=>{A.commit(f);f.stack.pop()},
+  topen:(f,{i,reset})=>{const r=f.st.tm.rows[i];if(!r.person){toast(f,'Choose who first');return}if(reset||r.sec==null)r.sec=0;f.stack.push(['rp_stage',{i}])},
+  addmeeting:f=>{const v=f.st.vpe,last=v.meetings.reduce((a,m)=>m.n>a.n?m:a,v.meetings[0]),n=last.n+1,d=new Date(last.iso+'T12:00:00');d.setDate(d.getDate()+7);
+    v.meetings.unshift({n,iso:d.toISOString().slice(0,10),theme:'',w:NOW()});v.meetings.sort((a,b)=>b.n-a.n);toast(f,`Meeting ${n} added`)},
+  delrow:(f,{list,i})=>get(f.st,list).splice(i,1),
+  addname:(f,{rp})=>{const r=get(f.st,rp),n=(r.newName||'').trim();if(n){if(!allNames(f).includes(n))f.st.guests.push(n);r.person=n}r.adding=false;r.newName=''},
+  cancelname:(f,{rp})=>{const r=get(f.st,rp);r.adding=false;r.newName=''},
+  copy:(f,{key,text})=>{try{navigator.clipboard?.writeText(text).catch(()=>{})}catch(e){}f.st.copied[key]=true;toast(f,'Link copied')},
+  remind:(f,{key})=>{f.st.reminded[key]=true;toast(f,'Reminder sent (mock)')},
+  toast:(f,{m})=>toast(f,m),
+  pdf:(f,{id})=>{const e=EVALS.find(x=>x.id===id);document.getElementById('print-root').innerHTML=sheetHTML(e);
+    const t=document.title;document.title=`Evaluation – ${pname(e.project)} – ${e.date}`;toast(f,'Choose “Save as PDF” to download');
+    setTimeout(()=>{window.print();document.title=t},350)},
+  addmember:f=>{const m=f.st.vpe.newMember;if(!m.name.trim()){toast(f,'Add a name first');return}f.st.vpe.members.push(m.name.trim());m.name='';m.email='';f.stack.pop();toast(f,'Member added')},
+};
+
+document.addEventListener('click',e=>{
+  const fe=e.target.closest('.frame');if(!fe)return;const f=fe._f;
+  const t=e.target.closest('[data-go],[data-back],[data-root],[data-act]');if(!t||!fe.contains(t))return;
+  if(t.dataset.go){f.stack.push([t.dataset.go,JSON.parse(t.dataset.p||'{}')])}
+  else if(t.dataset.back!==undefined){A.commit(f);if(f.stack.length>1)f.stack.pop()}
+  else if(t.dataset.root){f.stack=[[t.dataset.root,JSON.parse(t.dataset.p||'{}')]]}
+  else if(t.dataset.act){A[t.dataset.act](f,JSON.parse(t.dataset.a||'{}'),t)}
+  render(f);
+  if(t.dataset.go||t.dataset.root){const s=fe.querySelector('.scroll');if(s)s.scrollTop=0}
+});
+function onField(e){
+  const el=e.target.closest('[data-bind]');if(!el)return;const fe=el.closest('.frame');if(!fe)return;const f=fe._f;
+  const isSel=el.tagName==='SELECT';if(e.type==='input'&&isSel)return;
+  const path=el.dataset.bind,v=el.type==='checkbox'?el.checked:el.value;
+  if(isSel&&v==='__new'){set(f.st,path.replace(/\.person$/,'.adding'),true);render(f);return}
+  set(f.st,path,v);
+  if(el.dataset.wlive!==undefined){const pv=fe.querySelector('.wprev');if(pv)pv.innerHTML=wordHTML(f.st.vpe.meetings[+el.dataset.wlive].w)}
+  if(e.type==='change'&&el.dataset.re)render(f);
+}
+document.addEventListener('input',onField);document.addEventListener('change',onField);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;const el=e.target.closest('[data-bind]');if(!el)return;const f=el.closest('.frame')?._f;if(!f)return;
+  if(el.dataset.bind==='newF'){A.addfiller(f);render(f)}
+});
+
+/* ═════════ artboards ═════════ */
+const ev0=EVALS[0].id;
+const BOARDS=[
+ {sec:'Member · phone',note:'See your history, by role and by speech.',portal:'m',items:[
+  ['M1','Home',[['m_home']]],
+  ['M2','Role history: Grammarian',[['m_home'],['m_func',{key:'gram'}]]],
+  ['M3','Role history: Ah Counter',[['m_home'],['m_func',{key:'ah'}]]],
+  ['M4','Role history: Timer',[['m_home'],['m_func',{key:'time'}]]],
+  ['M5','Evaluations',[['m_evals']]],
+  ['M6','Evaluation detail',[['m_evals'],['m_eval',{id:ev0}]]],
+  ['M7','Evaluation sheet (PDF)',[['m_evals'],['m_eval',{id:ev0}],['m_pdf',{id:ev0}]]]]},
+ {sec:'Role player · phone',note:'Opened from a link. No sign-in. The script, the reference and the sheet.',portal:'r',items:[
+  ['R1','Link landing',[['rp_land',{r:'gram'}]]],
+  ['R2','Grammarian',[['rp_land',{r:'gram'}],['rp_gram']],{st:s=>{s.script=true}}],
+  ['R3','Ah Counter, custom words',[['rp_land',{r:'ah'}],['rp_ah']],{st:s=>{s.addF=true;s.newF='mmm'}}],
+  ['R4','Timer',[['rp_land',{r:'time'}],['rp_time']]],
+  ['R5','Timer, running',[['rp_land',{r:'time'}],['rp_time'],['rp_stage',{i:1}]],{st:s=>{s.tm.rows[1].sec=372}}],
+  ['R6','Topicsmaster',[['rp_land',{r:'tt'}],['rp_tt']]],
+  ['R7','Speech Evaluator',[['rp_land',{r:'eval'}],['rp_eval']]],
+  ['R8','General Evaluator',[['rp_land',{r:'ge'}],['rp_ge']]],
+  ['R9','Submitted',[['rp_land',{r:'gram'}],['rp_gram'],['rp_done',{r:'gram'}]]]]},
+ {sec:'VPE · phone',note:'Where the club is run: meetings, words, roles, links, and member progress.',portal:'v',items:[
+  ['V1','Meetings',[['v_home']]],
+  ['V2','Meeting details and word',[['v_home'],['v_meet',{n:144}]]],
+  ['V3','Assign roles',[['v_home'],['v_meet',{n:144}]],{st:s=>{s.tab='roles'}}],
+  ['V4','Role links',[['v_home'],['v_meet',{n:144}]],{st:s=>{s.tab='links'}}],
+  ['V5','Feedback received',[['v_home'],['v_meet',{n:143}]],{st:s=>{s.tab='recv'}}],
+  ['V6','Members',[['v_members']]],
+  ['V7','Member progress',[['v_members'],['v_member',{name:'Aisha Bello'}]]]]},
+ {sec:'Desktop',note:'Same product, wider. Sidebar for members and the VPE; role players stay link-only.',desk:true,items:[
+  ['D1','Member: Home','m',[['m_home']]],
+  ['D2','Member: Ah Counter history','m',[['m_func',{key:'ah'}]]],
+  ['D3','Member: Evaluations and sheet preview','m',[['m_evals']]],
+  ['D4','Role player: Speech Evaluator','r',[['rp_land',{r:'eval'}],['rp_eval']]],
+  ['D5','Role player: Ah Counter','r',[['rp_land',{r:'ah'}],['rp_ah']]],
+  ['D6','Role player: Timer','r',[['rp_land',{r:'time'}],['rp_time']]],
+  ['D7','Role player: General Evaluator','r',[['rp_land',{r:'ge'}],['rp_ge']]],
+  ['D8','VPE: Meetings table','v',[['v_home']]],
+  ['D9','VPE: Meeting 144','v',[['v_meet',{n:144}]]],
+  ['D10','VPE: Members table','v',[['v_members']]],
+  ['D11','VPE: Member progress','v',[['v_members'],['v_member',{name:'Aisha Bello'}]]]]},
+];
+const host=document.getElementById('boards-body');
+for(const b of BOARDS){
+  const s=document.createElement('section');s.className='sec';
+  s.innerHTML=`<div class="sec-h"><h2>${b.sec}</h2><p>${b.note}</p></div><div class="row"></div>`;
+  const row=s.querySelector('.row');
+  for(const it of b.items){
+    const [id,label]=it, portal=b.desk?it[2]:b.portal, stack=b.desk?it[3]:it[2], opt=b.desk?{}:it[3]||{};
+    const fig=document.createElement('figure');fig.innerHTML=`<figcaption><b>${id}</b> · ${label}</figcaption>`;
+    const f=mkFrame(portal,stack,{desk:b.desk});
+    if(opt.st){opt.st(f.st);render(f)}
+    fig.appendChild(f.el);row.appendChild(fig);
+  }
+  host.appendChild(s);
+}
+
+/* ═════════ live app (responsive) + fixed-size previews ═════════ */
+const proto=document.getElementById('proto');
+let pPortal='m',pRole='gram',pDev='auto';
+function buildProto(){
+  const start=pPortal==='m'?[['m_home']]:pPortal==='v'?[['v_home']]:[['rp_land',{r:pRole}]];
+  const auto=pDev==='auto', w=proto.clientWidth||innerWidth;
+  const pf=mkFrame(pPortal,start,{desk:pDev==='desk'||(auto&&w>=900)});
+  if(auto){pf.el.classList.add('auto');
+    new ResizeObserver(()=>{const d=pf.el.clientWidth>=900;if(d!==pf.desk){pf.desk=d;pf.el.classList.toggle('desk',d);render(pf)}}).observe(pf.el)}
+  proto.className=auto?'':'fixed';
+  proto.innerHTML=`<div class="picks"><div class="pick">${[['m','Member'],['r','Role player'],['v','VPE']].map(([k,l])=>`<button data-pp="${k}" class="${pPortal===k?'on':''}">${l}</button>`).join('')}<span style="width:10px"></span>${[['auto','Responsive'],['phone','Phone'],['desk','Desktop']].map(([k,l])=>`<button data-pd="${k}" class="${pDev===k?'on':''}">${l}</button>`).join('')}</div>
+   ${pPortal==='r'?`<div class="pick sub"><span class="lbl">Link sent to</span>${Object.entries(ROLEP).map(([k,v])=>`<button data-pr="${k}" class="${pRole===k?'on':''}">${v.role}</button>`).join('')}</div>`:''}</div>`;
+  proto.appendChild(pf.el);
+}
+proto.addEventListener('click',e=>{
+  const a=e.target.closest('[data-pp]'),b=e.target.closest('[data-pr]'),c=e.target.closest('[data-pd]');
+  if(a){pPortal=a.dataset.pp;buildProto()}if(b){pRole=b.dataset.pr;buildProto()}if(c){pDev=c.dataset.pd;buildProto()}
+});
+function setMode(m){
+  document.querySelectorAll('.mode button').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
+  const p=m==='proto';document.body.classList.toggle('proto',p);if(p)buildProto();
+  const u=new URL(location);p?u.searchParams.delete('boards'):u.searchParams.set('boards','');history.replaceState(null,'',u.search.replace(/boards=($|&)/,'boards$1'));
+  window.scrollTo(0,0);
+}
+document.querySelector('.mode').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(b)setMode(b.dataset.mode)});
+if(!new URLSearchParams(location.search).has('boards'))setMode('proto');
+</script>
+</body>
+</html>

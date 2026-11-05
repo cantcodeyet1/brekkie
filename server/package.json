@@ -1,0 +1,21 @@
+{
+  "name": "brekkie-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../.env src/index.js",
+    "start": "node --env-file-if-exists=../.env src/index.js",
+    "seed": "node --env-file-if-exists=../.env src/seed.js --force",
+    "schedule": "node --env-file-if-exists=../.env src/schedule.js",
+    "pathways": "node --env-file-if-exists=../.env src/pathways.js"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@xmldom/xmldom": "^0.9.12",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jszip": "^3.10.2",
+    "pg": "^8.13.1",
+    "qrcode": "^1.5.4"
+  }
+}

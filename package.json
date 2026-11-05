@@ -1,0 +1,16 @@
+{
+  "name": "brekkie",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "seed": "npm run seed -w server",
+    "schedule": "npm run schedule -w server",
+    "pathways": "npm run pathways -w server"
+  },
+  "devDependencies": { "concurrently": "^9.0.0" }
+}

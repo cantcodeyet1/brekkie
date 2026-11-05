@@ -1,0 +1,1926 @@
+{
+ "source": "Pathways V6 paths and projects catalog",
+ "paths": [
+  {
+   "name": "Dynamic Leadership",
+   "description": "This path helps you build your skills as a strategic leader. The projects on this path focus on understanding leadership and communication styles, the effect of conflict on a group and the skills needed to defuse and direct conflict. These projects also emphasize the development of strategies to facilitate change in an organization or group, interpersonal communication and public speaking. This path culminates in a project focused on applying your leadership skills.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Understanding Your Communication Style",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Negotiate the Best Outcome"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Manage Change"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Lead in Any Situation"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Engaging Humor",
+   "description": "This path is designed to help you build your skills as a humorous and engaging public speaker. The projects on this path focus on understanding your sense of humor and how that sense of humor translates to engaging audience members. The projects contribute to developing an understanding of how to effectively use humor in a speech, including challenging situations and impromptu speeches. This path culminates in an extended humorous speech that will allow you to apply what you learned. *Not available in printed materials.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Know Your Sense of Humor",
+      "Connect with Your Audience",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Engage Your Audience with Humor"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "The Power of Humor In an Impromptu Speech"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Deliver Your Message with Humor"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Motivational Strategies",
+   "description": "This path helps you build your skills as a powerful and effective communicator. The projects focus on learning strategies for building connections with the people around you, understanding motivation and successfully leading small groups to accomplish tasks. This path culminates in a comprehensive team-building project that brings all of your skills together—including public speaking.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Active Listening",
+      "Understanding Your Communication Style",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Understanding Emotional Intelligence"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Motivate Others"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Team Building"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Persuasive Influence",
+   "description": "This path helps you build your skills as an innovative communicator and leader. The projects on this path focus on how to negotiate a positive outcome together with building strong interpersonal communication and public speaking skills. Each project emphasizes developing leadership skills to use in complex situations, as well as creating innovative solutions to challenges. This path culminates in a “High Performance Leadership” project of your design.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Active Listening",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Understanding Conflict Resolution"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Leading in Difficult Situations"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "High Performance Leadership"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Presentation Mastery",
+   "description": "This path helps you build your skills as an accomplished public speaker. The projects on this path focus on learning how an audience responds to you and improving your connection with audience members. The projects contribute to developing an understanding of effective public speaking technique, including speech writing and speech delivery. This path culminates in an extended speech that will allow you to apply what you learned.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Communication Style",
+      "Effective Body Language",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Persuasive Speaking"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Managing a Difficult Audience"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Prepare to Speak Professionally"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Visionary Communication",
+   "description": "This path helps you build your skills as a strategic communicator and leader. The projects on this path focus on developing your skills for sharing information with a group, planning communications and creating innovative solutions. Speech writing and speech delivery are emphasized in each project. This path culminates in the development and launch of a long-term personal or professional vision.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Understanding Your Communication Style",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Develop a Communication Plan"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Communicate Change"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Develop Your Vision"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "High Performance Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Effective Coaching",
+   "description": "This path helps you build your skills as a positive communicator and leader. The projects on this path focus on understanding and building consensus, contributing to the development of others by coaching and establishing strong public speaking skills. Each project emphasizes the importance of effective interpersonal communication. This path culminates in a “High Performance Leadership” project of your design.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Understanding Your Communication Style",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Reaching Consensus"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Improvement Through Positive Coaching"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "High Performance Leadership"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Innovative Planning",
+   "description": "This path helps you build your skills as a public speaker and leader. The projects on this path focus on developing a strong connection with audience members when you present, speech writing and speech delivery. The projects contribute to building an understanding of the steps to manage a project, as well as creating innovative solutions. This path culminates in a “High Performance Leadership” project of your design.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Connect with Your Audience",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Present a Proposal"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Manage Projects Successfully"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "High Performance Leadership"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Leadership Development",
+   "description": "This path helps you build your skills as an effective communicator and leader. The projects on this path focus on learning how to manage time, as well as how to develop and implement a plan. Public speaking and leading a team are emphasized in all projects. This path culminates in the planning and execution of an event that will allow you to apply everything you learned.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Managing Time",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Planning and Implementing"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Leading Your Team"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Manage Successful Events"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Strategic Relationships",
+   "description": "This path helps you build your skills as a leader in communication. The projects on this path focus on understanding diversity, building personal and/or professional connections with a variety of people and developing a public relations strategy. Communicating well interpersonally and as a public speaker is emphasized in each project. The path culminates in a project to apply your skills as a leader in a volunteer organization.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Cross-Cultural Understanding",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Make Connections Through Networking"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Active Listening",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Public Relations Strategies"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Leading in Your Volunteer Organization"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Prepare to Speak Professionally",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  },
+  {
+   "name": "Team Collaboration",
+   "description": "This path helps you build your skills as a collaborative leader. The projects on this path focus on active listening, motivating others and collaborating with a team. Each project contributes to building interpersonal communication and public speaking skills. This path culminates in a project focused on applying your leadership skills.",
+   "levels": [
+    {
+     "level": 1,
+     "title": "Mastering Fundamentals",
+     "required": [
+      "Ice Breaker",
+      "Writing a Speech with Purpose",
+      "Introduction to Vocal Variety and Body Language",
+      "Evaluation and Feedback"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 2,
+     "title": "Learning Your Style",
+     "required": [
+      "Understanding Your Leadership Style",
+      "Active Listening",
+      "Introduction to Toastmasters Mentoring"
+     ],
+     "electives": [],
+     "choose": 0
+    },
+    {
+     "level": 3,
+     "title": "Increasing Knowledge",
+     "required": [
+      "Successful Collaboration"
+     ],
+     "electives": [
+      "Deliver Social Speeches",
+      "Using Presentation Software",
+      "Connect with Storytelling",
+      "Creating Effective Visual Aids",
+      "Using Descriptive Language",
+      "Connect with Your Audience",
+      "Make Connections Through Networking",
+      "Focus on the Positive",
+      "Inspire Your Audience",
+      "Prepare for an Interview",
+      "Understanding Vocal Variety",
+      "Effective Body Language",
+      "Know Your Sense of Humor",
+      "Researching and Presenting"
+     ],
+     "choose": 2
+    },
+    {
+     "level": 4,
+     "title": "Building Skills",
+     "required": [
+      "Motivate Others"
+     ],
+     "electives": [
+      "Create a Podcast",
+      "Building a Social Media Presence",
+      "Managing a Difficult Audience",
+      "Write a Compelling Blog",
+      "Manage Online Meetings",
+      "Question-and-Answer Session",
+      "Public Relations Strategies",
+      "Manage Projects Successfully"
+     ],
+     "choose": 1
+    },
+    {
+     "level": 5,
+     "title": "Demonstrating Expertise",
+     "required": [
+      "Lead in Any Situation"
+     ],
+     "electives": [
+      "Lessons Learned",
+      "Moderate a Panel Discussion",
+      "Ethical Leadership",
+      "Leading in Your Volunteer Organization",
+      "Prepare to Speak Professionally",
+      "High Performance Leadership"
+     ],
+     "choose": 1
+    }
+   ]
+  }
+ ],
+ "projects": {
+  "Active Listening": {
+   "description": "This project covers the difference between hearing and listening, and steps for exploring the ways listening helps build strong, lasting connections.",
+   "purpose": "The purpose of this project is to demonstrate your ability to listen to what others say.",
+   "overview": "At a club meeting, fulfill the role of Topicsmaster. As Topicsmaster, comment on each speaker’s Table Topics® speech to demonstrate your active listening skills. For example, you might say, “Thank you. That was a compelling opinion on the benefits of gardening. I understand you feel strongly that everyone needs to spend some time doing something they love.”",
+   "includes": [
+    "Serving as Topicsmaster at a club meeting"
+   ],
+   "speech": null,
+   "page": 16
+  },
+  "Advanced Mentoring": {
+   "description": "This project is designed to support you as you accomplish a six-month term as a mentor.",
+   "purpose": "The purpose of this project is to apply mentoring skills during a long-term mentoring commitment.",
+   "overview": "Fulfill the role of mentor for a fellow Toastmaster or other person for a period of six months. Communicate regularly with your protégé, record meeting dates and times, and give and receive feedback both verbally and in writing. At the end of your commitment, present a 5- to 7-minute speech to your club about what you gained as a mentor. This speech is about you and your experience.",
+   "includes": [
+    "A six-month mentoring commitment",
+    "The Mentor Communication Tracking Log",
+    "The Mentor Evaluation",
+    "The Protégé Success Plan",
+    "The Monthly Goal Check resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 17
+  },
+  "Building a Social Media Presence": {
+   "description": "This project addresses how best to use different types of online communication. You will create and maintain an online profile to promote yourself or an organization.",
+   "purpose": "The purpose of this project is to apply your understanding of social media to enhance an established or new social media presence.",
+   "overview": "Use this project and your own research to build a new social media presence or enhance an existing presence. You may focus on a personal goal (such as connecting with old friends or promoting a blog) or on a professional goal (such as promoting a business or organization). Use the tools you identify as best for you and your purpose. After you achieve your goal, deliver a 5- to 7-minute speech to your club about your results, experience, and the benefits of social media. Submit the Project Completion Form to your vice president education to receive credit for completing the project. Note: With the vice president public relation’s approval, you may choose to create a social media presence for your Toastmasters club.",
+   "includes": [
+    "Establishing or enhancing a social media presence",
+    "The Project Completion Form",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 18
+  },
+  "Communicate Change": {
+   "description": "This project focuses on creating a communication plan by gathering evidence to support the need for change and communicating change with your audience.",
+   "purpose": "The purpose of this project is to practice the skills needed to effectively communicate change to a group or organization.",
+   "overview": "Develop a plan for communicating a change to an audience affected by the change. At a club meeting, communicate the change in a 5- to 7-minute speech. You may speak about a real or hypothetical change that affects your club or another group in your life. This speech is not a report on the content of this project, but a speech about how you would or will communicate a real or hypothetical change.",
+   "includes": [
+    "Developing a plan for communicating change",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 19
+  },
+  "Connect with Storytelling": {
+   "description": "This project addresses storytelling techniques and descriptive skills to help make every speech relatable and interesting.",
+   "purpose": "The purpose of this project is to practice using a story within a speech or giving a speech that is a story.",
+   "overview": "Choose an established story, a story about your life, or a fictional tale of your own creation. Deliver the 5- to 7-minute speech at a club meeting.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 20
+  },
+  "Connect with Your Audience": {
+   "description": "This project focuses on different audience types and how to address them effectively.",
+   "purpose": "The purpose of this project is to practice the skills needed to connect with an unfamiliar audience.",
+   "overview": "Develop a 5- to 7-minute speech on a topic that is unfamiliar to the majority of your audience. Because you deliver this speech in your Toastmasters club, you are familiar with the audience members’ preferences and personalities. Selecting a topic that is new or unfamiliar to your club members will allow you to practice adapting as you present. As you speak, monitor the audience’s reaction to your topic and adapt as necessary to maintain engagement.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 21
+  },
+  "Create a Podcast": {
+   "description": "This project addresses the skills you need to develop a podcast, create interesting content and organize a cohesive program. You will learn how to record and upload it to the internet.",
+   "purpose": "The purpose of this project is to introduce you to the skills needed to organize and present a podcast.",
+   "overview": "Use this project and your own research to create a podcast. Record a minimum of 60 minutes of content. You are free to divide the episodes as you choose. Each separate episode must be at least 10 minutes, but may be longer if it fits your topic and style. After you record all content, play a 5- to 10-minute segment in your club. Introduce the segment in a 2- to 3-minute speech.",
+   "includes": [
+    "Recording 60 minutes of podcast content",
+    "A 2- to 3-minute introduction speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 10
+   },
+   "page": 22
+  },
+  "Creating Effective Visual Aids": {
+   "description": "This project addresses effective methods for choosing the best visual aid for your presentation along with the creation and use of each type.",
+   "purpose": "The purpose of this project is to practice selecting and using a variety of visual aids during a speech.",
+   "overview": "Choose a speech topic that lends itself well to using visual aids. Create at least one but no more than three visual aids to enhance your presentation. Deliver your 5- to 7-minute presentation at a club meeting.",
+   "includes": [
+    "Creating one to three visual aids",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 23
+  },
+  "Cross-Cultural Understanding": {
+   "description": "This project focuses on understanding the cultures with which you identify and the impact of stereotypes associated with your cultures and others.",
+   "purpose": "The purpose of this project is to identify your own cultural identities and the stereotypes that impact others’ perceptions of you.",
+   "overview": "Develop a 5- to 7-minute speech about the cultures with which you most closely identify and the personal impact of the stereotypes commonly associated with those cultures. You may need to spend some time researching the stereotypes believed about your cultures, especially if you are a member of the most dominant cultures in your geographic area. Be aware that all cultural identities have some sort of affiliated stereotype, even if it is obscure or uncommon.",
+   "includes": [
+    "The Defining Your Cultural Identity resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 24
+  },
+  "Deliver Social Speeches": {
+   "description": "This project addresses the skills needed to compose a speech for a social occasion including a toast, eulogy, an acceptance speech and a speech praising an individual or group.",
+   "purpose": "The purpose of this project is to practice delivering social speeches in front of your club members.",
+   "overview": "Develop two different social speeches—each 3 to 4 minutes—and present them at two separate club meetings. You may choose any two types of social speeches that appeal to you or that you would like to practice.",
+   "includes": [
+    "The Social Speech Basics resource",
+    "Two 3- to 4-minute speeches"
+   ],
+   "speech": {
+    "min": 3,
+    "max": 4
+   },
+   "page": 25
+  },
+  "Deliver Your Message with Humor": {
+   "description": "This project focuses on creating a keynote-length speech that effectively delivers a message and humor to an audience.",
+   "purpose": "The purpose of this project is to practice developing and presenting a longer humorous speech.",
+   "overview": "Write and present an 18- to 22-minute keynote-style humorous speech. You may choose to use visual aids if they fit your speech and your style. If you receive advanced approval from the vice president education, you may present your speech to a non-Toastmasters audience.",
+   "includes": [
+    "The Speech Outline Worksheet",
+    "An 18- to 22-minute keynote-style humorous speech"
+   ],
+   "speech": {
+    "min": 18,
+    "max": 22
+   },
+   "page": 26
+  },
+  "Develop a Communication Plan": {
+   "description": "This project focuses on how to formulate a central message and develop a communication plan for a target audience.",
+   "purpose": "The purpose of this project is to practice developing a communication plan.",
+   "overview": "Develop a communication plan for any event or situation. The plan may be for a real or hypothetical need. At a club meeting, present a 5- to 7-minute speech about your experience. You may choose to speak about the planning process, the benefits of developing a plan, or the impact of your plan if you implemented it. Show your vice president education your completed plan to receive credit for this project.",
+   "includes": [
+    "Developing a communication plan",
+    "The Write a Communication Plan resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 27
+  },
+  "Develop Your Vision": {
+   "description": "This project focuses on developing a vision for your work or personal life.",
+   "purpose": "The purpose of this project is to develop a detailed vision for your personal life, professional life, or an organization.",
+   "overview": "Develop a vision and present it at a club meeting in a 5- to 7-minute speech. Establish a timeline for implementing your plan using the resources included in this project. Deliver another 5- to 7-minute speech at a later meeting to present your plan to bring your vision to fruition. Submit your signed Project Completion Form to the vice president education to show you completed all resources included in the project.",
+   "includes": [
+    "Developing a vision and establishing a plan to implement it",
+    "The Idea Map Worksheet",
+    "The Goal Setting Worksheet",
+    "The Goal Task List",
+    "The Vision Plan resource",
+    "Two 5- to 7-minute speeches",
+    "The Project Completion Form"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 28
+  },
+  "Distinguished Toastmaster": {
+   "description": "This project is designed to give you opportunity to design and fulfill a multifaceted project on your way to achieving your Distinguished Toastmaster award.",
+   "purpose": "The purpose of this project is to demonstrate your skills as a leader and a public speaker.",
+   "overview": "Plan and complete a project that benefits an organization. You may choose to revisit any previous Toastmasters Pathways project that contains information to help you complete your project. Develop a team and design a plan. Deliver a 5- to 7-minute speech at a club meeting to share your plan. Organize the project and lead your team to complete it. Ask members of your team, the organization, and a peer to complete a 360° evaluation of your leadership skills. Deliver an 8- to 10-minute speech at a club meeting to review your project, its outcomes, benefits, and the lessons you learned.",
+   "includes": [
+    "Selecting, leading, and completing a project with a team",
+    "The Ethical Framework resource",
+    "The Goal Setting Worksheet",
+    "The Goal Task List resource",
+    "The Project Plan Overview resource",
+    "The Project Plan resource",
+    "The 360° Evaluation resource",
+    "A 5- to 7-minute speech",
+    "An 8- to 10-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 29
+  },
+  "Effective Body Language": {
+   "description": "This project focuses on how to recognize body language used when speaking publicly and how to use gestures to enhance speech content.",
+   "purpose": "The purpose of this project is to deliver a speech with awareness of your intentional and unintentional body language, as well as to learn, practice, and refine how you use nonverbal communication when delivering a speech.",
+   "overview": "Prepare a 5- to 7-minute speech on a topic that lends itself to expression through your movement and gestures. Video record your presentation and get feedback from your mentor or another reviewer before speaking to your club. If you do not have access to a recording device, perform your speech in front of a mirror and make adjustments before your scheduled speech.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 30
+  },
+  "Engage Your Audience with Humor": {
+   "description": "This project focuses on using humor to enhance the message you deliver in your speech.",
+   "purpose": "The purpose of this project is for you to determine your style of humor and apply it to a speech that centers around a central message.",
+   "overview": "Give a 5- to 7-minute speech on your point of view and what makes things funny to you. Your speech should include at least one anecdote or story intended to entertain or bring humor into your presentation.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 31
+  },
+  "Ethical Leadership": {
+   "description": "This project addresses the importance of recognizing the effect of decisions that impact ethics, best practices for making ethical decisions and developing an ethical framework.",
+   "purpose": "The purpose of this project is to develop a clear understanding of your own ethical framework and create an opportunity for others to hear about and discuss ethics in your organization or community.",
+   "overview": "Define an ethical framework for yourself. To do this, you may need to complete personal research beyond the contents of this project. Then, organize and moderate a 20- to 40-minute panel discussion about ethics, followed by a question-and-answer session. If you have never facilitated a panel discussion, review the “Moderate a Panel Discussion” elective project.",
+   "includes": [
+    "The Ethical Framework resource",
+    "Organizing and moderating a panel discussion as well as a question-and-answer session"
+   ],
+   "speech": {
+    "min": 20,
+    "max": 40
+   },
+   "page": 32
+  },
+  "Evaluation and Feedback": {
+   "description": "This project addresses the skills needed to give and receive feedback. You will learn about giving, receiving and applying feedback.",
+   "purpose": "The purpose of this project is to present a speech on any topic, receive feedback, and apply the feedback to a second speech.",
+   "overview": "Choose any topic for your first 5- to 7-minute speech. After your speech, carefully review your feedback. At a different club meeting, present a 5- to 7-minute speech in which you incorporate feedback from your first speech. You may choose to present the same speech again or a new speech. Your second speech should reflect some or all of the feedback from your first speech. Finally, after you have completed both speeches, serve as an evaluator at a club meeting and deliver constructive feedback about another member’s presentation.",
+   "includes": [
+    "A 5- to 7-minute speech",
+    "Incorporating feedback from your first speech into a second 5- to 7-minute speech",
+    "Serving as a speech evaluator"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 33
+  },
+  "Focus on the Positive": {
+   "description": "This project addresses strategies for improving your personal interactions by understanding the impact of your attitudes and thoughts on daily interactions.",
+   "purpose": "The purpose of this project is to practice being aware of your thoughts and feelings, as well as the impact of your responses on others.",
+   "overview": "Keep a daily record of your moods and attitudes for a minimum of two weeks, noting when you feel positive or negative, your successes and efforts, and three things for which you are grateful. Record and evaluate any changes in your behavior or the behavior of those around you. At a club meeting, share some aspect of your experience. You may choose to schedule a 2-to 3-minute report or a 5-to 7-minute speech. After completing your speech, submit your signed Project Completion Form to your vice president education to indicate you completed the journal.",
+   "includes": [
+    "Recording your daily moods and attitudes for a minimum of two weeks",
+    "A 2- to 3-minute report or a 5- to 7-minute speech",
+    "The Project Completion Form"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 34
+  },
+  "High Performance Leadership": {
+   "description": "The focus of this project is to design and complete a project with well-defined goals, lead a team and be accountable to a guidance committee.",
+   "purpose": "The purpose of this project is to apply your leadership and planning knowledge to develop a project plan, organize a guidance committee, and implement your plan with the help of a team.",
+   "overview": "Select a project to complete with a team of at least three other members. Form a guidance committee and meet at least five times through the duration of the project. Deliver a 5-to 7-minute speech at a club meeting to introduce your plan and vision. After you implement the plan, deliver a second 5- to 7-minute speech at a club meeting to share your experience developing and completing your plan.",
+   "includes": [
+    "Selecting, leading, and completing a project with a team",
+    "Forming and meeting with a guidance committee at least five times",
+    "The Guidance Committee Introduction resource",
+    "The Meeting Agenda resource",
+    "The Project Plan Overview resource",
+    "The Project Plan resource",
+    "The Vision Plan resource",
+    "The Event Planning Worksheet",
+    "The 360° Evaluation resource",
+    "Two 5- to 7-minute speeches"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 35
+  },
+  "Ice Breaker": {
+   "description": "This foundational project is designed to introduce you to your club and the skills you need to begin your Toastmasters journey.",
+   "purpose": "The purpose of this project is to introduce yourself to the club and learn the basic structure of a public speech.",
+   "overview": "Write and deliver a speech about any topic to introduce yourself to the club. Your speech may be humorous, informational, or any other style that appeals to you.",
+   "includes": [
+    "A 4- to 6-minute speech"
+   ],
+   "speech": {
+    "min": 4,
+    "max": 6
+   },
+   "page": 36
+  },
+  "Improvement Through Positive Coaching": {
+   "description": "This project focuses on how your actions can positively affect others and how to nurture relationships and assist an individual in reaching a goal.",
+   "purpose": "The purpose of this project is to develop and apply skills for coaching a fellow member or a person outside of Toastmasters who can benefit from your expertise.",
+   "overview": "Outside of club meetings, coach an individual through a project. Speak with your vice president education to develop a plan for coaching a club member versus an individual outside of Toastmasters. After your coaching commitment, present a 5- to 7-minute speech at a club meeting about your experience as a coach. Your speech may be humorous, informational, or any style that appeals to you and is appropriate for your content.",
+   "includes": [
+    "Coaching an individual through a project",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 37
+  },
+  "Inspire Your Audience": {
+   "description": "This project addresses how to present a speech in an enthusiastic and inspiring fashion to establish a strong rapport with your audience.",
+   "purpose": "The purpose of this project is to practice writing and delivering a speech that inspires others.",
+   "overview": "Select a topic with the intent of inspiring your audience and prepare a 5- to 7-minute speech for your club.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 38
+  },
+  "Introduction to Toastmasters Mentoring": {
+   "description": "This project introduces the value of mentorship and the Toastmasters view of mentors and protégés.",
+   "purpose": "The purpose of this project is to clearly define how Toastmasters envisions mentoring.",
+   "overview": "Write and present a 5- to 7-minute speech about a time when you were a protégé. Share the impact and importance of having a mentor. This speech is not a report on the content of this project. Note: Every member in Toastmasters Pathways must complete this project.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 39
+  },
+  "Introduction to Vocal Variety and Body Language": {
+   "description": "This project focuses on the fundamentals of delivering a speech—vocal variety and body language.",
+   "purpose": "The purpose of this project is to practice using vocal variety or body language to enhance a speech.",
+   "overview": "Learn or review the importance of vocal variety and body language. Present a 5- to 7-minute speech on any topic at a club meeting. The primary focus of the evaluation is your vocal variety or your body language and gestures. You will identify the skills you are working on for your evaluator before you deliver your speech and be evaluated on those skills. Your speech can be persuasive, humorous, informational, or crafted in any style that appeals to you and supports your speech content.",
+   "includes": [],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 40
+  },
+  "Know Your Sense of Humor": {
+   "description": "This project focuses on understanding what makes you laugh and how to share that with an audience.",
+   "purpose": "The purpose of this project is to begin developing a collection of humorous stories and to present a speech that includes humor.",
+   "overview": "Give a 5- to 7-minute speech on a topic of your choosing. Your speech should include at least one anecdote or story intended to entertain or bring humor into your presentation.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 41
+  },
+  "Lead in Any Situation": {
+   "description": "This project focuses on leadership and recognizing the need to adapt your style based on the situation and the people you lead.",
+   "purpose": "The purpose of this project is to apply the skills needed to successfully lead in a volunteer or other organization.",
+   "overview": "For at least six months, take on a leadership role in Toastmasters (at any level), within another volunteer organization, or in your career. While serving in your role, ask your peers to complete a 360° evaluation. Present an 8- to 10-minute speech about your experience as a leader. Your speech may be humorous, informational, or any type that appeals to you. The speech is not a report on the content of this project, but a reflection of your experience and/or the impact of the 360° evaluation.",
+   "includes": [
+    "Serving in a leadership for a minimum of six months",
+    "A 360° evaluation",
+    "An 8- to 10-minute speech"
+   ],
+   "speech": {
+    "min": 8,
+    "max": 10
+   },
+   "page": 42
+  },
+  "Leading in Difficult Situations": {
+   "description": "This project focuses on the fundamentals of managing challenges, analyzing difficult situations and identifying best strategies for overcoming adversity.",
+   "purpose": "The purpose of this project is to practice strategies for adjusting to unexpected changes to a finalized plan.",
+   "overview": "Design and complete a project plan for any event or set of goals. Your plan may be real or hypothetical. Add as many details to your plan as possible for the best success of this project. In a 5- to 7-minute speech at a club meeting, share your plan. Distribute copies of the Plan Disruption Ideas resource to club members and allow them 2 to 3 minutes to discuss possible disruptions to your plan. Listen and present impromptu solutions to the disruptions introduced by club members. The total time to complete this assignment in a club meeting is 15 to 20 minutes.",
+   "includes": [
+    "Designing a detailed project plan",
+    "The Project Plan resource",
+    "The Project Plan Overview resource",
+    "The Plan Disruption Ideas resource",
+    "A 5- to 7-minute speech to share your plan",
+    "An impromptu speech to present solutions to disruptions"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 43
+  },
+  "Leading in Your Volunteer Organization": {
+   "description": "This project focuses on the skills required to lead in a volunteer organization and the importance of recognition and reward in motivating volunteers.",
+   "purpose": "The purpose of this project is to apply the skills needed to successfully lead in a volunteer organization.",
+   "overview": "Serve in a leadership role in Toastmasters or another volunteer organization for at least six months. You may complete this project based on your employment, but a volunteer organization is preferable. Ask members of the organization to complete a 360° evaluation of your leadership skills. Create a succession plan to aid in the transition after you leave your position of leadership. After your six-month term, deliver a 5- to 7-minute speech at a club meeting to reflect on your personal experience.",
+   "includes": [
+    "Serving in a volunteer leadership role for a minimum of six months",
+    "Conducting a 360° evaluation of your leadership skills",
+    "Creating a succession plan",
+    "The Succession Plan resource",
+    "The 360° Evaluation resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 44
+  },
+  "Leading Your Team": {
+   "description": "This project is designed to help you accomplish a task while leading a small group and give you the opportunity to practice basic skills of leadership.",
+   "purpose": "The purpose of this project is to lead a small team to the completion of a project.",
+   "overview": "Build a team of two to four people and lead your team to the completion of a project of your design. After you accomplish the project, present a 5- to 7-minute speech about you or your experience leading your team. Your speech may be humorous, informational, or any other format that appeals to you. Your project can be any of the following (coordinate with your vice presidents marketing and public relations): ■A club-specific project, such as hosting an open house, organizing a speech contest, or coordinating a membership-building campaign. ■A non-Toastmasters specific project that helps the greater good, such as organizing volunteers for a charity, collecting food for community members in need, etc. (Keep in mind that you’re doing this as a private individual and not in the name of Toastmasters.) ■A work-related group or team project.",
+   "includes": [
+    "A club-specific project, such as hosting an open house, organizing a speech contest, or coordinating a membership-building campaign.",
+    "A non-Toastmasters specific project that helps the greater good, such as organizing volunteers for a charity, collecting food for community members in need, etc. (Keep in mind that you’re doing this as a private individual and not in the name of Toastmasters.)",
+    "A work-related group or team project. This project includes:",
+    "Building and leading a team to the completion of a project",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 45
+  },
+  "Lessons Learned": {
+   "description": "This project addresses how to identify the discussion points of a large group meeting, encourage a culture of contribution and voicing opinions, and facilitate productive discussion that yields results.",
+   "purpose": "The purpose of this project is to learn about and apply the skills needed to run a lessons learned meeting during a project or after its completion.",
+   "overview": "Facilitate a lessons learned meeting for a team with which you are completing or have completed a project. This meeting is separate from your regular Toastmasters meeting. Organize and facilitate a discussion. Record the results into a document you and your team members can use to facilitate the current project or future projects. If you haven’t already, give team members an opportunity to complete a 360° evaluation of you as a team leader. (Use the 360° Evaluation resource.) Finally, present a 5- to 7-minute speech in your club about the lessons learned meeting or your leadership experience.",
+   "includes": [
+    "Facilitating a lessons learned meeting",
+    "Documenting the results of the lessons learned meeting",
+    "The 360° Evaluation resource",
+    "The Lessons Learned Response Log",
+    "The Metrics Log",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 46
+  },
+  "Make Connections Through Networking": {
+   "description": "This project focuses on how to network effectively and understanding the importance of being a professional ally to people in your network.",
+   "purpose": "The purpose of this project is to develop and practice a personal strategy for building connections through networking.",
+   "overview": "Prepare for and attend a networking event. After the event, present a 5- to 7-minute speech to your club. Your speech can include a story or stories about your experience, a description of what you learned, or a discussion on the benefits of networking. Your speech may be personal to you or informational about networking. If you attend a non-Toastmasters event, you must sign the Project Completion Form and give it to your vice president education.",
+   "includes": [
+    "The Prepare to Network resource",
+    "Attending a networking event",
+    "The Project Completion Form",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 47
+  },
+  "Manage Change": {
+   "description": "This project focuses on how to plan for change, develop a communication plan, and identify obstacles to success.",
+   "purpose": "The purpose of this project is to practice developing a change management plan.",
+   "overview": "Create a change management plan for a real or hypothetical situation. You may create a plan that is based on a past change or a future change that is happening in your personal, Toastmasters, or professional life. Share your change management plan with your club in a 5- to 7-minute speech. Your speech may be humorous, informational, or any other style that appeals to you. It is not a report on what you learned from the project, but an overview of your plan and how it will benefit you and the group the change affects.",
+   "includes": [
+    "Creating a change management plan",
+    "The Prepare for Change Worksheet",
+    "The Write a Communication Plan resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 48
+  },
+  "Manage Online Meetings": {
+   "description": "This project addresses how to effectively conduct online meetings and webinars, prepare and organize necessary visual aids, and lead with confidence.",
+   "purpose": "The purpose of this project is to practice facilitating an online meeting or leading a webinar.",
+   "overview": "Conduct a 20- to 25-minute online meeting with fellow Toastmasters or a 20- to 25-minute webinar with visual aids for fellow Toastmasters. You determine the topic of your meeting or webinar. Research and use software that best fits your needs and geographic area. Invite your evaluator to participate in the online meeting or webinar. If you complete your assignment with non-Toastmasters, you must receive approval from the vice president education and invite your evaluator to attend.",
+   "includes": [
+    "The Online Meeting Agenda resource",
+    "The Online Meeting Basics resource",
+    "Planning and conducting a 20- to 25-minute online meeting or webinar"
+   ],
+   "speech": {
+    "min": 20,
+    "max": 25
+   },
+   "page": 49
+  },
+  "Manage Projects Successfully": {
+   "description": "This project focuses on skills needed to effectively manage a project, develop rapport with stakeholders and cultivate strong relationships with a team.",
+   "purpose": "The purpose of this project is to practice developing a plan, building a team, and fulfilling the plan with the help of your team.",
+   "overview": "Form a team of three to four people and choose a project. Create a plan for your project and present the plan to your club in a 2- to 3-minute speech. Work with your team to complete your project. Present a 5- to 7-minute speech about your experience. This speech may be humorous, informational, or any type of speech that appeals to you. It should not be a report about the content of this project, but a reflection of your experience applying what you learned. Note: When considering projects to complete, refer to future projects on your path. You may be able to use the assignment in this project to help you prepare for the completion of an upcoming project.",
+   "includes": [
+    "Building a team",
+    "Creating a project plan",
+    "The Project Plan resource",
+    "A 2- to 3-minute speech about your plan",
+    "Completing the plan with your team",
+    "A 5- to 7-minute speech about your experience"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 50
+  },
+  "Manage Successful Events": {
+   "description": "This project is designed to give you tools to coordinate an event. It includes steps for managing the unexpected, leading a team and creating positive outcomes.",
+   "purpose": "The purpose of this project is to practice planning, organizing, leading, and implementing an event.",
+   "overview": "Plan, coordinate, and complete an event of your choosing. Tools for planning all aspects of an event are included in this project. After you complete the event, present a 5- to 7-minute speech in your club. Share the impact of the planning process, your team, and the organization for which the event was held. Your speech may be humorous, informational, or any style that appeals to you. It is not a report on the content of this project.",
+   "includes": [
+    "Planning, organizing, and implementing an event of your choosing",
+    "The Event Planning Worksheet",
+    "The Write a Communication Plan resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 51
+  },
+  "Managing a Difficult Audience": {
+   "description": "This project covers common behaviors of difficult audience members and how to address each behavior in a calm, effective and professional way.",
+   "purpose": "The purpose of this project is to practice the skills needed to address audience challenges when you present outside of your Toastmasters club.",
+   "overview": "Prepare a 5- to 7-minute speech on a topic of your choosing. You may write a new speech or use a speech you presented previously. You will be evaluated on the way you manage audience disruptions, not the content of your speech. Before your club meeting, send the Role Play Assignments resource to the Toastmaster and vice president education. As you present your speech, respond to different types of difficult audience members that disrupt you. The process of speaking and responding to audience members will take 12 to 15 minutes.",
+   "includes": [
+    "A role play assignment for club members",
+    "A 5-to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 52
+  },
+  "Managing Time": {
+   "description": "This project is designed to help you manage your time, discover time management techniques, and employ them in your speeches and daily life.",
+   "purpose": "The purpose of this project is to observe your own time management patterns.",
+   "overview": "Develop a 5- to 7-minute speech on any topic. As you develop your speech, record the time required for each task in order to help you determine how you can improve your time management strategies. Present your speech at a club meeting. Finally, submit the Project Completion Form to your vice president education.",
+   "includes": [
+    "The Time and Task Log",
+    "The Project Completion Form",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 53
+  },
+  "Mentoring": {
+   "description": "This project focuses on facilitating a short-term mentoring assignment to help you build your skills as a mentor.",
+   "purpose": "The purpose of this project is to apply your mentoring skills to a short-term mentoring assignment.",
+   "overview": "Work with a protégé to complete a project. Your vice president education will help match you with a fellow Toastmaster who is interested in working with a mentor for a single project. Assist the protégé in setting goals and developing a plan for completing his or her project. Use the forms included in this project to set goals, plan, and give and receive feedback. After your mentorship, deliver a 5- to 7-minute speech at a club meeting about your first experience as a Toastmasters mentor and what you learned from it.",
+   "includes": [
+    "Working with a protégé to complete a project",
+    "The Protégé Success Plan resource",
+    "The Mentoring Communication Tracking Log",
+    "The Protégé Self-Assessment",
+    "The Mentor Evaluation resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 54
+  },
+  "Moderate a Panel Discussion": {
+   "description": "This project addresses the skills needed to successfully moderate a panel discussion and how to be an effective participant on a panel.",
+   "purpose": "The purpose of this project is to apply your skills as a public speaker and leader to facilitate a panel discussion.",
+   "overview": "Plan and moderate a 20- to 40-minute panel discussion. The panel discussion can be on any topic and may take place at a club meeting or outside of Toastmasters with the approval of your vice president education. Toastmasters who participate as panelists do not receive credit in Toastmasters Pathways. When you have the opportunity, volunteer to act as a panelist for another member completing this project.",
+   "includes": [
+    "Planning and moderating a 20- to 40-minute panel discussion",
+    "The Panelist Basics resource",
+    "The Project Completion Form"
+   ],
+   "speech": {
+    "min": 20,
+    "max": 40
+   },
+   "page": 55
+  },
+  "Motivate Others": {
+   "description": "This project focuses on how people are motivated. It is designed to help you build your leadership skills by effectively motivating team members.",
+   "purpose": "The purpose of this project is to practice the skills needed to motivate team members through the completion of a project.",
+   "overview": "Build a team of three to four people to help you create and complete a project to benefit your club. Use the information in the project to develop motivational strategies for each team member. After the project, you may choose to ask team members and at least one club officer to complete a 360° evaluation to give you feedback on your communication and leadership. Deliver a 5- to 7-minute speech at a club meeting about your experience. Your speech is not a report on the content of this project.",
+   "includes": [
+    "Building and motivating a team to complete a project that benefits your club",
+    "The Team-Building Activities resource",
+    "The 360° Evaluation resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 56
+  },
+  "Negotiate the Best Outcome": {
+   "description": "This project focuses on identifying negotiation styles, engaging in mutually beneficial discussions, and finding and building common ground.",
+   "purpose": "The purpose of this project is to learn about different types of negotiation and the strategies that can be used when negotiating.",
+   "overview": "Develop a 5- to 7-minute speech about a past or upcoming negotiation in your life. The negotiation must be one that you have participated in or will participate in. You may choose to reflect on the strategies you used or those that you believe would be the most beneficial in the future. Your speech can be persuasive, humorous, informational, or crafted in any style that appeals to you and supports your speech content.",
+   "includes": [
+    "Analyzing a past or future negotiation in your life",
+    "The Negotiation Goal Setting resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 57
+  },
+  "Persuasive Speaking": {
+   "description": "This project focuses on helping you to develop and support a viewpoint, and identify the most appropriate type of persuasive speech for your topic.",
+   "purpose": "The purpose of this project is to understand the types of persuasive speeches and deliver a persuasive speech at a club meeting.",
+   "overview": "Choose any topic that lends itself to speaking persuasively and prepare a speech. Present your 5- to 7-minute speech at a club meeting. If your vice president education approves a non-club event or group, your evaluator must be present for your speech.",
+   "includes": [
+    "The Persuasive Speech Outline Worksheet",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 58
+  },
+  "Planning and Implementing": {
+   "description": "This project is designed to help you develop realistic plans to meet your objectives and to successfully monitor a project to completion.",
+   "purpose": "The purpose of this project is to practice developing a plan and bringing that plan to fruition.",
+   "overview": "Select any small-scale project, such as a family party, a short trip, a themed Toastmasters meeting, or any other event or project that requires planning. Develop and implement the plan, with or without help from others. At a club meeting, deliver a 2- to 3-minute report or a 5- to 7-minute speech about your experience. Submit the Project Completion Form to your vice president education to confirm you completed all planning resources.",
+   "includes": [
+    "Developing and implementing a plan for a small-scale project",
+    "The Project Plan resource",
+    "The Event Planning Worksheet",
+    "The Project Completion Form",
+    "A 2- to 3-minute report or 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 59
+  },
+  "Prepare for an Interview": {
+   "description": "This project addresses the skills you need to identify and speak about personal strengths and present yourself well in an interview of any type.",
+   "purpose": "The purpose of this project is to practice the skills needed to present yourself well in an interview.",
+   "overview": "Determine which type of interview you would like to practice, such as a job or expert interview. Prepare by reviewing your skills and abilities. Complete the resources in the project and give them to your interviewer before your presentation. You determine which member of your club interviews you, but your interviewer must be someone other than your evaluator. In a 5- to 7-minute role-play presentation at a club meeting, practice answering interview questions to promote your skills, abilities, and experience.",
+   "includes": [
+    "The Identifying Your Skills Worksheet",
+    "The Interviewer Instructions resource",
+    "A 5- to 7-minute role-play interview at a club meeting"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 60
+  },
+  "Prepare to Mentor": {
+   "description": "This project focuses on helping you clarify your personal goals and interests as they relate to mentoring others.",
+   "purpose": "The purpose of this project is to spend time learning about your goals, your interest in being a mentor, and your readiness to begin working with a protégé.",
+   "overview": "Complete the self-evaluation resources included in this project. When you are ready, have a discussion with your vice president education about being a Toastmasters mentor. Submit the Project Completion Form to your vice president education to verify that you completed all forms included in this project.",
+   "includes": [
+    "The Mentor Self-Assessment resource",
+    "Meeting with the vice president education to discuss your readiness to mentor",
+    "There is no speech associated with this project."
+   ],
+   "speech": null,
+   "page": 61
+  },
+  "Prepare to Speak Professionally": {
+   "description": "This project is designed to help you define the attributes of professional speakers and apply that understanding to your own skills as a speaker.",
+   "purpose": "The purpose of this project is to practice developing and presenting a longer speech.",
+   "overview": "Write and present an 18- to 22-minute keynote-style speech. Exemplify the point of view or message you would convey as a professional-level speaker. You may choose to use visual aids if they fit your speech and your style. Your speech may be humorous, informational, or any style that appeals to you and supports your speech content. If you receive advance approval from the vice president education, you may present your speech to a non- Toastmasters group.",
+   "includes": [
+    "The Speech Outline Worksheet",
+    "An 18- to 22-minute keynote-style speech"
+   ],
+   "speech": {
+    "min": 18,
+    "max": 22
+   },
+   "page": 62
+  },
+  "Present a Proposal": {
+   "description": "This project introduces how to select key information to present in a proposal to build a case with supporting evidence and realistic solutions.",
+   "purpose": "The purpose of this project is to practice developing and presenting a proposal.",
+   "overview": "Develop a proposal to improve any area of your life. It may involve your personal or professional life, or your Toastmasters club. If your proposal involves your club, speak with the appropriate officer. For example, if you have a proposal to increase club membership, discuss it with the vice president membership. In a 5- to 7-minute speech at a club meeting, present your entire proposal or aspects of it.",
+   "includes": [
+    "Developing a proposal",
+    "The Write a Proposal Resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 63
+  },
+  "Public Relations Strategies": {
+   "description": "This project focuses on how to promote awareness of an organization, formulate a public relations strategy and use various public relations tactics.",
+   "purpose": "The purpose of this project is to practice the skills needed to effectively use public relations strategies for any group or situation.",
+   "overview": "Create a public relations plan for a real or hypothetical group or situation. If it involves your club, it must be hypothetical unless you communicate with the vice president public relations and club president. Share your plan in a 5- to 7-minute speech at a club meeting. This speech is not a report on the content of this project, but an example of how you will or might apply what you learned.",
+   "includes": [
+    "Creating a public relations strategy",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 64
+  },
+  "Question-and-Answer Session": {
+   "description": "This project addresses how to prepare to answer questions and provide information clearly, concisely and with confidence.",
+   "purpose": "The purpose of this project is to learn about and practice facilitating a question-and-answer session.",
+   "overview": "Select a topic of which you are particularly knowledgeable. Prepare and deliver a speech on this topic, followed by a question-and-answer session. Together, the speech and question-and-answer session must be 15 to 20 minutes. Use your time effectively to ensure both segments are completed.",
+   "includes": [
+    "A 5-to 7-minute speech",
+    "A question-and-answer session after the speech"
+   ],
+   "speech": {
+    "min": 15,
+    "max": 20
+   },
+   "page": 65
+  },
+  "Reaching Consensus": {
+   "description": "This project focuses on reaching consensus and the importance of including all group members in the decision- making process.",
+   "purpose": "The purpose of this project is to work with a group to practice reaching consensus on any topic.",
+   "overview": "Apply the techniques described in the project to practice leading a group of people toward consensus at a club meeting in 20 minutes. Choose a topic that will offer you and your group a challenge, but avoid topics that you know are unlikely to reach consensus in the timeframe. (Note: It is ok if you cannot reach consensus in 20 minutes.) Then, give a 2- to 3-minute closing statement on the experience or the decision. You may also choose to lead a non-Toastmasters group toward consensus. Apply the techniques described in the project. Choose a topic that will offer you and your group a challenge. At a club meeting, deliver a 5- to 7-minute speech about the experience. Your speech can be persuasive, humorous, informational, or crafted in any style that appeals to you and supports your speech content. Submit your signed Project Completion Form to the vice president education.",
+   "includes": [
+    "Leading a non-Toastmasters group toward consensus",
+    "A 5- to 7-minute speech",
+    "The Project Completion Form"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 66
+  },
+  "Reflect on Your Path": {
+   "description": "This project is designed to give you an opportunity to share your experience at the end of your path.",
+   "purpose": "The purpose of this project is to reflect on your growth during the completion of an entire path.",
+   "overview": "At a club meeting, present a 10- to 12-minute speech to share your experience completing your path. Use this as an opportunity to reflect on how far you have come, summarize the skills you have learned and developed, and to celebrate your achievements. Your speech can be humorous, informational, or any style that that appeals to you and supports your speech content.",
+   "includes": [
+    "The Your Toastmasters Journey resource",
+    "A 10- to 12-minute speech"
+   ],
+   "speech": {
+    "min": 10,
+    "max": 12
+   },
+   "page": 67
+  },
+  "Researching and Presenting": {
+   "description": "This project addresses topic selection strategies, suggestions for research and methods for producing a well- organized speech.",
+   "purpose": "The purpose of this project is to learn or review basic research methods and present a well-organized, well-researched speech on any topic.",
+   "overview": "Select a topic that you are not already familiar with or that you wish to learn more about. Be sure your topic is narrow enough to be an effective 5- to 7-minute speech. Research the topic and begin organizing the information, as described in this project. Practice your speech and continue to refine its organization. Present your speech at a club meeting.",
+   "includes": [
+    "Researching a topic",
+    "The Research Worksheet",
+    "The Speech Outline Worksheet",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 68
+  },
+  "Successful Collaboration": {
+   "description": "The focus of this project is the benefit of collaboration, building an environment of trust, and encouraging creative debate within a group.",
+   "purpose": "The purpose of this project is to introduce or review strategies for working in a collaborative group.",
+   "overview": "Work with a small team and collaborate to make decisions. Your goal is to apply the collaboration strategies you learned to a small-scale project, such as planning a club meeting. Deliver a 5- to 7-minute speech at a club meeting about your experience with the collaboration process. Your speech is not a report on the content of this project. This speech is about you, your learning, and your perceptions of the experience.",
+   "includes": [
+    "Working with a small team to make a collaborative decision for a small-scale event",
+    "The Team-Building Activities resource",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 69
+  },
+  "Team Building": {
+   "description": "This project addresses the benefits of team building. It is designed to help you build a sense of collaboration and trust within a team completing a project.",
+   "purpose": "The purpose of this project is to practice the skills needed to build a cohesive team and host an event.",
+   "overview": "Build and work with a small team to design and host a team-building event, either in your Toastmasters club or another environment. Any non-Toastmasters event must be approved by your club’s vice president education and attended by a member of your club leadership team. Before the event, deliver a 2- to 3-minute report at a club meeting to share your plans. After the event, deliver a 5- to 7-minute speech to your club. The content of the speech is up to you, but needs to be about your event, the impact of leading on you and your team, or the impact of building a team on you as a leader.",
+   "includes": [
+    "Working with a small team to design and host a team-building event",
+    "The Team-Building Activities resource",
+    "The Team-Building Event Evaluation resource",
+    "A 2- to 3-minute report",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 70
+  },
+  "The Power of Humor In an Impromptu Speech": {
+   "description": "This project focuses on developing strategies for adding humor to any speech, especially impromptu speeches.",
+   "purpose": "The purpose of this project is for you to develop your method for giving impromptu speeches and practice adapting rehearsed stories during a presentation.",
+   "overview": "You will deliver two 2- to 3-minute speeches. When you are ready to begin the first of your speeches, the Toastmaster of the Day will select a topic from the Impromptu Speech Topics resource. Your speech must last 2 to 3 minutes and include at least one anecdote that is related to the topic. When the first speech is complete, give a second 2- to 3-minute speech on a new topic. Both topics should be selected at random and without your prior knowledge.",
+   "includes": [
+    "The Impromptu Speech Topics resource",
+    "Two 2- to 3-minute impromptu speeches"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 71
+  },
+  "Understanding Conflict Resolution": {
+   "description": "This project is designed to introduce conflict resolution strategies and provide an opportunity to resolve a conflict scenario within an interactive activity.",
+   "purpose": "The purpose of this project is to develop or enhance your understanding of the steps and strategies to address conflict.",
+   "overview": "Complete the conflict resolution video activity in the project. Prepare a 5- to 7-minute speech to discuss how you manage conflict, how you can develop a stronger strategy, and your best attributes in a conflict situation. You may also share the impact of the video activity. Your speech may be humorous, informational, or any style that appeals to you. This project is not a report on or a critique of the content of this project.",
+   "includes": [
+    "A conflict resolution video activity",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 72
+  },
+  "Understanding Emotional Intelligence": {
+   "description": "This project addresses elements of emotional intelligence. It is designed to help you understand your own emotions and the emotions of others.",
+   "purpose": "The purpose of this project is to cultivate an understanding of how your emotions impact your relationships. It is also designed to help you identify how others’ emotions impact your emotional state.",
+   "overview": "For a minimum of two weeks, keep a journal about your emotions and how they impact you and others. Discuss the impact of tracking your emotions in a 5- to 7-minute speech at a club meeting. (Note: You are not required to share the intimacies of your experience.) Finally, submit the signed Project Completion Form to your vice president education to indicate you completed your journal.",
+   "includes": [
+    "A journal you maintain for a minimum of two weeks",
+    "The Project Completion Form",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 73
+  },
+  "Understanding Vocal Variety": {
+   "description": "This project addresses the importance of vocal variety when giving a speech and provides activities to develop and nurture its use.",
+   "purpose": "The purpose of this project is to practice using vocal variety to enhance a speech.",
+   "overview": "Learn or review the importance of vocal variety. Use the exercises in this project to improve your vocal variety skills. Then, present a 5- to 7-minute speech on any topic at a club meeting. The primary focus of the evaluation is your vocal variety.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 74
+  },
+  "Understanding Your Communication Style": {
+   "description": "This project focuses on recognizing your preferred communication style and understanding how your style impacts your interactions with others.",
+   "purpose": "The purpose of this project is to learn about different communication styles and identify your primary style.",
+   "overview": "Complete the Discover Your Communication Style questionnaire to help you identify your style. Deliver a 5- to 7-minute speech at a club meeting about your communication style and its impact on your professional and/or personal relationships. If you are uncomfortable discussing your communication style, you may speak about the communication styles you have encountered and how they impact you. Your speech should not be a report of the content of this project.",
+   "includes": [
+    "The Discover Your Communication Style questionnaire",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 75
+  },
+  "Understanding Your Leadership Style": {
+   "description": "This project is designed to introduce the different styles of leadership and help you identify your preferred style.",
+   "purpose": "The purpose of this project is to identify your primary leadership style or styles.",
+   "overview": "Complete the Discover Your Leadership Style questionnaire. Consider how your leadership style impacts the people around you and how you can adjust it to more effectively lead people with styles different from your own. Deliver a 5- to 7-minute speech at a club meeting to share some aspect of your leadership style or leadership styles in general. You may choose to discuss your style preferences when working with others, your style and how you can adapt it to situations, or leadership styles in general and how they impact a group.",
+   "includes": [
+    "The Discover Your Leadership Style questionnaire",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 76
+  },
+  "Using Descriptive Language": {
+   "description": "This project addresses the difference between literal and figurative language along with how to determine when to use each to create vivid descriptions.",
+   "purpose": "The purpose of this project is to practice writing a speech with an emphasis on adding language to increase interest and impact.",
+   "overview": "You may speak on any topic. Develop a 5- to 7-minute speech describing the topic in detail and present it at your club meeting.",
+   "includes": [
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 77
+  },
+  "Using Presentation Software": {
+   "description": "This project addresses the use of presentation software—from identifying topics that benefit from the use of technology to effective slide design and presentation.",
+   "purpose": "The purpose of this project is to introduce or review basic presentation software strategies for creating and using slides to support or enhance a speech.",
+   "overview": "Select a speech topic that lends well to a visual presentation using technology. Use the content of this project and your own research to help you develop your slides. Give a 5- to 7-minute speech using the slides you developed. Your speech can be humorous, demonstrative, or informational, and it may include stories or anecdotes.",
+   "includes": [
+    "Developing presentation slides",
+    "A 5- to 7-minute speech"
+   ],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 78
+  },
+  "Write a Compelling Blog": {
+   "description": "This project addresses the basics of developing a compelling blog and successfully engaging a readership.",
+   "purpose": "The purpose of this project is to review or introduce the skills needed to write and maintain a blog.",
+   "overview": "Post a minimum of eight blog posts in one month. Your blog may be new or one you have already established. You must receive approval from the vice president education to blog on behalf of your club. Deliver a 2- to 3-minute speech at a club meeting about the impact of your blogging experience. You may choose to have your blog evaluated by members of the club. Submit your signed Project Completion Form to the vice president education to receive credit for this project.",
+   "includes": [
+    "Maintaining a blog and posting at least eight times in one month",
+    "The Blog Evaluation Form",
+    "The Project Completion Form",
+    "A 2- to 3-minute speech"
+   ],
+   "speech": {
+    "min": 2,
+    "max": 3
+   },
+   "page": 79
+  },
+  "Writing a Speech with Purpose": {
+   "description": "This project addresses topic selection strategies, how to define the purpose of your speech, and methods for producing a well-organized speech.",
+   "purpose": "The purpose of this project is to learn or review basic methods for writing a speech and to present a well- organized speech on any topic.",
+   "overview": "Select a topic that appeals to you. It can be anything. Be sure your topic is narrow enough to be an effective 5- to 7-minute speech. Clearly define your topic and consider your goal for your speech. Before you organize your speech, clearly define your purpose. Practice your speech and continue to refine its organization. Present your speech at a club meeting.",
+   "includes": [],
+   "speech": {
+    "min": 5,
+    "max": 7
+   },
+   "page": 80
+  }
+ }
+}
