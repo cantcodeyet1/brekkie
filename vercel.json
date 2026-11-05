@@ -1,14 +1,27 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "client/dist",
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30,
-      "includeFiles": "server/{templates,data}/**,server/src/schema.sql"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "client": {
+      "root": "client",
+      "framework": "vite"
+    },
+    "server": {
+      "root": "server",
+      "framework": "express"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "server"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "client"
+      }
+    }
   ]
 }

@@ -18,6 +18,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const DEMO = process.env.DEMO_MODE !== 'false';
 const app = express();
 app.use(cors());
+app.use((_req, _res, next) => { ready.then(() => next(), next); });
 app.use(express.json({ limit: '1mb' }));
 
 const token = () => crypto.randomBytes(15).toString('base64url');
