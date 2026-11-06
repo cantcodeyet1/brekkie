@@ -20,8 +20,8 @@ const DEMO = process.env.DEMO_MODE !== 'false';
 const app = express();
 app.use(cors());
 // health answers before start-up finishes and says whether the database is reachable (never the connection string)
-app.get('/api/health', (_req, res) => ready.then(() => res.json({ ok: true }), (e) => res.status(503).json({ ok: false, db: String(e.code || e.name || 'error'), why: String(e.message || '').replace(/postgres(ql)?:\/\/\S+/gi, '').slice(0, 120) })));
-app.use((_req, _res, next) => { ready.then(() => next(), next); });
+app.get('/api/health', (_req, res) => boot().then(() => res.json({ ok: true }), (e) => res.status(503).json({ ok: false, db: String(e.code || e.name || 'error'), why: String(e.message || '').replace(/postgres(ql)?:\/\/\S+/gi, '').slice(0, 120) })));
+app.use((_req, _res, next) => { boot().then(() => next(), next); });
 app.use(express.json({ limit: '1mb' }));
 
 const token = () => crypto.randomBytes(15).toString('base64url');
@@ -720,13 +720,19 @@ if (fs.existsSync(dist)) {
 app.use((err, _req, res, _next) => { console.error(err); res.status(500).json({ error: 'Something went wrong' }); });
 
 // Start-up work (schema, pathways, demo data). A hosted function waits on `ready` before it answers.
-export const ready = (async () => {
+// A failed start (a dropped connection, say) is not remembered: the next request tries again instead of
+// leaving a warm function broken until it is recycled.
+let booting = null;
+const boot = () => (booting ||= startUp().catch((e) => { booting = null; throw e; }));
+async function startUp() {
   const kind = await initDb();
   await ensurePathways();
   for (const c of await q('select id from clubs where join_code is null')) await q('update clubs set join_code=$1 where id=$2', [joinCode(), c.id]);
   if (DEMO && (await seedIfEmpty())) console.log('Empty database: loaded demo data for Champions Toastmasters Club.');
   return kind;
-})();
+}
+export const ready = boot();
+ready.catch((e) => console.error('Start-up failed, will retry on the next request:', e.message));
 export default app;
 
 // On a normal server, listen. On Vercel the function in api/index.js handles requests instead.

@@ -7,15 +7,20 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 let impl;
+let pool;
 
 export async function initDb() {
   const schema = fs.readFileSync(path.join(here, 'schema.sql'), 'utf8');
   if (process.env.DATABASE_URL) {
     const { default: pg } = await import('pg');
-    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+    // Neon drops idle connections, so keep them short-lived and never let a dead socket crash the process
+    pool ||= new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5, idleTimeoutMillis: 10000, connectionTimeoutMillis: 15000 });
+    pool.removeAllListeners('error'); pool.on('error', (e) => console.error('Idle database connection dropped:', e.message));
+    const dropped = (e) => ['ECONNRESET', 'EPIPE', 'ETIMEDOUT', '57P01'].includes(e?.code) || /Connection terminated|read ECONNRESET/i.test(e?.message || '');
+    const run = async (t, p) => { try { return (await pool.query(t, p)).rows; } catch (e) { if (!dropped(e)) throw e; return (await pool.query(t, p)).rows; } };   // one retry on a dead socket
     impl = {
       kind: 'neon',
-      query: async (t, p) => (await pool.query(t, p)).rows,
+      query: run,
       tx: async (fn) => {
         const c = await pool.connect();
         try {
@@ -26,7 +31,7 @@ export async function initDb() {
         } catch (e) { await c.query('rollback'); throw e; } finally { c.release(); }
       },
     };
-    await pool.query(schema);
+    await run(schema);
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
     const db = new PGlite(path.join(here, '..', '.pglite'));
