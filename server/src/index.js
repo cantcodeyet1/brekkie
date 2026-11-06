@@ -499,7 +499,7 @@ app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(async (re
   const a = await agendaFor(req, res); if (!a) return;
   const buf = await buildDocx(a.merged, a.ctx);
   const d = new Date(a.ctx.m.date + 'T12:00:00');
-  const name = `Champions Toastmasters Agenda ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.docx`;
+  const name = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}.docx`;
   res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
   res.send(buf);
 }));
@@ -509,7 +509,7 @@ app.get('/api/vpe/meetings/:id/agenda.pdf', needPerson, needVpe, wrap(async (req
   try {
     const pdf = await docxToPdf(await buildDocx(a.merged, a.ctx));
     const d = new Date(a.ctx.m.date + 'T12:00:00');
-    const name = `Champions Toastmasters Agenda ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.pdf`;
+    const name = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}.pdf`;
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
     res.send(pdf);
   } catch (e) { console.error(e); bad(res, e.status === 501 ? e.message : 'Could not create the PDF. The Word download still works.', e.status || 500); }
