@@ -3,7 +3,6 @@ import QRCode from 'qrcode';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
-import { wordToGoogleDoc } from '../gdocs.js';
 import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import { Btn, Chip, ErrorMsg, Foot, I, Loading, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
@@ -144,7 +143,6 @@ export function VpeMeeting() {
   const projQ = useApi('/projects');
   const catQ = useApi('/pathways');
   const resQ = useApi('/evaluation-resources');
-  const cfg = useApi('/config');
   const [m, setM] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [wordBusy, setWordBusy] = useState(false);
@@ -178,19 +176,17 @@ export function VpeMeeting() {
       setWordNote(d.source === 'ai' ? 'Written by AI to fit your theme. Read it through before you keep it.' : (d.note || 'Filled in from the dictionary.'));
     } catch (e) { setWordNote(e.message); } finally { setWordBusy(false); }
   };
-  const downloadAgenda = async (toDocs) => {
-    const win = toDocs ? window.open('', '_blank') : null;   // opened now so the browser lets it through
+  const downloadAgenda = async () => {
     setPdfBusy(true);
     try {
       const res = await fetch(`/api/vpe/meetings/${id}/agenda.docx`, { headers: { 'x-token': getToken() } });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not create the agenda');
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `Agenda ${m.number}.docx`;
       const blob = await res.blob();
-      if (toDocs) { const link = await wordToGoogleDoc(cfg.data.googleClientId, blob, name); if (win) win.location = link; else window.location.assign(link); toast('Opened in Google Docs'); return; }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
       toast('Agenda downloaded');
-    } catch (e) { if (win) win.close(); toast(e.message); } finally { setPdfBusy(false); }
+    } catch (e) { toast(e.message); } finally { setPdfBusy(false); }
   };
   const downloadEval = async (r) => {
     try {
@@ -253,8 +249,7 @@ export function VpeMeeting() {
           <h1 className="pg" style={{ margin: '6px 0 2px' }}>{fmtDate(m.date)}</h1>
           <p className="lede" style={{ margin: 0 }}>{m.theme || 'No theme yet'}{m.word ? <> · Word of the day <b style={{ color: 'var(--ink)' }}>{m.word}</b></> : ''}</p>
         </div>
-        <Btn kind="ghost" sm onClick={() => downloadAgenda(false)} disabled={pdfBusy}>{pdfBusy ? 'Preparing…' : 'Download agenda'}</Btn>
-        {cfg.data?.googleClientId && <Btn kind="ghost" sm onClick={() => downloadAgenda(true)} disabled={pdfBusy}>Open in Google Docs</Btn>}
+        <Btn kind="ghost" sm onClick={downloadAgenda} disabled={pdfBusy}>{pdfBusy ? 'Preparing…' : 'Download agenda'}</Btn>
         <nav className="jump" aria-label="Sections">
           {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received']].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
         </nav>
