@@ -151,6 +151,15 @@ export function VpeMeeting() {
   const [wordAlts, setWordAlts] = useState([]);
   const saveT = useRef();
   useEffect(() => { if (data) setM(data.meeting); }, [data]);
+  // each evaluator starts out paired with the speaker in the same position, so the two line up in one column
+  useEffect(() => {
+    if (!data || data.meeting.status === 'Done') return;
+    const sp = data.roles.filter((r) => r.role_key === 'speaker'), ev = data.roles.filter((r) => r.role_key === 'evaluator');
+    const taken = new Set(ev.map((e) => e.target_role_id).filter(Boolean)), todo = [];
+    ev.forEach((e, i) => { if (!e.target_role_id && sp[i] && !taken.has(sp[i].id)) { taken.add(sp[i].id); todo.push([e.id, sp[i].id]); } });
+    if (todo.length) Promise.all(todo.map(([rid, t]) => api(`/vpe/roles/${rid}`, { method: 'PATCH', body: { target_role_id: t } }))).then(reload).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
   if (loading || peopleQ.loading || projQ.loading || catQ.loading || !m) return <Page title="Roster" wide back="/v"><Loading /></Page>;
   if (error || peopleQ.error) return <Page title="Roster" wide back="/v"><ErrorMsg error={error || peopleQ.error} /></Page>;
 
@@ -282,8 +291,12 @@ export function VpeMeeting() {
       <Panel k="roles" title="Roles" hint={locked ? 'This meeting has happened. Roles are shown as they were.' : 'Choose who plays each role. They get their link as soon as you assign them.'}
         right={<Link className="lnk" to="/v">Plan several meetings at once in the roster</Link>}>
         <div className="rgroup"><h3>Top table</h3><div className="rgrid">{roles.filter((r) => !['speaker', 'evaluator'].includes(r.role_key)).map(tile)}</div></div>
-        <div className="rgroup"><h3>Speakers</h3><div className="rgrid">{roles.filter((r) => r.role_key === 'speaker').map(tile)}</div></div>
-        <div className="rgroup"><h3>Evaluators</h3><div className="rgrid">{roles.filter((r) => r.role_key === 'evaluator').map(tile)}</div></div>
+        <div className="rgroup"><h3>Speakers and their evaluators</h3>{(() => {
+          const evs = roles.filter((r) => r.role_key === 'evaluator'), used = new Set();
+          const cols = speakers.map((s) => { const mine = evs.filter((e) => e.target_role_id === s.id); mine.forEach((e) => used.add(e.id)); return { key: s.id, items: [s, ...mine] }; });
+          evs.filter((e) => !used.has(e.id)).forEach((e) => cols.push({ key: e.id, items: [e] }));
+          return <Strip>{cols.map((c) => <div className="pcol" key={c.key}>{c.items.map(tile)}</div>)}</Strip>;
+        })()}</div>
       </Panel>
 
       <div className="pair">
@@ -491,6 +504,22 @@ function Rec({ title, count, children }) {
 }
 
 /* ───────── one member: what they have delivered, the roles they have done, the feedback they have given ───────── */
+/* a row of columns that scrolls sideways, with arrows when there is more than fits */
+function Strip({ children }) {
+  const ref = useRef(null);
+  const [can, setCan] = useState({ l: false, r: false });
+  const upd = () => { const e = ref.current; if (e) setCan({ l: e.scrollLeft > 4, r: e.scrollLeft + e.clientWidth < e.scrollWidth - 4 }); };
+  useEffect(() => { upd(); const e = ref.current; if (!e || !window.ResizeObserver) return undefined; const ro = new ResizeObserver(upd); ro.observe(e); return () => ro.disconnect(); });
+  const go = (d) => ref.current?.scrollBy({ left: d * ref.current.clientWidth * 0.9, behavior: 'smooth' });
+  return (
+    <div className="strip">
+      {can.l && <button type="button" className="sarr l" onClick={() => go(-1)} aria-label="Scroll left">{I.back}</button>}
+      <div className="pairs" ref={ref} onScroll={upd}>{children}</div>
+      {can.r && <button type="button" className="sarr r" onClick={() => go(1)} aria-label="Scroll right">{I.chev}</button>}
+    </div>
+  );
+}
+
 function PathField({ p }) {
   const toast = useToast();
   const cat = useApi('/pathways');
