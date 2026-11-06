@@ -1164,3 +1164,5 @@ textarea.inp.grow{overflow:hidden}
 .sarr{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:42px;height:42px;border-radius:50%;border:0;background:#fff;color:var(--blue);box-shadow:0 6px 18px -4px rgba(0,30,50,.35);display:grid;place-items:center;cursor:pointer}
 .sarr:hover{background:var(--blue);color:#fff}
 .sarr.l{left:-12px}.sarr.r{right:-12px}
+.pairs{scrollbar-width:none;-ms-overflow-style:none}
+.pairs::-webkit-scrollbar{display:none}
