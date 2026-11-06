@@ -6,7 +6,7 @@ const day = (s) => new Date(s + 'T12:00:00');
 export const token = () => crypto.randomBytes(15).toString('base64url');
 
 export const ROLE_DEFS = [
-  ['toastmaster', 'Toastmaster'], ['grammarian', 'Grammarian'], ['ah_counter', 'Ah Counter'], ['timer', 'Timer'],
+  ['toastmaster', 'Toastmaster of the Day'], ['grammarian', 'Grammarian'], ['ah_counter', 'Ah Counter'], ['timer', 'Timer'],
   ['topicsmaster', 'Topicsmaster'], ['speaker', 'Speaker 1'], ['speaker', 'Speaker 2'], ['speaker', 'Speaker 3'],
   ['general_evaluator', 'General Evaluator'], ['evaluator', 'Speech Evaluator 1'], ['evaluator', 'Speech Evaluator 2'], ['evaluator', 'Speech Evaluator 3'],
 ];

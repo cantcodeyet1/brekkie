@@ -207,3 +207,6 @@ alter table people add column if not exists path_level int;
 
 -- a guest who asked to join the club
 alter table people add column if not exists join_requested_at timestamptz;
+
+-- the role is Toastmaster of the Day
+update meeting_roles set label='Toastmaster of the Day' where role_key='toastmaster' and label='Toastmaster';

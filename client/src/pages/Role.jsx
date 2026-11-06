@@ -74,25 +74,32 @@ export default function RoleApp() {
   return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
 }
 
-/* shown to guests: one tap tells the VPE they would like to join */
+/* shown to guests: one tap tells the VPE, and opens a ready-written WhatsApp message to them */
+const VPE_WHATSAPP = '263719373950';
 export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) {
   const [asked, setAsked] = useState(!!data.me?.join_requested);
-  const [email, setEmail] = useState(data.me?.email || '');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   if (data.me?.kind !== 'guest') return null;
+  const wa = () => `https://wa.me/${VPE_WHATSAPP}?text=${encodeURIComponent(`Hi, it's ${data.me.name}. I enjoyed being a guest at Champions Toastmasters Club and would like to join as a member. What are the next steps?`)}`;
   const send = async () => {
+    const win = window.open('', '_blank');           // opened on the tap so the browser lets it through
     setBusy(true); setErr('');
-    try { await api(endpoint, { method: 'POST', body: { email }, token }); setAsked(true); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    try { await api(endpoint, { method: 'POST', body: {}, token }); setAsked(true); } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+    if (win) win.location.href = wa(); else window.location.href = wa();
   };
   return (
     <div className={'joinask' + (dark ? ' dark' : '')}>
-      {asked
-        ? <><b>Thanks, your VPE knows.</b><span>They will make you a member of Champions Toastmasters Club.</span></>
-        : <><b>Want to join Champions?</b><span>Tell the VPE you would like to become a member.</span>
-          <input className="inp" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} placeholder="Your email (optional)" autoComplete="email" aria-label="Your email" />
-          {err && <p className="err">{err}</p>}
-          <button type="button" className="jbtn" onClick={send} disabled={busy}>{busy ? 'One moment…' : 'I would like to join'}</button></>}
+      <span className="jic" aria-hidden="true">{I.ppl}</span>
+      <div className="jtx">
+        <b>{asked ? 'Thanks, your VPE knows.' : 'Want to join Champions?'}</b>
+        <span>{asked ? 'They will make you a member of Champions Toastmasters Club.' : 'One tap tells the VPE and opens a message to them on WhatsApp.'}</span>
+        {err && <p className="err">{err}</p>}
+        {asked
+          ? <a className="jbtn ghost" href={wa()} target="_blank" rel="noreferrer">Message the VPE again</a>
+          : <button type="button" className="jbtn" onClick={send} disabled={busy}>{busy ? 'One moment…' : 'I would like to join'}</button>}
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Btn, Chip, ErrorMsg, I, Loading, Modal, Page, PersonSelect, ProjectPick
 /* The meeting roster. One column per meeting, one row per thing to plan, like the club's planner sheet.
    The grid always fits the screen: how many meetings you see depends on the width, and you move between
    meetings with the timeline, the arrows, or "Go to". Every cell saves as you leave it. */
-const FIXED = [['toastmaster', 'Toastmaster'], ['general_evaluator', 'General Evaluator'], ['timer', 'Timer'], ['grammarian', 'Grammarian'], ['ah_counter', 'Ah Counter'], ['topicsmaster', 'Table Topics Master']];
+const FIXED = [['toastmaster', 'Toastmaster of the Day'], ['general_evaluator', 'General Evaluator'], ['timer', 'Timer'], ['grammarian', 'Grammarian'], ['ah_counter', 'Ah Counter'], ['topicsmaster', 'Table Topics Master']];
 const quarter = (iso) => { const d = new Date(iso + 'T12:00:00'); return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`; };
 const MIN_COL = 244;
 

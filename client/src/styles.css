@@ -1189,3 +1189,14 @@ textarea.inp.grow{overflow:hidden}
 .joinask.dark span{color:rgba(255,255,255,.8)}
 .joinask.dark .jbtn{background:#fff;color:var(--blue)}
 .joinask.dark .inp{background:rgba(255,255,255,.95);color:#1c2b33}
+
+/* guest: want to join, restyled */
+.joinask{display:flex;gap:14px;align-items:flex-start;padding:18px;border-radius:20px;background:linear-gradient(135deg,#F4F9FB 0%,#EAF3EF 100%);border:1px solid #D5E6DE;max-width:440px}
+.joinask .jic{flex:none;width:44px;height:44px;border-radius:14px;background:var(--blue);color:#fff;display:grid;place-items:center}
+.joinask .jtx{display:flex;flex-direction:column;gap:6px;min-width:0}
+.joinask .jbtn{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;height:44px;padding:0 22px;margin-top:6px;border:0;border-radius:999px;background:#25A244;color:#fff;font:700 15px var(--head);cursor:pointer;text-decoration:none;box-shadow:0 8px 20px -10px rgba(37,162,68,.8)}
+.joinask .jbtn.ghost{background:transparent;color:var(--blue);box-shadow:0 0 0 1.5px var(--blue) inset}
+.joinask.dark{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}
+.joinask.dark .jic{background:#fff;color:var(--blue)}
+.joinask.dark .jbtn.ghost{color:#fff;box-shadow:0 0 0 1.5px #fff inset}
+@media (max-width:480px){.joinask{padding:16px}.joinask .jbtn{align-self:stretch}}
