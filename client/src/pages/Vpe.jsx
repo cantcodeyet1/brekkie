@@ -222,7 +222,7 @@ export function VpeMeeting() {
         ? <div style={{ color: 'var(--mute)', fontSize: 14, marginTop: 4 }}>{projOf(r.project_id) ? `${r.path_name || projOf(r.project_id).path}, Level ${r.path_level ?? projOf(r.project_id).level}: ${projOf(r.project_id).name}` : 'No project set'}{r.speech_title ? ` · “${r.speech_title}”` : ''}</div>
         : <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
           <ProjectPicker catalog={catalog} value={r.project_id} pathName={r.path_name} level={r.path_level} onChange={(body) => setRole(r, body)} />
-          <input className={'inp' + (r.speech_title ? '' : ' empty')} defaultValue={r.speech_title} placeholder="Speech title" onBlur={(e) => e.target.value !== r.speech_title && setRole(r, { speech_title: e.target.value })} />
+          <input className={'inp' + (r.speech_title ? '' : ' todo')} defaultValue={r.speech_title} placeholder="Speech title" onBlur={(e) => e.target.value !== r.speech_title && setRole(r, { speech_title: e.target.value })} />
         </div>)}
       {r.role_key === 'evaluator' && (locked
         ? r.target_role_id && <div style={{ color: 'var(--mute)', fontSize: 14, marginTop: 4 }}>Evaluated {speakers.find((s) => s.id === r.target_role_id)?.label}</div>

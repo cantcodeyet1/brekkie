@@ -171,7 +171,7 @@ export function Select({ value, onChange, options, placeholder = 'Select', sm, d
 
   return (
     <div className={'sel ' + className}>
-      <button type="button" ref={btn} className={'inp selbtn' + (sm ? ' sm' : '') + (cur ? '' : ' empty')} disabled={disabled} aria-haspopup="listbox" aria-expanded={open} aria-label={label}
+      <button type="button" ref={btn} className={'inp selbtn' + (sm ? ' sm' : '') + (cur ? '' : ' todo')} disabled={disabled} aria-haspopup="listbox" aria-expanded={open} aria-label={label}
         onClick={() => (open ? close(false) : openIt())}
         onKeyDown={(e) => { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); openIt(); } }}>
         <span className="v">{cur ? cur.label : <span className="sph">{placeholder}</span>}</span>{I.down}

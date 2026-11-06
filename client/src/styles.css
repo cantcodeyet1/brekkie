@@ -1149,6 +1149,6 @@ textarea.inp.grow{overflow:hidden}
 .rtile.open .selbtn{color:#7A5A12}
 
 /* a field still to fill in stands out in amber; a finished one stays plain white */
-.rtile .selbtn.empty:not(:disabled),.rtile .inp.empty{background:#FFFBEF;box-shadow:0 0 0 1.5px #EBC96A inset}
-.rtile .selbtn.empty:not(:disabled) .sph,.rtile .inp.empty::placeholder{color:#8A6A12}
-.rtile .selbtn.empty:disabled{opacity:.55}
+.rtile .selbtn.todo:not(:disabled),.rtile .inp.todo{background:#FFFBEF;box-shadow:0 0 0 1.5px #EBC96A inset}
+.rtile .selbtn.todo:not(:disabled) .sph,.rtile .inp.todo::placeholder{color:#8A6A12}
+.rtile .selbtn.todo:disabled{opacity:.55}
