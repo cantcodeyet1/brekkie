@@ -135,9 +135,11 @@ export async function buildDocx(ag, ctx, opts = {}) {
   const d = new Date(m.date + 'T12:00:00');
   setRunText(runsOf(P[8])[0], `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} `);
   const th = runsOf(P[9]);
+  setRunText(th[0], 'Theme:');
   setRunText(th[1], ` ${m.theme || ''}`);
+  setRunText(th[2], 'Quotation:');
   if (m.theme_quote) {
-    setRunText(th[3], ` “${m.theme_quote.replace(/^[“"]|[”"]$/g, '')}”${m.theme_quote_by ? ` — ${m.theme_quote_by}` : ''}`);
+    setRunText(th[3], ` “${m.theme_quote.replace(/^[“"]|[”"]$/g, '')}”${m.theme_quote_by ? ` - ${m.theme_quote_by}` : ''}`);
   } else { setRunText(th[2], ''); setRunText(th[3], ''); }
 
   // next meeting date (left panel). The "th" is its own superscript run.
