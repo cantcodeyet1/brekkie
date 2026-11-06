@@ -213,8 +213,8 @@ export function VpeMeeting() {
 
   const projOf = (id) => projects.find((p) => p.id === id);
   const tile = (r) => (
-    <div className="rtile" key={r.id}>
-      <div className="rl"><b>{r.label}</b>{FEEDBACK_ROLES.includes(r.role_key) && <span>Gets a link</span>}</div>
+    <div className={'rtile ' + (r.person_id ? 'filled' : 'open')} key={r.id}>
+      <div className="rl"><b><i className="dot" aria-hidden="true" />{r.label}</b>{!r.person_id ? <span className="openpill">Needs someone</span> : FEEDBACK_ROLES.includes(r.role_key) && <span>Gets a link</span>}</div>
       {locked
         ? <div style={{ fontSize: 16, fontWeight: 600 }}>{r.person || 'None'}{personChip(r)}</div>
         : <PersonSelect value={r.person_id} placeholder="Unassigned" allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(r, { person_id: v })} />}

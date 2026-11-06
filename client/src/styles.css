@@ -1132,3 +1132,18 @@ textarea.inp.grow{overflow:hidden}
 .stage.hide .who2,.stage.hide .cardname,.stage.hide .thr,.stage.hide .st-btns,.stage.hide .st-top span,.stage.hide .st-top .back{visibility:hidden}
 .stage.hide .clk{opacity:.3;top:auto;bottom:auto;position:static;font-size:clamp(64px,14vw,150px)!important;font-weight:700}
 .stage.hide .st-top .eye{visibility:visible;opacity:.7}
+
+/* meeting roster tiles: filled roles are green, open ones are amber, so the gaps stand out at a glance */
+.rtile{position:relative;overflow:hidden;transition:background .2s,border-color .2s}
+.rtile::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:transparent}
+.rtile .rl b{display:flex;align-items:center;gap:8px}
+.rtile .dot{width:10px;height:10px;border-radius:50%;flex:none;box-sizing:border-box}
+.rtile.filled{background:#EEF6F1;border-color:#CFE3D6}
+.rtile.filled::before{background:#3E9B63}
+.rtile.filled .dot{background:#3E9B63}
+.rtile.open{background:#FFF8E6;border:1.5px dashed #E0B955}
+.rtile.open::before{background:#F0B72F}
+.rtile.open .dot{border:2px solid #D19A12;background:transparent}
+.rtile .openpill{background:#FBE7A6;color:#6B4A00!important;font:700 11.5px var(--head)!important;padding:3px 9px;border-radius:999px;letter-spacing:.02em}
+.rtile.filled .selbtn,.rtile.filled .inp,.rtile.open .selbtn,.rtile.open .inp{background:#fff}
+.rtile.open .selbtn{color:#7A5A12}
