@@ -335,16 +335,21 @@ function Stage({ row, name, thr, onSave, onPause }) {
   const [, tick] = useState(0);
   const audio = useRef(null);
   const limit = thr[2] + 30;
-  const buzzed = useRef((row.seconds || 0) >= limit);
   useEffect(() => { if (started === null) return; const t = setInterval(() => tick((x) => x + 1), 200); return () => clearInterval(t); }, [started]);
   useEffect(() => {
     let lock; if (started !== null && navigator.wakeLock) navigator.wakeLock.request('screen').then((l) => { lock = l; }).catch(() => {});
     return () => lock?.release?.().catch(() => {});
   }, [started]);
   const cur = base + (started !== null ? (Date.now() - started) / 1000 : 0), s = Math.floor(cur), c = cardOf(s, thr), over = s >= limit;
+  // once past the limit the buzzer keeps ringing until the timer is paused, reset or saved
+  const ringing = started !== null && over;
   useEffect(() => {
-    if (started !== null && over && !buzzed.current) { buzzed.current = true; buzz(audio.current); navigator.vibrate?.([300, 150, 300, 150, 600]); }
-  }, [over, started]);
+    if (!ringing) return undefined;
+    const ring = () => { buzz(audio.current); navigator.vibrate?.([300, 150, 300]); };
+    ring();
+    const t = setInterval(ring, 1700);
+    return () => { clearInterval(t); navigator.vibrate?.(0); };
+  }, [ringing]);
   const start = () => {
     if (!audio.current) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audio.current = new AC(); }
     audio.current?.resume?.();
@@ -364,7 +369,7 @@ function Stage({ row, name, thr, onSave, onPause }) {
       <div className="st-btns">
         <button type="button" className="btn" onClick={() => (started === null ? start() : pause())}>{started !== null ? 'Pause' : s > 0 ? 'Resume' : 'Start'}</button>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="btn ghost" onClick={() => { setBase(0); setStarted(null); buzzed.current = false; }}>Reset</button>
+          <button type="button" className="btn ghost" onClick={() => { setBase(0); setStarted(null); }}>Reset</button>
           <button type="button" className="btn ghost" onClick={() => onSave(Math.floor(cur))}>Save time</button>
         </div>
       </div>
