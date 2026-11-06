@@ -11,6 +11,7 @@ import { loadHist, progressFor, summary } from './progress.js';
 import { buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda } from './agenda.js';
 import { docxToPdf, pdfAvailable } from './pdf.js';
 import { nextClubDate } from './schedule.js';
+import { checkPw, cleanPattern, describePattern, generateMeetings, hashPw, joinCode, normEmail, nextPatternDate, pwProblem, validEmail } from './club.js';
 import { validWord, wordDetails } from './words.js';
 import { ensurePathways } from './pathways.js';
 
@@ -59,30 +60,93 @@ const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/api/session', wrap(async (req, res) => {
-  if (req.person) return res.json({ type: req.person.is_vpe ? 'vpe' : 'member', person: pub(req.person) });
+  if (req.person) { const [c] = await q('select name from clubs where id=$1', [req.person.club_id]); return res.json({ type: req.person.is_vpe ? 'vpe' : 'member', person: pub(req.person), club: c?.name }); }
   if (req.role) return res.json({ type: 'role', role: { key: req.role.role_key, label: req.role.label }, person: pub(req.rolePerson) });
   res.status(401).json({ error: 'No valid link' });
 }));
 
-/* first run: a club with no VPE yet. Whoever holds the setup code (SETUP_CODE on the host) becomes the VPE. */
-const noVpe = async () => !(await q('select 1 from people where is_vpe limit 1')).length;
-app.get('/api/setup/status', wrap(async (_req, res) => res.json({ needsSetup: await noVpe(), hasCode: !!process.env.SETUP_CODE })));
-app.post('/api/setup', wrap(async (req, res) => {
-  if (!(await noVpe())) return bad(res, 'This club is already set up. Open the link your VPE sent you.', 409);
-  const code = process.env.SETUP_CODE;
-  if (!code) return bad(res, 'Setup is switched off. Add a SETUP_CODE on the host to turn it on.', 403);
-  const given = Buffer.from(String(req.body.code || '')), want = Buffer.from(code);
-  if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) return bad(res, 'That setup code is not right', 403);
-  const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = String(req.body.email || '').trim().slice(0, 120) || null;
-  const clubName = String(req.body.club || '').trim().slice(0, 80) || 'Champions Toastmasters Club';
+/* ───────── accounts: email and password, a club code to join, and a wizard to start a club ───────── */
+const tries = new Map();   // slows down password guessing: 10 tries per email per 15 minutes
+const tooMany = (key) => { const now = Date.now(), hits = (tries.get(key) || []).filter((t) => now - t < 900000); hits.push(now); tries.set(key, hits); return hits.length > 10; };
+const sessionFor = (p) => ({ token: p.token, type: p.is_vpe ? 'vpe' : 'member' });
+
+app.get('/api/clubs/lookup', wrap(async (req, res) => {
+  const [c] = await q('select name from clubs where join_code=$1', [String(req.query.code || '').trim().toUpperCase()]);
+  c ? res.json({ name: c.name }) : bad(res, 'We could not find a club with that code', 404);
+}));
+
+app.post('/api/auth/signin', wrap(async (req, res) => {
+  const email = normEmail(req.body.email), pw = String(req.body.password || '');
+  if (!email || !pw) return bad(res, 'Enter your email and password');
+  if (tooMany(email)) return bad(res, 'Too many tries. Wait a few minutes and try again.', 429);
+  const rows = await q(`select p.*, c.name as club_name from people p join clubs c on c.id=p.club_id where lower(p.email)=$1 and p.password_hash is not null and p.status<>'inactive'`, [email]);
+  const ok = rows.filter((r) => checkPw(pw, r.password_hash));
+  if (!ok.length) return bad(res, 'That email and password do not match', 401);
+  if (ok.length === 1) return res.json(sessionFor(ok[0]));
+  res.json({ choose: ok.map((r) => ({ club: r.club_name, ...sessionFor(r) })) });
+}));
+
+app.post('/api/auth/join', wrap(async (req, res) => {
+  const [club] = await q('select id, name from clubs where join_code=$1', [String(req.body.code || '').trim().toUpperCase()]);
+  if (!club) return bad(res, 'We could not find a club with that code', 404);
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = normEmail(req.body.email);
   if (name.length < 2 || name.length > 80) return bad(res, 'Enter your name');
-  const t = token();
-  await tx(async (run) => {
-    let [club] = await run('select id from clubs order by id limit 1');
-    if (!club) [club] = await run('insert into clubs(name) values ($1) returning id', [clubName]);
-    await run(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential) values ($1,$2,$3,'member','active',true,$4,'setup','TM')`, [club.id, name, email, t]);
+  if (!validEmail(email)) return bad(res, 'Enter a valid email address');
+  const bp = pwProblem(req.body.password); if (bp) return bad(res, bp);
+  const [dup] = await q('select 1 as x from people where club_id=$1 and lower(email)=$2', [club.id, email]);
+  if (dup) return bad(res, 'That email already has an account in this club. Sign in, or ask your VPE for your link.', 409);
+  const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',$4,'join','',$5) returning *`, [club.id, name, email, token(), hashPw(req.body.password)]);
+  res.json(sessionFor(p));
+}));
+
+/* the wizard: a new club, its VPE, and its first year of meetings */
+app.post('/api/clubs', wrap(async (req, res) => {
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = normEmail(req.body.email);
+  const clubName = String(req.body.club?.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (name.length < 2 || name.length > 80) return bad(res, 'Enter your name');
+  if (!validEmail(email)) return bad(res, 'Enter a valid email address');
+  const bp = pwProblem(req.body.password); if (bp) return bad(res, bp);
+  if (clubName.length < 2) return bad(res, 'Enter your club name');
+  const pc = cleanPattern(req.body.club?.pattern); if (pc.error) return bad(res, pc.error);
+  const number = Math.max(1, Math.min(9999, parseInt(req.body.club?.firstNumber, 10) || 1));
+  const out = await tx(async (t) => {
+    let code; for (let i = 0; i < 8; i++) { code = joinCode(); if (!(await t('select 1 as x from clubs where join_code=$1', [code])).length) break; }
+    const [club] = await t('insert into clubs(name,pattern,join_code) values ($1,$2,$3) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code]);
+    const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(req.body.password)]);
+    const made = await generateMeetings(t, club, { months: 12, firstNumber: number });
+    return { ...sessionFor(vpe), join_code: club.join_code, meetings: made };
   });
-  res.json({ token: t });
+  res.json(out);
+}));
+
+/* the signed-in person's account, and their club's details */
+app.get('/api/account', needPerson, wrap(async (req, res) => {
+  const [c] = await q('select name, join_code, pattern from clubs where id=$1', [req.person.club_id]);
+  res.json({ name: req.person.name, email: req.person.email || '', has_password: !!req.person.password_hash, club: { name: c.name, join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern) } });
+}));
+app.put('/api/account', needPerson, wrap(async (req, res) => {
+  const email = normEmail(req.body.email), pw = req.body.password;
+  if (!validEmail(email)) return bad(res, 'Enter a valid email address');
+  if (req.person.password_hash && pw && !checkPw(String(req.body.current || ''), req.person.password_hash)) return bad(res, 'Your current password is not right', 403);
+  const [dup] = await q('select 1 as x from people where club_id=$1 and lower(email)=$2 and id<>$3', [req.person.club_id, email, req.person.id]);
+  if (dup) return bad(res, 'Someone in your club already uses that email', 409);
+  if (pw || !req.person.password_hash) { const bp = pwProblem(pw); if (bp) return bad(res, bp); }
+  await q('update people set email=$1, password_hash=coalesce($2, password_hash) where id=$3', [email, pw ? hashPw(pw) : null, req.person.id]);
+  res.json({ ok: true });
+}));
+app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
+  const pc = cleanPattern(req.body.pattern); if (pc.error) return bad(res, pc.error);
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name) where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id]);
+  res.json({ ok: true });
+}));
+app.post('/api/vpe/club/meetings', needPerson, needVpe, wrap(async (req, res) => {
+  const made = await tx(async (t) => {
+    const [club] = await t('select id, pattern from clubs where id=$1', [req.person.club_id]);
+    if (!club.pattern) return -1;
+    return generateMeetings(t, club, { months: 12, firstNumber: Math.max(1, parseInt(req.body.firstNumber, 10) || 1) });
+  });
+  made < 0 ? bad(res, 'Set your meeting pattern first') : res.json({ made });
 }));
 
 /* demo picker: lists who you can sign in as. Off when DEMO_MODE=false. */
@@ -303,7 +367,9 @@ app.get('/api/vpe/meetings', needPerson, needVpe, wrap(async (req, res) => {
 app.post('/api/vpe/meetings', needPerson, needVpe, wrap(async (req, res) => {
   const out = await tx(async (t) => {
     const [last] = await t(`select number, ${DATE('date')} as date from meetings where club_id=$1 order by number desc limit 1`, [req.person.club_id]);
-    const date = nextClubDate(last ? last.date : new Date().toISOString().slice(0, 10));
+    const [club] = await t('select pattern from clubs where id=$1', [req.person.club_id]);
+    const from = last ? last.date : new Date().toISOString().slice(0, 10);
+    const date = (club?.pattern && nextPatternDate(club.pattern, from)) || nextClubDate(from);
     const [m] = await t('insert into meetings(club_id,number,date,feedback_code) values ($1,$2,$3,$4) returning id, number', [req.person.club_id, (last?.number || 0) + 1, date, token().slice(0, 10)]);
     for (let i = 0; i < ROLE_DEFS.length; i++) await t('insert into meeting_roles(meeting_id,role_key,label,position,token) values ($1,$2,$3,$4,$5)', [m.id, ROLE_DEFS[i][0], ROLE_DEFS[i][1], i, token()]);
     return m;
@@ -632,6 +698,7 @@ app.use((err, _req, res, _next) => { console.error(err); res.status(500).json({ 
 export const ready = (async () => {
   const kind = await initDb();
   await ensurePathways();
+  for (const c of await q('select id from clubs where join_code is null')) await q('update clubs set join_code=$1 where id=$2', [joinCode(), c.id]);
   if (DEMO && (await seedIfEmpty())) console.log('Empty database: loaded demo data for Champions Toastmasters Club.');
   return kind;
 })();

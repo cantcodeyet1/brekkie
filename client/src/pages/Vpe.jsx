@@ -9,6 +9,7 @@ import { Btn, Chip, ErrorMsg, Foot, I, Loading, Meter, Modal, Page, PersonSelect
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Roster', icon: I.cal },
   { to: '/v/members', label: 'Members', icon: I.ppl },
+  { to: '/v/club', label: 'Club', icon: I.home },
 ];
 const statusKind = (s) => (s === 'Done' ? '' : s === 'Next' ? 'on' : 'wait');
 const roleLink = (base, token) => `${base}/r/${token}`;

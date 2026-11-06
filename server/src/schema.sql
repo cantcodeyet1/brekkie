@@ -189,3 +189,11 @@ alter table meeting_roles add column if not exists path_name text;
 alter table meeting_roles add column if not exists path_level int;
 alter table evaluations add column if not exists path_name text;
 alter table evaluations add column if not exists path_level int;
+
+-- accounts and many clubs: each club has a join code and a meeting pattern; people can sign in with email and password
+alter table clubs add column if not exists pattern jsonb;
+alter table clubs add column if not exists join_code text;
+alter table clubs add column if not exists created_at timestamptz not null default now();
+create unique index if not exists clubs_join_code_idx on clubs(join_code) where join_code is not null;
+alter table people add column if not exists password_hash text;
+create index if not exists people_email_idx on people(lower(email));

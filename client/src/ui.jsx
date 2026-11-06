@@ -46,16 +46,16 @@ export function ToastProvider({ children }) {
 const ShellCtx = createContext({ nav: [], who: '', onSignOut: null });
 export const Wordmark = ({ className = '' }) => <Link to="/start" className={'wm ' + className} aria-label="Brekkie home">Brekkie<i /></Link>;
 
-export function Shell({ nav, who, sub, onSignOut, noSide, bare, topNav, children }) {
+export function Shell({ nav, who, sub, onSignOut, onAccount, noSide, bare, topNav, children }) {
   const desk = useDesk();
   return (
-    <ShellCtx.Provider value={{ nav, who, sub, onSignOut, bare }}>
+    <ShellCtx.Provider value={{ nav, who, sub, onSignOut, onAccount, bare }}>
       <div className={'app' + (desk ? ' desk' : '') + (topNav ? ' topnav-app' : '')}>
         {desk && topNav && (
           <header className="topnav">
             <Wordmark />
             <nav>{nav.filter((n) => n.to).map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'on' : '')}>{n.icon}{n.label}</NavLink>)}</nav>
-            {who && <span className="who"><b>{who}</b>{onSignOut && <button type="button" className="lnk" onClick={onSignOut}>Sign out</button>}</span>}
+            {who && <span className="who"><b>{who}</b>{onAccount && <button type="button" className="lnk" onClick={onAccount}>Account</button>}{onSignOut && <button type="button" className="lnk" onClick={onSignOut}>Sign out</button>}</span>}
           </header>
         )}
         <div className="screen">
@@ -65,7 +65,7 @@ export function Shell({ nav, who, sub, onSignOut, noSide, bare, topNav, children
               {nav.map((it, i) => it.label && !it.to
                 ? <div className="sl" key={i}>{it.label}</div>
                 : <NavLink key={it.to} to={it.to} end={it.end} className={({ isActive }) => (isActive ? 'on' : '')} style={{ textDecoration: 'none' }}>{it.icon}{it.label}</NavLink>)}
-              <div className="me"><b>{who}</b>{sub}{onSignOut && <button className="lnk" style={{ display: 'block', marginTop: 6 }} onClick={onSignOut}>Sign out</button>}</div>
+              <div className="me"><b>{who}</b>{sub}{onAccount && <button className="lnk" style={{ display: 'block', marginTop: 6 }} onClick={onAccount}>Account</button>}{onSignOut && <button className="lnk" style={{ display: 'block', marginTop: 2 }} onClick={onSignOut}>Sign out</button>}</div>
             </aside>
           )}
           {children}
@@ -78,14 +78,14 @@ export function Shell({ nav, who, sub, onSignOut, noSide, bare, topNav, children
 /* One screen. `root` pages show the brand bar and (on phones) the bottom nav; others show a back button. */
 export function Page({ title, root, wide, narrow, full, foot, back, onBack, children }) {
   const desk = useDesk();
-  const { nav, who, onSignOut, bare } = useContext(ShellCtx);
+  const { nav, who, onSignOut, onAccount, bare } = useContext(ShellCtx);
   const go = useNavigate();
   return (
     <div className="main">
       {bare && desk && <div className="hdr-r"><Wordmark /><span style={{ fontSize: 13, color: 'var(--mute)' }}>Champions Toastmasters Club</span></div>}
       {bare && !desk && root && <div className="brand"><Wordmark /><span className="who">Champions Toastmasters Club</span></div>}
       {!root && <div className="top"><button className="back" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} aria-label="Back">{I.back}</button><span className="ttl" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} style={{ cursor: 'pointer' }}>{title}</span>{!desk && <span style={{ marginLeft: 'auto', paddingRight: 10 }}><Wordmark /></span>}</div>}
-      {root && !desk && !bare && <div className="brand"><Wordmark /><span className="who"><b>{who}</b>{onSignOut && <button className="lnk" style={{ marginLeft: 10 }} onClick={onSignOut}>Sign out</button>}</span></div>}
+      {root && !desk && !bare && <div className="brand"><Wordmark /><span className="who"><b>{who}</b>{onAccount && <button className="lnk" style={{ marginLeft: 10 }} onClick={onAccount}>Account</button>}{onSignOut && <button className="lnk" style={{ marginLeft: 10 }} onClick={onSignOut}>Sign out</button>}</span></div>}
       <div className="scroll"><div className={'in' + (wide ? ' wide' : '') + (narrow ? ' narrow' : '') + (full ? ' full' : '')}>{children}</div></div>
       {foot}
       {root && !desk && nav.some((n) => n.to && !n.desktopOnly) && (
