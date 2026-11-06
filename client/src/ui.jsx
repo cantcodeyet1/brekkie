@@ -127,6 +127,9 @@ export function Modal({ title, children, onClose, wide }) {
 /* ───────── brand dropdown ─────────
    Replaces every native <select>. White card, hairline border, Loyal Blue selection with a Happy Yellow marker,
    type-to-search on long lists, full keyboard support. */
+/* the small yellow G that marks a guest, used everywhere except the agenda */
+export const GBadge = () => <span className="gb" title="Guest" aria-label="Guest">G</span>;
+
 export function Select({ value, onChange, options, placeholder = 'Select', sm, disabled, searchable, addLabel, onAdd, label, className = '' }) {
   const [open, setOpen] = useState(false);
   const [qy, setQy] = useState('');
@@ -174,7 +177,7 @@ export function Select({ value, onChange, options, placeholder = 'Select', sm, d
       <button type="button" ref={btn} className={'inp selbtn' + (sm ? ' sm' : '') + (cur ? '' : ' todo')} disabled={disabled} aria-haspopup="listbox" aria-expanded={open} aria-label={label}
         onClick={() => (open ? close(false) : openIt())}
         onKeyDown={(e) => { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); openIt(); } }}>
-        <span className="v">{cur ? cur.label : <span className="sph">{placeholder}</span>}</span>{I.down}
+        <span className="v">{cur ? <><span className="nm">{cur.label}</span>{cur.guest && <GBadge />}</> : <span className="sph">{placeholder}</span>}</span>{I.down}
       </button>
       {open && createPortal(
         <div ref={pop} className="sel-pop" style={pos} role="listbox" id={id} tabIndex={-1} onKeyDown={key}>
@@ -184,7 +187,7 @@ export function Select({ value, onChange, options, placeholder = 'Select', sm, d
             <div key={String(o.value)} role="option" aria-selected={!o.add && String(o.value) === String(value)}
               className={'sel-opt' + (i === hi ? ' hi' : '') + (!o.add && String(o.value) === String(value) ? ' on' : '') + (o.add ? ' add' : '')}
               onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); pick(o); }}>
-              <span className="t">{o.label}{o.sub && <small>{o.sub}</small>}</span>
+              <span className="t">{o.label}{o.guest && <GBadge />}{o.sub && <small>{o.sub}</small>}</span>
             </div>
           ))}
         </div>, document.body)}
@@ -198,7 +201,7 @@ export function PersonSelect({ value, onChange, people, onAddGuest, placeholder 
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const opts = [...(allowClear && value ? [{ value: '__none', label: 'Unassigned' }] : []), ...[...people].filter((p) => !exclude.includes(p.id)).sort((a, b) => (a.kind === 'guest') - (b.kind === 'guest') || a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name, sub: p.kind === 'guest' ? 'Guest' : undefined }))];
+  const opts = [...(allowClear && value ? [{ value: '__none', label: 'Unassigned' }] : []), ...[...people].filter((p) => !exclude.includes(p.id)).sort((a, b) => (a.kind === 'guest') - (b.kind === 'guest') || a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name, guest: p.kind === 'guest' }))];
   const add = async () => {
     if (name.trim().length < 2) { setErr('Enter a name'); return; }
     setBusy(true); setErr('');

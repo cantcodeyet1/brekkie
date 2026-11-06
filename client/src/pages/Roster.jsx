@@ -94,7 +94,6 @@ export default function Roster() {
       <td className={'rc' + (role.person_id ? ' filled' : '') + (dup ? ' dup' : '') + cls(m)} key={m.id} title={dup ? 'This person has more than one role at this meeting' : undefined}>
         <div className="pwrap">
           <PersonSelect value={role.person_id} placeholder="Assign" sm allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(m, role, { person_id: v })} />
-          {role.person_kind === 'guest' && <span className="gtag" title="Guest" aria-label="Guest">G</span>}
         </div>
         {extra}
       </td>

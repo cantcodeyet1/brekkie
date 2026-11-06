@@ -1085,9 +1085,7 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
 .rtbl td.rc.filled.picked{background:#E4F0E9}
 .rtbl td.rc.filled .selbtn:hover{background:rgba(255,255,255,.7)}
 .pwrap{position:relative}
-.rc .selbtn .v{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rc .gtag{position:absolute;right:30px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:#F2DF74;color:#5f5000;font:800 11px/20px var(--head);text-align:center;pointer-events:none}
-.rc .selbtn{padding-right:50px}
+.rc .selbtn{padding-right:34px}
 .rc .selbtn svg{position:absolute;right:10px;top:50%;transform:translateY(-50%)}
 
 /* role player welcome: the whole page, no card */
@@ -1152,3 +1150,8 @@ textarea.inp.grow{overflow:hidden}
 .rtile .selbtn.todo:not(:disabled),.rtile .inp.todo{background:#FFFBEF;box-shadow:0 0 0 1.5px #EBC96A inset}
 .rtile .selbtn.todo:not(:disabled) .sph,.rtile .inp.todo::placeholder{color:#8A6A12}
 .rtile .selbtn.todo:disabled{opacity:.55}
+
+.gb{display:inline-grid;place-items:center;flex:none;width:19px;height:19px;border-radius:50%;background:#F2DF74;color:#5f5000;font:800 11px/1 var(--head);margin-left:7px;vertical-align:middle}
+.selbtn .v{display:flex;align-items:center;min-width:0}
+.selbtn .v .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selbtn .v .gb{margin-left:7px}

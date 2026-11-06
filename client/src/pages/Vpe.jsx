@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
-import { Btn, Chip, ErrorMsg, Foot, I, Loading, Meter, Modal, Page, PathPick, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PathPick, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Roster', icon: I.cal },
@@ -166,7 +166,7 @@ export function VpeMeeting() {
   const addGuest = async (name) => { const g = await api('/people/guest', { method: 'POST', body: { name } }); await peopleQ.reload(); return g; };
   const fb = roles.filter((r) => FEEDBACK_ROLES.includes(r.role_key));
   const speakers = roles.filter((r) => r.role_key === 'speaker');
-  const personChip = (r) => r.person_kind === 'guest' && <Chip kind="guest" style={{ marginLeft: 6 }}>Guest</Chip>;
+  const personChip = (r) => r.person_kind === 'guest' && <GBadge />;
   const fillWord = async () => {
     setWordBusy(true); setWordNote(''); setWordAlts([]);
     try {
