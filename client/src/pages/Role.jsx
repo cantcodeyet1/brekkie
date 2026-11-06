@@ -74,6 +74,29 @@ export default function RoleApp() {
   return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
 }
 
+/* shown to guests: one tap tells the VPE they would like to join */
+function JoinAsk({ data, token, dark }) {
+  const [asked, setAsked] = useState(!!data.me?.join_requested);
+  const [email, setEmail] = useState(data.me?.email || '');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (data.me?.kind !== 'guest') return null;
+  const send = async () => {
+    setBusy(true); setErr('');
+    try { await api('/role/join-request', { method: 'POST', body: { email }, token }); setAsked(true); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <div className={'joinask' + (dark ? ' dark' : '')}>
+      {asked
+        ? <><b>Thanks, your VPE knows.</b><span>They will make you a member of Champions Toastmasters Club.</span></>
+        : <><b>Want to join Champions?</b><span>Tell the VPE you would like to become a member.</span>
+          <input className="inp" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }} placeholder="Your email (optional)" autoComplete="email" aria-label="Your email" />
+          {err && <p className="err">{err}</p>}
+          <button type="button" className="jbtn" onClick={send} disabled={busy}>{busy ? 'One moment…' : 'I would like to join'}</button></>}
+    </div>
+  );
+}
+
 function RoleBody({ data, token }) {
   const key = data.role.key, meta = ROLE_META[key];
   const [view, setView] = useState('land');
@@ -114,6 +137,7 @@ function RoleBody({ data, token }) {
           <p className="sub">{meta?.blurb}</p>
           <p className="sub">Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p>
           {data.me?.kind === 'guest' && <div className="rwel-note"><b>Welcome as a guest.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
+          <JoinAsk data={data} token={token} dark />
           <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</button>
         </div>
       </div>
@@ -122,7 +146,8 @@ function RoleBody({ data, token }) {
   if (view === 'done') return (
     <Page onBack={() => setView('sheet')} title="" foot={<Foot col><Btn kind="ghost" onClick={() => setView('sheet')}>Edit my notes</Btn></Foot>}>
       <div className="done"><div className="tick">{I.check}</div><h1 className="pg">Thanks, {first}.</h1><p className="lede">Your {meta.name.toLowerCase()} notes are in. Members will find them in their history from now on.</p>
-        <div style={{ marginTop: 20, textAlign: 'left' }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div></div>
+        <div style={{ marginTop: 20, textAlign: 'left' }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>
+        <div style={{ marginTop: 20, textAlign: 'left' }}><JoinAsk data={data} token={token} /></div></div>
     </Page>
   );
 

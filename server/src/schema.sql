@@ -204,3 +204,6 @@ alter table meetings add column if not exists origin text not null default '';
 -- a member's Pathways path and level, used to fill in their speaker slots
 alter table people add column if not exists path_name text;
 alter table people add column if not exists path_level int;
+
+-- a guest who asked to join the club
+alter table people add column if not exists join_requested_at timestamptz;

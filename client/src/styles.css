@@ -1178,3 +1178,14 @@ textarea.inp.grow{overflow:hidden}
 @media (max-width:700px){.skel .g{grid-template-columns:1fr}.skel .g i{height:110px}}
 @keyframes skel{from{background-position:100% 0}to{background-position:0 0}}
 @media (prefers-reduced-motion:reduce){.skel i{animation:none}}
+
+/* guest: want to join */
+.joinask{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:16px;background:#F4F7F8;max-width:420px}
+.joinask b{font:700 16px var(--head)}
+.joinask span{font-size:14.5px;color:var(--mute);line-height:1.4}
+.joinask .jbtn{height:46px;border:0;border-radius:12px;background:var(--blue);color:#fff;font:700 15px var(--head);cursor:pointer}
+.joinask .jbtn:disabled{opacity:.6}
+.joinask.dark{background:rgba(255,255,255,.12)}
+.joinask.dark span{color:rgba(255,255,255,.8)}
+.joinask.dark .jbtn{background:#fff;color:var(--blue)}
+.joinask.dark .inp{background:rgba(255,255,255,.95);color:#1c2b33}

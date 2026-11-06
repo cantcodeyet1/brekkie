@@ -421,11 +421,12 @@ export function VpePeople() {
   const guestRow = (p) => (
     <div className="prow guest" key={p.id}>
       <span className="who"><Avatar name={p.name} tone="gray" /><span><b><Link className="plink" to={`/v/members/${p.id}`}>{p.name}</Link></b><small>{p.email || 'No email'}</small></span></span>
-      <span>{p.status === 'inactive' ? <Chip>Archived</Chip> : <Chip kind="guest">Temporary</Chip>}{p.temp_until && <small className="dim block">until {longDate(p.temp_until)}</small>}</span>
+      <span>{p.status === 'inactive' ? <Chip>Archived</Chip> : p.join_requested_at ? <Chip kind="ok">Wants to join</Chip> : <Chip kind="guest">Temporary</Chip>}{p.temp_until && <small className="dim block">until {longDate(p.temp_until)}</small>}</span>
       {desk && <span className="num hm">{p.roles_played} {p.roles_played === 1 ? 'role' : 'roles'}</span>}
       {desk && <span className="hm dim c-opt">{p.created_via === 'role_sheet' ? 'Added from a sheet' : 'Added by VPE'}</span>}
       <span className="gbtns">
-        <Btn sm onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }), `${p.name} is now a member`)}>Make member</Btn>
+        <Btn sm kind={p.join_requested_at ? '' : 'ghost'} onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }), `${p.name} is now a member`)}>Make member</Btn>
+        {p.status !== 'inactive' && <Btn sm kind="ghost" onClick={(e) => copyLink(e, p)}>{I.copy}Access link</Btn>}
         {p.status === 'inactive'
           ? <Btn sm kind="ghost" onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { status: 'active' } }), 'Restored')}>Restore</Btn>
           : <><Btn sm kind="ghost" onClick={() => act(() => api(`/vpe/people/${p.id}/extend`, { method: 'POST' }), 'Extended by 30 days')}>Extend</Btn>

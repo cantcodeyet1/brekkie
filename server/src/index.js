@@ -194,10 +194,20 @@ app.get('/api/role', needRole, wrap(async (req, res) => {
   const projects = await q('select * from projects order by level, id');
   res.json({
     role: { id: r.id, key: r.role_key, label: r.label, submitted_at: r.submitted_at, target_role_id: r.target_role_id },
-    me: pub(req.rolePerson), meeting, people, roles, projects, sheet: r.sheet || {}, evalResources: r.role_key === 'evaluator' ? EVAL_RESOURCES : undefined,
+    me: req.rolePerson && { ...pub(req.rolePerson), join_requested: !!req.rolePerson.join_requested_at }, meeting, people, roles, projects, sheet: r.sheet || {}, evalResources: r.role_key === 'evaluator' ? EVAL_RESOURCES : undefined,
   });
 }));
 
+/* a guest says they would like to join the club; the VPE sees it and makes them a member */
+app.post('/api/role/join-request', needRole, wrap(async (req, res) => {
+  const p = req.rolePerson;
+  if (!p) return bad(res, 'Not found', 404);
+  if (p.kind !== 'guest') return res.json({ ok: true, member: true });
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (email && !validEmail(email)) return bad(res, 'Enter a valid email address');
+  await q(`update people set join_requested_at=coalesce(join_requested_at, now()), email=coalesce(nullif($2, ''), email) where id=$1`, [p.id, email]);
+  res.json({ ok: true });
+}));
 app.put('/api/role/sheet', needRole, wrap(async (req, res) => {
   await saveSheet(req.role, req.body || {});
   res.json({ ok: true, saved_at: new Date().toISOString() });
@@ -588,7 +598,7 @@ app.post('/api/vpe/roles/:id/regenerate', needPerson, needVpe, wrap(async (req, 
 
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const people = await q(`select id,name,email,credential,path_name,path_level,kind,status,is_vpe,token,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
+  const people = await q(`select id,name,email,credential,path_name,path_level,join_requested_at,kind,status,is_vpe,token,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
   // plain counts that can be checked by hand
   const counts = async (sql) => Object.fromEntries((await q(sql, [club])).map((r) => [r.pid, r.n]));
   const speeches = await counts(`select e.speaker_id as pid, count(*)::int as n from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=$1 group by e.speaker_id`);
@@ -616,7 +626,7 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   if ('path_name' in b) await q('update people set path_name=$1, path_level=$2 where id=$3', [b.path_name || null, b.path_name ? (Number(b.path_level) || null) : null, p.id]);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
-  await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential]);
+  await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential]);
   res.json({ ok: true });
 }));
 app.post('/api/vpe/people/:id/extend', needPerson, needVpe, wrap(async (req, res) => {
