@@ -270,6 +270,19 @@ export function ProjectPicker({ catalog, value, pathName, level, onChange }) {
   );
 }
 
+/* Just the path and level, for a member's own profile. onChange receives { path_name, path_level }. */
+export function PathPick({ catalog, pathName, level, onChange }) {
+  const P = catalog.find((p) => p.name === pathName);
+  return (
+    <div className="ppick">
+      <Select sm value={pathName || ''} placeholder="Path" searchable={false} allowClear options={catalog.map((p) => ({ value: p.name, label: p.name }))}
+        onChange={(v) => onChange({ path_name: v || null, path_level: null })} />
+      <Select sm value={level ?? ''} placeholder="Level" disabled={!P} options={(P?.levels || []).map((l) => ({ value: l.level, label: `Level ${l.level}`, sub: l.title }))}
+        onChange={(v) => onChange({ path_name: pathName, path_level: v })} />
+    </div>
+  );
+}
+
 /* A person's initials on a brand-coloured circle. The colour follows the name, so it is the same everywhere. */
 const TONES = ['blue', 'maroon', 'teal', 'gold', 'slate'];
 export function Avatar({ name = '', size = 40, tone }) {

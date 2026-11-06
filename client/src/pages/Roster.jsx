@@ -64,7 +64,11 @@ export default function Roster() {
       if ('person_id' in body) { const p = nameOf(body.person_id); next.person = p?.name || null; next.person_kind = p?.kind || null; }
       return next;
     }) })));
-    try { await api(`/vpe/roles/${role.id}`, { method: 'PATCH', body }); } catch (e) { toast(e.message); rq.reload(); }
+    try {
+      const res = await api(`/vpe/roles/${role.id}`, { method: 'PATCH', body });
+      if (res.path_name !== undefined) setMs((cur) => cur.map((x) => (x.id !== m.id ? x : { ...x, roles: x.roles.map((r) => (r.id === role.id ? { ...r, path_name: res.path_name, path_level: res.path_level, project_id: res.project_id } : r)) })));
+      if ('path_name' in body || 'person_id' in body) peopleQ.reload();
+    } catch (e) { toast(e.message); rq.reload(); }
   };
   const addGuest = async (name) => { const g = await api('/people/guest', { method: 'POST', body: { name } }); await peopleQ.reload(); return g; };
   const go = (n) => { setFocus(n); setFrom(n); };

@@ -122,7 +122,7 @@ app.post('/api/clubs', wrap(async (req, res) => {
 /* the signed-in person's account, and their club's details */
 app.get('/api/account', needPerson, wrap(async (req, res) => {
   const [c] = await q('select name, join_code, pattern from clubs where id=$1', [req.person.club_id]);
-  res.json({ name: req.person.name, email: req.person.email || '', has_password: !!req.person.password_hash, club: { name: c.name, join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern) } });
+  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern) } });
 }));
 app.put('/api/account', needPerson, wrap(async (req, res) => {
   const email = normEmail(req.body.email), pw = req.body.password;
@@ -132,6 +132,7 @@ app.put('/api/account', needPerson, wrap(async (req, res) => {
   if (dup) return bad(res, 'Someone in your club already uses that email', 409);
   if (pw || !req.person.password_hash) { const bp = pwProblem(pw); if (bp) return bad(res, bp); }
   await q('update people set email=$1, password_hash=coalesce($2, password_hash) where id=$3', [email, pw ? hashPw(pw) : null, req.person.id]);
+  if ('path_name' in req.body) await q('update people set path_name=$1, path_level=$2 where id=$3', [req.body.path_name || null, req.body.path_name ? (Number(req.body.path_level) || null) : null, req.person.id]);
   res.json({ ok: true });
 }));
 app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
@@ -566,11 +567,18 @@ app.patch('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
   if ('project_id' in b && !b.project_id) { next.path_name = 'path_name' in b ? next.path_name : r.path_name; }
   if ('speech_title' in b) next.speech_title = String(b.speech_title || '');
   if ('target_role_id' in b) next.target_role_id = b.target_role_id || null;
+  // a speaker slot starts from the member's own path and level, and stays editable
+  if (r.role_key === 'speaker' && next.person_id && next.person_id !== r.person_id && !('path_name' in b)) {
+    const [pp] = await q('select path_name, path_level from people where id=$1', [next.person_id]);
+    if (pp?.path_name) { if (next.path_name !== pp.path_name || next.path_level !== pp.path_level) next.project_id = 'project_id' in b ? next.project_id : null; next.path_name = pp.path_name; next.path_level = pp.path_level; }
+  }
   // a new person gets a fresh link, so the previous person's link stops working
   const tk = next.person_id !== r.person_id ? token() : r.token;
   await q('update meeting_roles set person_id=$1, project_id=$2, speech_title=$3, target_role_id=$4, token=$5, path_name=$6, path_level=$7 where id=$8',
     [next.person_id, next.project_id, next.speech_title, next.target_role_id, tk, next.path_name ?? null, next.path_level ?? null, r.id]);
-  res.json({ ok: true, token: tk });
+  // what the VPE sets on a speaker slot is remembered for next time
+  if (r.role_key === 'speaker' && next.person_id && ('path_name' in b || 'path_level' in b) && next.path_name) await q('update people set path_name=$1, path_level=$2 where id=$3', [next.path_name, next.path_level ?? null, next.person_id]);
+  res.json({ ok: true, token: tk, path_name: next.path_name ?? null, path_level: next.path_level ?? null, project_id: next.project_id });
 }));
 app.post('/api/vpe/roles/:id/regenerate', needPerson, needVpe, wrap(async (req, res) => {
   const tk = token();
@@ -580,7 +588,7 @@ app.post('/api/vpe/roles/:id/regenerate', needPerson, needVpe, wrap(async (req, 
 
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const people = await q(`select id,name,email,credential,kind,status,is_vpe,token,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
+  const people = await q(`select id,name,email,credential,path_name,path_level,kind,status,is_vpe,token,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
   // plain counts that can be checked by hand
   const counts = async (sql) => Object.fromEntries((await q(sql, [club])).map((r) => [r.pid, r.n]));
   const speeches = await counts(`select e.speaker_id as pid, count(*)::int as n from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=$1 group by e.speaker_id`);
@@ -605,6 +613,7 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   if ('credential' in b) credential = String(b.credential || '').trim().slice(0, 20);
   if (typeof b.name === 'string' && b.name.trim().length > 1) name = b.name.trim();
   if ('email' in b) email = b.email || null;
+  if ('path_name' in b) await q('update people set path_name=$1, path_level=$2 where id=$3', [b.path_name || null, b.path_name ? (Number(b.path_level) || null) : null, p.id]);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
   await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential]);
@@ -641,7 +650,7 @@ async function givenFor(pid) {
 /* one member: what they have delivered, the roles they have done, the feedback they have given and received */
 app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const [p] = await q(`select id,name,email,credential,kind,status,is_vpe,token,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
+  const [p] = await q(`select id,name,email,credential,path_name,path_level,kind,status,is_vpe,token,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
   if (!p) return bad(res, 'Not found', 404);
   const hist = await loadHist(club);
   const projects = hist.evals.filter((e) => e.pid === p.id).reverse().map((e) => ({ id: e.id, title: e.title, project: e.project, path: e.path, level: e.level, date: e.date, number: e.number, by: e.by, work: e.work }));

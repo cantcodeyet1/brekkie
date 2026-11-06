@@ -200,3 +200,7 @@ create index if not exists people_email_idx on people(lower(email));
 
 -- word of the day origin (etymology)
 alter table meetings add column if not exists origin text not null default '';
+
+-- a member's Pathways path and level, used to fill in their speaker slots
+alter table people add column if not exists path_name text;
+alter table people add column if not exists path_level int;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, useApi } from '../api.js';
-import { Btn, ErrorMsg, I, Loading, Modal, Page, copyText, useToast } from '../ui.jsx';
+import { Btn, ErrorMsg, I, Loading, Modal, Page, PathPick, copyText, useToast } from '../ui.jsx';
 import { PatternFields, datesFor, fmtDate, newPattern } from './Wizard.jsx';
 
 /* ───────── the VPE's club page: join code, meeting pattern, create meetings ───────── */
@@ -56,10 +56,11 @@ export default function Club() {
 export function AccountModal({ onClose }) {
   const toast = useToast();
   const { data } = useApi('/account');
+  const cat = useApi('/pathways');
   const [f, setF] = useState({ email: '', current: '', password: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (data) setF((x) => ({ ...x, email: data.email })); }, [data]);
+  useEffect(() => { if (data) setF((x) => ({ ...x, email: data.email, path_name: data.path_name, path_level: data.path_level })); }, [data]);
   const save = async () => {
     setBusy(true); setErr('');
     try { await api('/account', { method: 'PUT', body: f }); toast(data.has_password || f.password ? 'Account saved' : 'Saved'); onClose(); } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -71,6 +72,9 @@ export function AccountModal({ onClose }) {
           <p className="lede" style={{ marginTop: 0 }}>{data.has_password ? 'Change your email or password. Your personal link keeps working.' : 'Add a password so you can sign in with your email, not just your link.'}</p>
           <label className="fl" htmlFor="a-email">Email</label>
           <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" />
+          <label className="fl">Your Pathways path</label>
+          <PathPick catalog={cat.data?.paths || []} pathName={f.path_name} level={f.path_level} onChange={(v) => setF((x) => ({ ...x, ...v }))} />
+          <p style={{ margin: '6px 0 0', fontSize: 13.5, color: 'var(--mute)' }}>Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
           {data.has_password && <><label className="fl" htmlFor="a-cur">Current password (only to change it)</label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} autoComplete="current-password" /></>}
           <label className="fl" htmlFor="a-pw">{data.has_password ? 'New password (optional)' : 'Password'}</label>
           <input id="a-pw" className="inp" type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" placeholder="At least 8 characters" />
