@@ -69,7 +69,7 @@ function greeting(date, role) {
 export default function RoleApp() {
   const { token } = useParams();
   const { data, error, loading } = useApi('/role', { token });
-  if (loading) return <Shell nav={[]} who="" bare><div className="main"><div className="rl"><Wordmark className="wm-light" /></div></div></Shell>;
+  if (loading) return <Shell nav={[]} who="" bare><div className="main"><div className="rwel"><Wordmark className="wm-light" /></div></div></Shell>;
   if (error) return <Shell nav={[]} who="" bare><Page root><h1 className="pg">This link is not valid</h1><p className="lede">It may have been replaced by a newer one. Ask the VPE to send your link again.</p></Page></Shell>;
   return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
 }
@@ -106,15 +106,15 @@ function RoleBody({ data, token }) {
 
   if (view === 'land') return (
     <div className="main">
-      <div className="rl">
+      <div className="rwel">
         <Wordmark className="wm-light" />
-        <div className="rl-in">
+        <div className="rwel-in">
           <div className="tag">Meeting {data.meeting.number} · {longDate(data.meeting.date)}</div>
           <h1>Hi {first}, {greeting(data.meeting.date, data.role.label.replace(/ \d$/, ''))}</h1>
           <p className="sub">{meta?.blurb}</p>
           <p className="sub">Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p>
-          {data.me?.kind === 'guest' && <div className="rl-note"><b>Welcome as a guest.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
-          <button type="button" className="rl-go" onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</button>
+          {data.me?.kind === 'guest' && <div className="rwel-note"><b>Welcome as a guest.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
+          <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</button>
         </div>
       </div>
     </div>

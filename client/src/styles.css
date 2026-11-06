@@ -1091,19 +1091,19 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
 .rc .selbtn svg{position:absolute;right:10px;top:50%;transform:translateY(-50%)}
 
 /* role player welcome: the whole page, no card */
-.rl{flex:1;min-height:100dvh;position:relative;overflow:hidden;color:#fff;display:flex;align-items:center;padding:90px 22px 40px;
+.rwel{flex:1;min-height:100dvh;position:relative;overflow:hidden;color:#fff;display:flex;align-items:center;padding:90px 22px 40px;
   background:radial-gradient(120% 90% at 18% 105%,#0d6a93 0%,rgba(13,106,147,0) 58%),linear-gradient(160deg,#00263d 0%,#004165 62%,#0a5a85 100%)}
-.rl .wm,.rl .wm-light{color:#fff!important;position:absolute;top:26px;left:22px;font-size:22px}
-.rl-in{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.rl .tag{font:700 11px var(--head);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7)}
-.rl h1{font:800 clamp(34px,6vw,58px)/1.05 var(--head);letter-spacing:-.038em;margin:0}
-.rl h1 span{background:linear-gradient(transparent 64%,rgba(242,223,116,.9) 64%);padding:0 2px}
-.rl .sub{font-size:18px;line-height:1.45;color:rgba(255,255,255,.84);margin:0}
-.rl-note{background:rgba(255,255,255,.12);border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.4}
-.rl-go{margin-top:14px;height:54px;border:0;border-radius:14px;background:#fff;color:var(--blue);font:700 17px var(--head);cursor:pointer;padding:0 28px;align-self:flex-start;transition:.15s}
-.rl-go:hover{transform:translateY(-1px);box-shadow:0 10px 24px -10px rgba(0,0,0,.5)}
-@media (max-width:640px){.rl{align-items:flex-end;padding-bottom:28px}.rl-go{align-self:stretch}}
-@media (min-width:900px){.rl{padding:90px 7vw}.rl .wm,.rl .wm-light{left:7vw;top:34px}.rl-in{margin:0;max-width:700px}}
+.rwel .wm,.rwel .wm-light{color:#fff!important;position:absolute;top:26px;left:22px;font-size:22px}
+.rwel-in{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.rwel .tag{font:700 11px var(--head);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.rwel h1{font:800 clamp(34px,6vw,58px)/1.05 var(--head);letter-spacing:-.038em;margin:0}
+.rwel h1 span{background:linear-gradient(transparent 64%,rgba(242,223,116,.9) 64%);padding:0 2px}
+.rwel .sub{font-size:18px;line-height:1.45;color:rgba(255,255,255,.84);margin:0}
+.rwel-note{background:rgba(255,255,255,.12);border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.4}
+.rwel-go{margin-top:14px;height:54px;border:0;border-radius:14px;background:#fff;color:var(--blue);font:700 17px var(--head);cursor:pointer;padding:0 28px;align-self:flex-start;transition:.15s}
+.rwel-go:hover{transform:translateY(-1px);box-shadow:0 10px 24px -10px rgba(0,0,0,.5)}
+@media (max-width:640px){.rwel{align-items:flex-end;padding-bottom:28px}.rwel-go{align-self:stretch}}
+@media (min-width:900px){.rwel{padding:90px 7vw}.rwel .wm,.rwel .wm-light{left:7vw;top:34px}.rwel-in{margin:0;max-width:700px}}
 
 /* download buttons */
 .dlbtn{display:flex;align-items:center;gap:14px;width:100%;max-width:420px;padding:12px 14px;border:1px solid #D3D9D9;border-radius:14px;background:#fff;color:#1c2b33;text-align:left;text-decoration:none;cursor:pointer;font:inherit;transition:.15s;margin-bottom:12px}
