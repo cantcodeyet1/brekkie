@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
-import { Btn, Chip, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PathPick, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import PathCard from './PathCard.jsx';
+import { Btn, Chip, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Roster', icon: I.cal },
@@ -521,14 +522,6 @@ function Strip({ children }) {
   );
 }
 
-function PathField({ p }) {
-  const toast = useToast();
-  const cat = useApi('/pathways');
-  const [v, setV] = useState({ path_name: p.path_name || null, path_level: p.path_level ?? null });
-  const save = (n) => { setV(n); api(`/vpe/people/${p.id}`, { method: 'PATCH', body: n }).then(() => toast('Saved')).catch((e) => toast(e.message)); };
-  return <div style={{ minWidth: 260 }}><PathPick catalog={cat.data?.paths || []} pathName={v.path_name} level={v.path_level} onChange={save} /></div>;
-}
-
 export function VpePerson() {
   const { id } = useParams();
   const toast = useToast();
@@ -551,7 +544,6 @@ export function VpePerson() {
           <h1 className="rtitle" style={{ fontSize: 40, margin: '2px 0 6px' }}>{p.name}</h1>
           <div className="pmeta">
             <span>{p.email || 'No email'}</span>
-            {!guest && <PathField p={p} />}
             <label>Agenda title <input className="inp" defaultValue={p.credential || ''} placeholder="TM" maxLength={20} onBlur={(e) => e.target.value !== (p.credential || '') && api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { credential: e.target.value } }).then(() => toast('Saved'))} aria-label="Agenda title" /></label>
           </div>
         </div>
@@ -559,6 +551,8 @@ export function VpePerson() {
       {guest && (
         <div className="banner"><b>Temporary status.</b> {p.temp_until ? `Access runs until ${longDate(p.temp_until)}. ` : ''}Everything they record is already stored under Champions.
           <div style={{ marginTop: 10 }}><Btn sm onClick={async () => { await api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }); toast(`${p.name} is now a member`); reload(); }}>Make a member</Btn></div></div>)}
+
+      {!guest && <PathCard person={p} />}
 
       <div className="pstats three">
         <div><small>Speeches</small><b>{projects.length}</b><span>delivered and evaluated</span></div>

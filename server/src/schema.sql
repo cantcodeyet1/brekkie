@@ -210,3 +210,11 @@ alter table people add column if not exists join_requested_at timestamptz;
 
 -- the role is Toastmaster of the Day
 update meeting_roles set label='Toastmaster of the Day' where role_key='toastmaster' and label='Toastmaster';
+
+-- projects a member has finished, marked by the VPE (a speech on the agenda is not always delivered)
+create table if not exists member_projects (
+  person_id int not null references people(id) on delete cascade,
+  project_id int not null references projects(id) on delete cascade,
+  done_at date not null default current_date,
+  primary key (person_id, project_id)
+);

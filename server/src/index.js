@@ -583,10 +583,10 @@ app.patch('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
   if ('project_id' in b && !b.project_id) { next.path_name = 'path_name' in b ? next.path_name : r.path_name; }
   if ('speech_title' in b) next.speech_title = String(b.speech_title || '');
   if ('target_role_id' in b) next.target_role_id = b.target_role_id || null;
-  // a speaker slot starts from the member's own path and level, and stays editable
-  if (r.role_key === 'speaker' && next.person_id && next.person_id !== r.person_id && !('path_name' in b)) {
-    const [pp] = await q('select path_name, path_level from people where id=$1', [next.person_id]);
-    if (pp?.path_name) { if (next.path_name !== pp.path_name || next.path_level !== pp.path_level) next.project_id = 'project_id' in b ? next.project_id : null; next.path_name = pp.path_name; next.path_level = pp.path_level; }
+  // a speaker slot starts from the member's own path, level and next project, and stays editable
+  if (r.role_key === 'speaker' && next.person_id && next.person_id !== r.person_id && !('path_name' in b) && !('project_id' in b)) {
+    const [pp] = await q('select * from people where id=$1', [next.person_id]);
+    if (pp?.path_name) { const pr = await pathProgress(pp); next.path_name = pp.path_name; next.path_level = pr.current; next.project_id = pr.next?.id ?? null; }
   }
   // a new person gets a fresh link, so the previous person's link stops working
   const tk = next.person_id !== r.person_id ? token() : r.token;
@@ -600,6 +600,60 @@ app.post('/api/vpe/roles/:id/regenerate', needPerson, needVpe, wrap(async (req, 
   const tk = token();
   const r = await q('update meeting_roles set token=$1 where id=$2 and meeting_id in (select id from meetings where club_id=$3) returning id', [tk, req.params.id, req.person.club_id]);
   r.length ? res.json({ token: tk }) : bad(res, 'Not found', 404);
+}));
+
+/* Where a member is on their path: the catalog level by level, what is finished (marked by the VPE, or an evaluated
+   speech), the level they are on and the project to give them next. */
+async function pathProgress(person) {
+  const path = person.path_name;
+  if (!path) return { path: null, levels: [], current: null, next: null, level_complete: false };
+  const rows = await q(`select pp.level, pp.level_title, pp.kind, pp.pos, pp.choose, p.id, p.name, p.length_text
+    from path_projects pp join projects p on p.id=pp.project_id where pp.path=$1 order by pp.level, pp.pos`, [path]);
+  const done = new Map();
+  for (const e of await q(`select e.project_id, ${DATE('m.date')} as date, m.number from evaluations e join meetings m on m.id=e.meeting_id where e.speaker_id=$1 order by m.date`, [person.id])) if (!done.has(e.project_id)) done.set(e.project_id, { date: e.date, source: 'evaluation', meeting: e.number });
+  for (const m of await q(`select project_id, ${DATE('done_at')} as date from member_projects where person_id=$1`, [person.id])) if (!done.has(m.project_id)) done.set(m.project_id, { date: m.date, source: 'manual' });
+  const levels = [];
+  for (const r of rows) {
+    let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, projects: [] });
+    lv.projects.push({ id: r.id, name: r.name, kind: r.kind, pos: r.pos, code: r.kind === 'required' ? `L${r.level}P${r.pos}` : '', length: r.length_text, done: done.get(r.id) || null });
+  }
+  for (const lv of levels) {
+    const req = lv.projects.filter((p) => p.kind === 'required'), el = lv.projects.filter((p) => p.kind === 'elective');
+    lv.required_total = req.length; lv.required_done = req.filter((p) => p.done).length;
+    lv.electives_done = el.filter((p) => p.done).length;
+    lv.complete = lv.required_done === lv.required_total && lv.electives_done >= (lv.choose || 0);
+  }
+  const first = levels.find((l) => !l.complete) || levels[levels.length - 1];
+  const current = levels.some((l) => l.level === person.path_level) ? person.path_level : first?.level ?? null;
+  const cl = levels.find((l) => l.level === current);
+  let next = null;
+  if (cl) {
+    const n = cl.projects.find((p) => p.kind === 'required' && !p.done) || (cl.electives_done < (cl.choose || 0) ? cl.projects.find((p) => p.kind === 'elective' && !p.done) : null);
+    if (n) next = { id: n.id, name: n.name, code: n.code, kind: n.kind, level: cl.level };
+  }
+  return { path, levels, current, next, level_complete: !!cl?.complete, has_next_level: levels.some((l) => l.level > current) };
+}
+app.get('/api/vpe/people/:id/path', needPerson, needVpe, wrap(async (req, res) => {
+  const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
+  if (!p) return bad(res, 'Not found', 404);
+  res.json(await pathProgress(p));
+}));
+app.get('/api/me/path', needPerson, wrap(async (req, res) => res.json(await pathProgress(req.person))));
+app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, res) => {
+  const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
+  if (!p) return bad(res, 'Not found', 404);
+  const pid = Number(req.body.project_id);
+  const [proj] = await q('select id from projects where id=$1', [pid]);
+  if (!proj) return bad(res, 'Unknown project');
+  if (req.body.done === false) {
+    const [ev] = await q('select 1 as x from evaluations where speaker_id=$1 and project_id=$2', [p.id, pid]);
+    if (ev) return bad(res, 'This one was delivered and evaluated at a meeting, so it stays done', 409);
+    await q('delete from member_projects where person_id=$1 and project_id=$2', [p.id, pid]);
+  } else {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : null;
+    await q('insert into member_projects(person_id, project_id, done_at) values ($1,$2,coalesce($3::date, current_date)) on conflict (person_id, project_id) do update set done_at=excluded.done_at', [p.id, pid, d]);
+  }
+  res.json(await pathProgress(p));
 }));
 
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
