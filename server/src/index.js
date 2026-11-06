@@ -62,6 +62,27 @@ app.get('/api/session', wrap(async (req, res) => {
   res.status(401).json({ error: 'No valid link' });
 }));
 
+/* first run: a club with no VPE yet. Whoever holds the setup code (SETUP_CODE on the host) becomes the VPE. */
+const noVpe = async () => !(await q('select 1 from people where is_vpe limit 1')).length;
+app.get('/api/setup/status', wrap(async (_req, res) => res.json({ needsSetup: await noVpe(), hasCode: !!process.env.SETUP_CODE })));
+app.post('/api/setup', wrap(async (req, res) => {
+  if (!(await noVpe())) return bad(res, 'This club is already set up. Open the link your VPE sent you.', 409);
+  const code = process.env.SETUP_CODE;
+  if (!code) return bad(res, 'Setup is switched off. Add a SETUP_CODE on the host to turn it on.', 403);
+  const given = Buffer.from(String(req.body.code || '')), want = Buffer.from(code);
+  if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) return bad(res, 'That setup code is not right', 403);
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = String(req.body.email || '').trim().slice(0, 120) || null;
+  const clubName = String(req.body.club || '').trim().slice(0, 80) || 'Champions Toastmasters Club';
+  if (name.length < 2 || name.length > 80) return bad(res, 'Enter your name');
+  const t = token();
+  await tx(async (run) => {
+    let [club] = await run('select id from clubs order by id limit 1');
+    if (!club) [club] = await run('insert into clubs(name) values ($1) returning id', [clubName]);
+    await run(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential) values ($1,$2,$3,'member','active',true,$4,'setup','TM')`, [club.id, name, email, t]);
+  });
+  res.json({ token: t });
+}));
+
 /* demo picker: lists who you can sign in as. Off when DEMO_MODE=false. */
 app.get('/api/dev/accounts', wrap(async (_req, res) => {
   if (!DEMO) return bad(res, 'Not available', 404);

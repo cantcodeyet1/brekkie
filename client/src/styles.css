@@ -979,3 +979,10 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
 
 .dlrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .dlrow .btn{width:auto;padding:0 16px;text-decoration:none}
+
+/* sign in: paste a link, first-run setup */
+.paste{display:flex;gap:10px;align-items:center;margin-top:14px}
+.paste .inp{flex:1;min-width:0}
+.paste .btn{flex:none;width:auto;padding:0 22px}
+.firstrun .btn{width:auto;padding:0 26px}
+@media(max-width:520px){.paste{flex-direction:column;align-items:stretch}.paste .btn,.firstrun .btn{width:100%}}
