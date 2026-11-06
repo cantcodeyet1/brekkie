@@ -18,6 +18,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const DEMO = process.env.DEMO_MODE !== 'false';
 const app = express();
 app.use(cors());
+// health answers before start-up finishes and says whether the database is reachable (never the connection string)
+app.get('/api/health', (_req, res) => ready.then(() => res.json({ ok: true }), (e) => res.status(503).json({ ok: false, db: String(e.code || e.name || 'error'), why: String(e.message || '').replace(/postgres(ql)?:\/\/\S+/gi, '').slice(0, 120) })));
 app.use((_req, _res, next) => { ready.then(() => next(), next); });
 app.use(express.json({ limit: '1mb' }));
 
