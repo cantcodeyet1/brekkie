@@ -197,3 +197,6 @@ alter table clubs add column if not exists created_at timestamptz not null defau
 create unique index if not exists clubs_join_code_idx on clubs(join_code) where join_code is not null;
 alter table people add column if not exists password_hash text;
 create index if not exists people_email_idx on people(lower(email));
+
+-- word of the day origin (etymology)
+alter table meetings add column if not exists origin text not null default '';

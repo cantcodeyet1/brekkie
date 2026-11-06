@@ -1038,11 +1038,12 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
 .steps{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:14px;position:relative;z-index:2}
 .steps li{display:flex;align-items:center;gap:12px;font:600 17px var(--head);color:rgba(255,255,255,.5);transition:color .2s}
 .steps li i{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);display:grid;place-items:center;font:700 13px var(--head);font-style:normal}
-.steps li.now{color:#fff}.steps li.now i{background:var(--yellow);border-color:var(--yellow);color:var(--blue)}
-.steps li.done{color:rgba(255,255,255,.88)}.steps li.done i{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
+.steps li.is-now{color:#fff}.steps li.is-now i{background:var(--yellow);border-color:var(--yellow);color:var(--blue)}
+.steps li.is-done{color:rgba(255,255,255,.88)}.steps li.is-done i{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
 .steps li i svg{width:15px;height:15px}
 .wiz .land-hero{padding-bottom:60px}
 .wiz .land-hero{padding-top:clamp(110px,20vh,200px)}
+.sun{display:none}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips .wk{min-width:56px;padding:10px 14px;border-radius:12px;background:#F5F5F7;font-weight:700;font-size:14.5px;text-align:center;border:1px solid transparent;transition:.15s}
 .chips .wk:hover{background:#EDEDF1}
@@ -1077,3 +1078,14 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
   .panel-in .two{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){.sun,.note{animation:none}.note{opacity:1;position:relative;margin-bottom:10px}.notes{height:auto}}
+
+/* roster: filled roles are tinted so the gaps stand out; a guest is a small G at the side, not a second line */
+.rtbl td.rc.filled{background:#EEF6F1}
+.rtbl td.rc.filled.isnext{background:#E8F3EC}
+.rtbl td.rc.filled.picked{background:#E4F0E9}
+.rtbl td.rc.filled .selbtn:hover{background:rgba(255,255,255,.7)}
+.pwrap{position:relative}
+.rc .selbtn .v{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc .gtag{position:absolute;right:30px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:#F2DF74;color:#5f5000;font:800 11px/20px var(--head);text-align:center;pointer-events:none}
+.rc .selbtn{padding-right:50px}
+.rc .selbtn svg{position:absolute;right:10px;top:50%;transform:translateY(-50%)}

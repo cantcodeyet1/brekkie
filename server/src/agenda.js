@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
-import QRCode from 'qrcode';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { q } from './db.js';
 
@@ -208,27 +207,6 @@ export async function buildDocx(ag, ctx, opts = {}) {
     // the template gives these paragraphs a negative right indent, which pushes long lines past the cell edge: keep them inside
     [c[1], c[2], c[3]].forEach((cell) => elems(cell, 'w:ind').forEach((ind) => { if (ind.getAttribute('w:right')) ind.setAttribute('w:right', '0'); }));
   });
-
-  // feedback QR in the left column, under the word of the day: scan to write to anyone at the meeting
-  if (opts.feedbackUrl) {
-    const png = await QRCode.toBuffer(opts.feedbackUrl, { margin: 1, width: 560, color: { dark: '#004165', light: '#ffffff' } });
-    zip.file('word/media/feedbackqr.png', png);
-    let rels = await zip.file('word/_rels/document.xml.rels').async('string');
-    rels = rels.replace('</Relationships>', '<Relationship Id="rIdFeedbackQr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/feedbackqr.png"/></Relationships>');
-    zip.file('word/_rels/document.xml.rels', rels);
-    const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
-    const frag = (x) => new DOMParser().parseFromString(`<r ${W} xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${x}</r>`, 'text/xml').documentElement.firstChild;
-    const line = (t, color, sz, bold, before) => frag(`<w:p><w:pPr><w:widowControl w:val="0"/><w:spacing w:before="${before}" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:b w:val="${bold ? 1 : 0}"/><w:color w:val="${color}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`);
-    const pic = frag(`<w:p><w:pPr><w:widowControl w:val="0"/><w:spacing w:before="40" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:drawing><wp:inline distB="0" distT="0" distL="0" distR="0"><wp:extent cx="640080" cy="640080"/><wp:effectExtent b="0" l="0" r="0" t="0"/><wp:docPr id="9001" name="feedbackqr.png"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="feedbackqr.png"/><pic:cNvPicPr preferRelativeResize="0"/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdFeedbackQr"/><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="640080" cy="640080"/></a:xfrm><a:prstGeom prst="rect"/><a:ln/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`);
-    // tighten the empty spacer lines around the word of the day so the code fits on the first page
-    [44, 46, 48].forEach((i) => {
-      const sp = elems(P[i], 'w:spacing')[0];
-      if (sp) { sp.setAttribute('w:line', '120'); sp.setAttribute('w:lineRule', 'exact'); }
-      elems(P[i], 'w:sz').concat(elems(P[i], 'w:szCs')).forEach((z) => z.setAttribute('w:val', '8'));
-    });
-    const last = P[50], cell = last.parentNode;
-    [line('SCAN TO GIVE FEEDBACK', '772432', 18, true, 120), pic].forEach((n) => cell.insertBefore(doc.importNode ? doc.importNode(n, true) : n, last.nextSibling && last.nextSibling.nodeName !== 'w:p' ? last.nextSibling : null));
-  }
 
   let out = new XMLSerializer().serializeToString(doc);
   if (!out.startsWith('<?xml')) out = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + out;

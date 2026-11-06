@@ -18,7 +18,6 @@ function Hero({ children }) {
     <section className="land-hero">
       <Wordmark className="wm-light" />
       {children}
-      <div className="sun" aria-hidden="true" />
       <div className="notes" aria-hidden="true">
         {NOTES.map(([who, text, ch], i) => (
           <div className="note" key={who + i} style={{ '--i': i }}>

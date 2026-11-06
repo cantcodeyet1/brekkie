@@ -1,16 +1,16 @@
-// Word of the day details. With ANTHROPIC_API_KEY set, Claude writes everything, including an example sentence
-// that speaks to the meeting's theme. Without a key it falls back to Wiktionary (meaning, part of speech, example)
-// and Datamuse (synonyms, pronunciation), which cannot write a theme-based example.
+// Word of the day details. With GROQ_API_KEY (or ANTHROPIC_API_KEY) set, an AI writes everything, including an example
+// sentence that speaks to the meeting's theme and the word's origin. Without a key it falls back to Wiktionary (meaning,
+// part of speech, example) and Datamuse (synonyms, pronunciation), which cannot write a theme-based example.
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const clean = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 const timeout = (ms) => AbortSignal.timeout(ms);
 
 export const validWord = (w) => /^[A-Za-z][A-Za-z' -]{1,38}$/.test(String(w || '').trim());
 
-/* ───────── Claude ───────── */
-async function viaClaude(word, theme, quote) {
-  const prompt = `Prepare the "Word of the Day" for a Toastmasters club meeting.
+/* ───────── AI (Groq or Claude) ───────── */
+const promptFor = (word, theme, quote) => `Prepare the "Word of the Day" for a Toastmasters club meeting.
 Word: ${word}
 Meeting theme: ${theme || '(none given)'}${quote ? `\nTheme quotation: ${quote}` : ''}
 
@@ -20,7 +20,26 @@ Reply with only a JSON object with these string keys:
 - "pron": a plain-English respelling with the stressed syllable in capitals and hyphens between syllables, like "uh-SIJ-oo-us"
 - "meaning": one clear sentence under 20 words
 - "example": one natural sentence a speaker might say, under 25 words, that uses the word and clearly connects to the theme${theme ? ` "${theme}"` : ''}
-- "synonyms": exactly three, comma separated, each capitalised`;
+- "synonyms": exactly three, comma separated, each capitalised
+- "origin": where the word comes from in one short sentence, like "From Latin assiduus, meaning constantly present"`;
+
+const parse = (text, word) => {
+  const json = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+  return { word: clean(json.word) || cap(word), pos: clean(json.pos), pron: clean(json.pron), meaning: clean(json.meaning), example: clean(json.example), synonyms: clean(json.synonyms).split(',').map((x) => cap(x.trim().toLowerCase())).filter(Boolean).join(', '), origin: clean(json.origin) };
+};
+
+async function viaGroq(word, theme, quote) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST', signal: timeout(25000),
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+    body: JSON.stringify({ model: GROQ_MODEL, temperature: 0.4, max_tokens: 1500, reasoning_effort: 'low', response_format: { type: 'json_object' }, messages: [{ role: 'user', content: promptFor(word, theme, quote) }] }),
+  });
+  if (!res.ok) throw new Error(`Groq returned ${res.status}`);
+  return parse((await res.json()).choices?.[0]?.message?.content || '', word);
+}
+
+async function viaClaude(word, theme, quote) {
+  const prompt = promptFor(word, theme, quote);
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', signal: timeout(25000),
     headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
@@ -28,8 +47,7 @@ Reply with only a JSON object with these string keys:
   });
   if (!res.ok) throw new Error(`Claude returned ${res.status}`);
   const text = (await res.json()).content?.map((c) => c.text || '').join('') || '';
-  const json = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-  return { word: clean(json.word) || cap(word), pos: clean(json.pos), pron: clean(json.pron), meaning: clean(json.meaning), example: clean(json.example), synonyms: clean(json.synonyms) };
+  return parse(text, word);
 }
 
 /* ───────── free fallback ───────── */
@@ -92,9 +110,12 @@ async function viaFree(word) {
 
 export async function wordDetails({ word, theme, quote }) {
   const w = String(word).trim();
+  if (process.env.GROQ_API_KEY) {
+    try { return { ...(await viaGroq(w, theme, quote)), source: 'ai' }; } catch (e) { console.error('Groq word lookup failed:', e.message); }
+  }
   if (process.env.ANTHROPIC_API_KEY) {
     try { return { ...(await viaClaude(w, theme, quote)), source: 'ai' }; } catch (e) { console.error('Claude word lookup failed, using the dictionary:', e.message); }
   }
   const d = await viaFree(w);
-  return { ...d, source: 'dictionary', note: d.example ? '' : 'From the dictionary. Add an Anthropic API key to get an example sentence written for your theme.' };
+  return { ...d, source: 'dictionary', note: d.example ? '' : 'From the dictionary. Add a GROQ_API_KEY to get an example sentence and origin written for your theme.' };
 }

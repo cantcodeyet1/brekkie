@@ -87,9 +87,11 @@ export default function Roster() {
     if (!role) return <td className={'rc na' + cls(m)} key={m.id}><span>None</span></td>;
     const d = dupes(m), dup = role.person_id && d[role.person_id] > 1;
     return (
-      <td className={'rc' + (dup ? ' dup' : '') + cls(m)} key={m.id} title={dup ? 'This person has more than one role at this meeting' : undefined}>
-        <PersonSelect value={role.person_id} placeholder="Assign" sm allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(m, role, { person_id: v })} />
-        {role.person_kind === 'guest' && <Chip kind="guest">Guest</Chip>}
+      <td className={'rc' + (role.person_id ? ' filled' : '') + (dup ? ' dup' : '') + cls(m)} key={m.id} title={dup ? 'This person has more than one role at this meeting' : undefined}>
+        <div className="pwrap">
+          <PersonSelect value={role.person_id} placeholder="Assign" sm allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(m, role, { person_id: v })} />
+          {role.person_kind === 'guest' && <span className="gtag" title="Guest" aria-label="Guest">G</span>}
+        </div>
         {extra}
       </td>
     );
@@ -194,7 +196,7 @@ function WordModal({ m, onChange, onClose }) {
     setBusy(true); setNote(''); setAlts([]);
     try {
       const d = await api('/vpe/word-details', { method: 'POST', body: { word: m.word, theme: m.theme, quote: m.theme_quote } });
-      const patch = {}; for (const k of ['word', 'pos', 'pron', 'meaning', 'example', 'synonyms']) if (d[k]) patch[k] = d[k];
+      const patch = {}; for (const k of ['word', 'pos', 'pron', 'meaning', 'example', 'synonyms', 'origin']) if (d[k]) patch[k] = d[k];
       onChange(patch); setAlts(d.alternatives || []);
       setNote(d.source === 'ai' ? 'Written by AI to fit your theme. Read it through before you keep it.' : (d.note || 'Filled in from the dictionary.'));
     } catch (e) { setNote(e.message); } finally { setBusy(false); }
@@ -221,6 +223,7 @@ function WordModal({ m, onChange, onClose }) {
           {alts.length > 0 && <div className="alts"><small>Other meanings. Tap one to use it.</small>{alts.map((a, k) => <button type="button" key={k} className={m.meaning === a.text ? 'on' : ''} onClick={() => onChange({ meaning: a.text, ...(a.pos ? { pos: a.pos } : {}) })}>{a.pos && <b>{a.pos}</b>} {a.text}</button>)}</div>}
           {f('Example', 'example', 'Use it in a sentence', true)}
           {f('Synonyms', 'synonyms', 'Diligent, Studious, Persevering')}
+          {f('Origin', 'origin', 'Where the word comes from', true)}
         </div>
         <div><div className="lab" style={{ marginTop: 14 }}>What the Grammarian sees</div><Wcard m={m} /></div>
       </div>

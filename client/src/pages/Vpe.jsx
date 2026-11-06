@@ -171,22 +171,21 @@ export function VpeMeeting() {
     setWordBusy(true); setWordNote(''); setWordAlts([]);
     try {
       const d = await api('/vpe/word-details', { method: 'POST', body: { word: m.word, theme: m.theme, quote: m.theme_quote } });
-      const patch = {}; for (const k of ['word', 'pos', 'pron', 'meaning', 'example', 'synonyms']) if (d[k]) patch[k] = d[k];
+      const patch = {}; for (const k of ['word', 'pos', 'pron', 'meaning', 'example', 'synonyms', 'origin']) if (d[k]) patch[k] = d[k];
       setField(patch); setWordAlts(d.alternatives || []);
       setWordNote(d.source === 'ai' ? 'Written by AI to fit your theme. Read it through before you keep it.' : (d.note || 'Filled in from the dictionary.'));
     } catch (e) { setWordNote(e.message); } finally { setWordBusy(false); }
   };
-  const downloadAgenda = async () => {
+  const downloadAgenda = async (toDocs) => {
     setPdfBusy(true);
     try {
-      const get = (ext) => fetch(`/api/vpe/meetings/${id}/agenda.${ext}?base=${encodeURIComponent(base)}`, { headers: { 'x-token': getToken() } });
-      let res = await get('pdf');
-      if (res.status === 501) res = await get('docx');   // this server cannot make PDFs: hand over the Word file instead
+      const res = await fetch(`/api/vpe/meetings/${id}/agenda.docx`, { headers: { 'x-token': getToken() } });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not create the agenda');
-      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `Agenda ${m.number}`;
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `Agenda ${m.number}.docx`;
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      toast(/\.docx"?$/i.test(name) ? 'Agenda downloaded as a Word file. Print it to PDF from Word.' : 'Agenda downloaded');
+      if (toDocs) { window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener'); toast('Drag the file into Drive, then right-click it and choose Open with, Google Docs'); }
+      else toast('Agenda downloaded');
     } catch (e) { toast(e.message); } finally { setPdfBusy(false); }
   };
   const downloadEval = async (r) => {
@@ -250,7 +249,8 @@ export function VpeMeeting() {
           <h1 className="pg" style={{ margin: '6px 0 2px' }}>{fmtDate(m.date)}</h1>
           <p className="lede" style={{ margin: 0 }}>{m.theme || 'No theme yet'}{m.word ? <> · Word of the day <b style={{ color: 'var(--ink)' }}>{m.word}</b></> : ''}</p>
         </div>
-        <Btn kind="ghost" sm onClick={downloadAgenda} disabled={pdfBusy}>{pdfBusy ? 'Preparing…' : 'Download agenda (PDF)'}</Btn>
+        <Btn kind="ghost" sm onClick={() => downloadAgenda(false)} disabled={pdfBusy}>{pdfBusy ? 'Preparing…' : 'Download agenda'}</Btn>
+        <Btn kind="ghost" sm onClick={() => downloadAgenda(true)} disabled={pdfBusy}>Open in Google Docs</Btn>
         <nav className="jump" aria-label="Sections">
           {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received']].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
         </nav>
@@ -274,6 +274,7 @@ export function VpeMeeting() {
             {wordAlts.length > 0 && <div className="alts"><small>Other meanings. Tap one to use it.</small>{wordAlts.map((a, k) => <button type="button" key={k} className={m.meaning === a.text ? 'on' : ''} onClick={() => setField({ meaning: a.text, ...(a.pos ? { pos: a.pos } : {}) })}>{a.pos && <b>{a.pos}</b>} {a.text}</button>)}</div>}
             {field({ label: 'Example', k: 'example', ph: 'Use it in a sentence', area: true })}
             {field({ label: 'Synonyms', k: 'synonyms', ph: 'Diligent, Studious, Persevering' })}
+            {field({ label: 'Origin', k: 'origin', ph: 'Where the word comes from', area: true })}
           </div>
           <div className="mcol mprev"><div className="lab" style={{ marginTop: 0 }}>What the Grammarian sees</div><Wcard m={m} /></div>
         </div>

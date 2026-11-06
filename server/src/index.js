@@ -187,7 +187,7 @@ app.post('/api/people/guest', wrap(async (req, res) => {
 /* ───────── role player (link only) ───────── */
 app.get('/api/role', needRole, wrap(async (req, res) => {
   const r = req.role;
-  const [meeting] = await q(`select id, number, ${DATE('date')} as date, theme, word, pos, pron, meaning, example, synonyms from meetings where id=$1`, [r.meeting_id]);
+  const [meeting] = await q(`select id, number, ${DATE('date')} as date, theme, word, pos, pron, meaning, example, synonyms, origin from meetings where id=$1`, [r.meeting_id]);
   const people = await q(`select id,name,kind,status from people where club_id=$1 and status<>'inactive' order by name`, [r.club_id]);
   const roles = await q(`select id, role_key, label, position, person_id, project_id, path_name, path_level, speech_title, target_role_id from meeting_roles where meeting_id=$1 order by position`, [r.meeting_id]);
   const projects = await q('select * from projects order by level, id');
@@ -377,7 +377,7 @@ app.post('/api/vpe/meetings', needPerson, needVpe, wrap(async (req, res) => {
   res.json(out);
 }));
 
-const MEETING_FIELDS = ['date', 'theme', 'theme_quote', 'theme_quote_by', 'word', 'pos', 'pron', 'meaning', 'example', 'synonyms', 'attendance'];
+const MEETING_FIELDS = ['date', 'theme', 'theme_quote', 'theme_quote_by', 'word', 'pos', 'pron', 'meaning', 'example', 'synonyms', 'origin', 'attendance'];
 app.patch('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) => {
   const sets = [], vals = [];
   for (const f of MEETING_FIELDS) if (f in req.body) { const v = req.body[f]; vals.push(f === 'attendance' ? (v === '' || v == null || Number.isNaN(parseInt(v, 10)) ? null : Math.max(0, parseInt(v, 10))) : (v ?? '')); sets.push(`${f}=$${vals.length}`); }
@@ -388,7 +388,7 @@ app.patch('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) =>
 }));
 
 app.get('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) => {
-  const [m] = await q(`select id, number, ${DATE('date')} as date, theme, theme_quote, theme_quote_by, word, pos, pron, meaning, example, synonyms from meetings where id=$1 and club_id=$2`, [req.params.id, req.person.club_id]);
+  const [m] = await q(`select id, number, ${DATE('date')} as date, theme, theme_quote, theme_quote_by, word, pos, pron, meaning, example, synonyms, origin from meetings where id=$1 and club_id=$2`, [req.params.id, req.person.club_id]);
   if (!m) return bad(res, 'Not found', 404);
   const roles = await q(`select r.id, r.role_key, r.label, r.position, r.person_id, r.project_id, r.path_name, r.path_level, r.speech_title, r.target_role_id, r.token, r.submitted_at,
       p.name as person, p.kind as person_kind, p.status as person_status
@@ -414,7 +414,7 @@ app.get('/api/vpe/roster', needPerson, wrap(async (req, res) => {
   let from = parseInt(req.query.from, 10);
   if (Number.isNaN(from)) from = next?.number ?? Math.max(lo, hi - count + 1);
   from = Math.min(Math.max(lo, from), Math.max(lo, hi - count + 1));
-  const meetings = await q(`select m.id, m.number, ${DATE('m.date')} as date, m.theme, m.theme_quote, m.theme_quote_by, m.word, m.pos, m.pron, m.meaning, m.example, m.synonyms, m.attendance
+  const meetings = await q(`select m.id, m.number, ${DATE('m.date')} as date, m.theme, m.theme_quote, m.theme_quote_by, m.word, m.pos, m.pron, m.meaning, m.example, m.synonyms, m.origin, m.attendance
     from meetings m where m.club_id=$1 and m.number >= $2 and m.number < $3 order by m.number`, [club, from, from + count]);
   const roles = await q(`select r.id, r.meeting_id, r.role_key, r.label, r.position, r.person_id, r.project_id, r.path_name, r.path_level, r.speech_title, r.target_role_id, r.submitted_at, p.name as person, p.kind as person_kind
     from meeting_roles r join meetings m on m.id=r.meeting_id left join people p on p.id=r.person_id
@@ -497,7 +497,7 @@ app.post('/api/vpe/meetings/:id/agenda/reset', needPerson, needVpe, wrap(async (
 }));
 app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
-  const buf = await buildDocx(a.merged, a.ctx, { feedbackUrl: `${publicBase(req)}/f/${a.ctx.m.feedback_code}` });
+  const buf = await buildDocx(a.merged, a.ctx);
   const d = new Date(a.ctx.m.date + 'T12:00:00');
   const name = `Champions Toastmasters Agenda ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.docx`;
   res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
@@ -507,7 +507,7 @@ app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(async (re
 app.get('/api/vpe/meetings/:id/agenda.pdf', needPerson, needVpe, wrap(async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
   try {
-    const pdf = await docxToPdf(await buildDocx(a.merged, a.ctx, { feedbackUrl: `${publicBase(req)}/f/${a.ctx.m.feedback_code}` }));
+    const pdf = await docxToPdf(await buildDocx(a.merged, a.ctx));
     const d = new Date(a.ctx.m.date + 'T12:00:00');
     const name = `Champions Toastmasters Agenda ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.pdf`;
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });

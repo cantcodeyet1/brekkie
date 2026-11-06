@@ -94,9 +94,8 @@ export default function Wizard() {
         <Wordmark className="wm-light" />
         <h1>Let us get your club <span>started</span>.</h1>
         <ol className="steps" aria-label="Progress">
-          {STEPS.map((s, i) => <li key={s} className={done || i < step ? 'done' : i === step ? 'now' : ''}><i>{done || i < step ? I.check : i + 1}</i>{s}</li>)}
+          {STEPS.map((s, i) => <li key={s} className={done || i < step ? 'is-done' : i === step ? 'is-now' : ''}><i>{done || i < step ? I.check : i + 1}</i>{s}</li>)}
         </ol>
-        <div className="sun" aria-hidden="true" />
       </section>
       <section className="land-panel">
         {done ? (

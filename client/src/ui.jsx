@@ -196,7 +196,7 @@ export function PersonSelect({ value, onChange, people, onAddGuest, placeholder 
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const opts = [...(allowClear && value ? [{ value: '__none', label: 'Unassigned' }] : []), ...people.filter((p) => !exclude.includes(p.id)).map((p) => ({ value: p.id, label: p.name, sub: p.kind === 'guest' ? 'Guest' : undefined }))];
+  const opts = [...(allowClear && value ? [{ value: '__none', label: 'Unassigned' }] : []), ...[...people].filter((p) => !exclude.includes(p.id)).sort((a, b) => (a.kind === 'guest') - (b.kind === 'guest') || a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: p.name, sub: p.kind === 'guest' ? 'Guest' : undefined }))];
   const add = async () => {
     if (name.trim().length < 2) { setErr('Enter a name'); return; }
     setBusy(true); setErr('');
@@ -229,6 +229,7 @@ export function Wcard({ m }) {
       <p><b>Meaning:</b> {m.meaning}</p>
       {m.example && <p className="ex">Example: {m.example}</p>}
       <p><b>Synonyms:</b><br /><span className="syn">{m.synonyms}</span></p>
+      {m.origin && <p><b>Origin:</b> {m.origin}</p>}
     </div>
   );
 }
