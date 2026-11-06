@@ -75,7 +75,7 @@ export default function RoleApp() {
 }
 
 /* shown to guests: one tap tells the VPE they would like to join */
-function JoinAsk({ data, token, dark }) {
+export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) {
   const [asked, setAsked] = useState(!!data.me?.join_requested);
   const [email, setEmail] = useState(data.me?.email || '');
   const [err, setErr] = useState('');
@@ -83,7 +83,7 @@ function JoinAsk({ data, token, dark }) {
   if (data.me?.kind !== 'guest') return null;
   const send = async () => {
     setBusy(true); setErr('');
-    try { await api('/role/join-request', { method: 'POST', body: { email }, token }); setAsked(true); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    try { await api(endpoint, { method: 'POST', body: { email }, token }); setAsked(true); } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
     <div className={'joinask' + (dark ? ' dark' : '')}>

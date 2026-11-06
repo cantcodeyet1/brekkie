@@ -1,3 +1,4 @@
+import { JoinAsk } from './Role.jsx';
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { useApi } from '../api.js';
@@ -40,6 +41,7 @@ export function MemberHome() {
   return (
     <Page root narrow>
       <h1 className="hello">Hi {first}</h1>
+      {d.person.kind === 'guest' && <div style={{ margin: '4px 0 18px' }}><JoinAsk data={{ me: d.person }} endpoint="/me/join-request" /></div>}
 
       {d.upcoming.map((u) => {
         const dt = day(u.date), act = !['toastmaster', 'speaker'].includes(u.role_key);

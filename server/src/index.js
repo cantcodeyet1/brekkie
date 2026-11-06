@@ -199,15 +199,17 @@ app.get('/api/role', needRole, wrap(async (req, res) => {
 }));
 
 /* a guest says they would like to join the club; the VPE sees it and makes them a member */
-app.post('/api/role/join-request', needRole, wrap(async (req, res) => {
-  const p = req.rolePerson;
+const joinRequest = wrap(async (req, res) => {
+  const p = req.person || req.rolePerson;
   if (!p) return bad(res, 'Not found', 404);
   if (p.kind !== 'guest') return res.json({ ok: true, member: true });
   const email = String(req.body?.email || '').trim().toLowerCase();
   if (email && !validEmail(email)) return bad(res, 'Enter a valid email address');
   await q(`update people set join_requested_at=coalesce(join_requested_at, now()), email=coalesce(nullif($2, ''), email) where id=$1`, [p.id, email]);
   res.json({ ok: true });
-}));
+});
+app.post('/api/role/join-request', needRole, joinRequest);
+app.post('/api/me/join-request', needPerson, joinRequest);
 app.put('/api/role/sheet', needRole, wrap(async (req, res) => {
   await saveSheet(req.role, req.body || {});
   res.json({ ok: true, saved_at: new Date().toISOString() });
@@ -301,7 +303,7 @@ app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
     for (const e of prog.evals) if (e.comments?.[k] && e.ratings[k] && e.ratings[k] <= 3) { c = e.comments[k]; break; }
     focus = { name: prog.criteria[k], avg: prog.avgs[k], comment: c, work: prog.evals[0]?.work || '', by: prog.evals[0]?.by };
   }
-  res.json({ person: pub(me), ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
+  res.json({ person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
 }));
 app.get('/api/me/given', needPerson, wrap(async (req, res) => res.json(await givenFor(req.person.id))));
 app.get('/api/me/given/:id', needPerson, wrap(async (req, res, next) => {
