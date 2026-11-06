@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, longDate, mmss, secs, sum } from '../data.js';
 import { printEval, printReport } from '../EvalSheet.jsx';
-import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, PersonSelect, Select, Seg, Shell, Wcard, useDebouncedSave, useDesk } from '../ui.jsx';
+import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
 
 /* ───────── helpers ───────── */
 const fill = (t, v) => t.split(/(\{\w\})/).map((p, i) => { const m = /^\{(\w)\}$/.exec(p); return m ? <em key={i}>{v[m[1]] || '…'}</em> : p; });
@@ -52,11 +52,24 @@ function reportNode(key, { data, sheet, people }) {
   return null;
 }
 
+/* the greeting follows the meeting date, since a link can arrive days ahead */
+function greeting(date, role) {
+  const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const days = Math.round((new Date(date + 'T12:00:00') - new Date(key(new Date()) + 'T12:00:00')) / 864e5);
+  const r = <span>{role}</span>;
+  const when = new Date(date + 'T12:00:00');
+  if (days === 0) return <>you’re tonight’s {r}.</>;
+  if (days === 1) return <>you’re tomorrow’s {r}.</>;
+  if (days > 1 && days < 7) return <>you’re {when.toLocaleDateString('en-GB', { weekday: 'long' })}’s {r}.</>;
+  if (days >= 7) return <>you’re the {r} on {when.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</>;
+  return <>thank you for being the {r} on {when.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</>;
+}
+
 /* ───────── entry ───────── */
 export default function RoleApp() {
   const { token } = useParams();
   const { data, error, loading } = useApi('/role', { token });
-  if (loading) return <Shell nav={[]} who=""><Page root><Loading /></Page></Shell>;
+  if (loading) return <Shell nav={[]} who="" bare><div className="main"><div className="rl"><Wordmark className="wm-light" /></div></div></Shell>;
   if (error) return <Shell nav={[]} who="" bare><Page root><h1 className="pg">This link is not valid</h1><p className="lede">It may have been replaced by a newer one. Ask the VPE to send your link again.</p></Page></Shell>;
   return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
 }
@@ -87,25 +100,29 @@ function RoleBody({ data, token }) {
     const node = reportNode(key, { data, sheet, people });
     if (node) printReport(`${meta.name} report, meeting ${data.meeting.number}`, node);
   };
-  const pdfLabel = key === 'evaluator' ? 'Download the completed evaluation (PDF)' : 'Download my report (PDF)';
+  const pdfTitle = key === 'evaluator' ? 'Completed evaluation form' : 'My report';
+  const pdfSub = key === 'evaluator' ? 'Your ratings and comments, as a PDF' : 'As a PDF';
   const ctx = { data, sheet, setSheet, people, addGuest, mode };
 
   if (view === 'land') return (
-    <Page root narrow={desk} full={!desk} foot={!desk ? <Foot col><Btn onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</Btn></Foot> : undefined}>
-      <div className={'link-hero' + (desk ? '' : ' fullpage')}>
-        <div className="tag">Meeting {data.meeting.number} · {longDate(data.meeting.date)}</div>
-        <h1>Hi {first}, you’re tonight’s <span>{data.role.label.replace(/ \d$/, '')}</span>.</h1>
-        <p>{meta?.blurb}</p>
-        <p style={{ marginTop: 14 }}>Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p>
-        {data.me?.kind === 'guest' && <div className="banner"><b>Welcome as a guest.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
-        {desk && <Btn style={{ marginTop: 26 }} onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</Btn>}
+    <div className="main">
+      <div className="rl">
+        <Wordmark className="wm-light" />
+        <div className="rl-in">
+          <div className="tag">Meeting {data.meeting.number} · {longDate(data.meeting.date)}</div>
+          <h1>Hi {first}, {greeting(data.meeting.date, data.role.label.replace(/ \d$/, ''))}</h1>
+          <p className="sub">{meta?.blurb}</p>
+          <p className="sub">Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p>
+          {data.me?.kind === 'guest' && <div className="rl-note"><b>Welcome as a guest.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
+          <button type="button" className="rl-go" onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</button>
+        </div>
       </div>
-    </Page>
+    </div>
   );
   if (view === 'done') return (
     <Page onBack={() => setView('sheet')} title="" foot={<Foot col><Btn kind="ghost" onClick={() => setView('sheet')}>Edit my notes</Btn></Foot>}>
       <div className="done"><div className="tick">{I.check}</div><h1 className="pg">Thanks, {first}.</h1><p className="lede">Your {meta.name.toLowerCase()} notes are in. Members will find them in their history from now on.</p>
-        <Btn style={{ marginTop: 18, width: 'auto', padding: '0 22px' }} onClick={downloadPdf}>{I.dl} {pdfLabel}</Btn></div>
+        <div style={{ marginTop: 20, textAlign: 'left' }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div></div>
     </Page>
   );
 
@@ -122,7 +139,7 @@ function RoleBody({ data, token }) {
         </div>
       )}
       <Sheet {...ctx} />
-      {mode === 'report' && <Btn kind="ghost" style={{ marginTop: 14 }} onClick={downloadPdf}>{I.dl} {pdfLabel}</Btn>}
+      {mode === 'report' && <div style={{ marginTop: 14 }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>}
       {err && <p className="err">{err}</p>}
     </Page>
   );
@@ -164,9 +181,19 @@ const rowsApi = (setSheet, key = 'rows') => ({
   del: (i) => setSheet((s) => ({ ...s, [key]: s[key].filter((_, j) => j !== i) })),
   add: (row) => setSheet((s) => ({ ...s, [key]: [...s[key], row] })),
 });
+/* a note box that grows with what is written, so nothing hides behind a scrollbar */
+function Grow({ value, min = 66, ...p }) {
+  const ref = useRef(null);
+  useEffect(() => { const el = ref.current; if (!el) return; el.style.height = 'auto'; el.style.height = Math.max(min, el.scrollHeight + 2) + 'px'; }, [value, min]);
+  return <textarea ref={ref} className="inp grow" value={value} {...p} />;
+}
 const TA = ({ label, kind = '', value, onChange, placeholder, min }) => (
-  <><label className={'fl ' + kind}>{label}</label><textarea className="inp" style={min ? { minHeight: min } : null} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></>
+  <><label className={'fl ' + kind}>{label}</label><Grow min={min} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></>
 );
+const DlBtn = ({ href, onClick, title, sub }) => {
+  const inner = <><span className="ic">{I.dl}</span><span className="tx"><b>{title}</b>{sub && <small>{sub}</small>}</span><span className="go">{I.chev}</span></>;
+  return href ? <a className="dlbtn" href={href} target="_blank" rel="noreferrer">{inner}</a> : <button type="button" className="dlbtn" onClick={onClick}>{inner}</button>;
+};
 const subjectName = (people, id) => people.find((p) => p.id === id)?.name || '';
 
 /* ───────── Grammarian ───────── */
@@ -392,7 +419,7 @@ function EvalForm({ data, sheet, setSheet, people, mode }) {
   return (
     <Modes mode={mode}
       script={<ScriptDoc k="evaluator" vars={{ s: who.split(' ')[0], t: target.speech_title }} before={<>
-        {(() => { const r = data.evalResources?.[proj.name], url = r?.pdf || r?.page; return url ? <a className="btn ghost sm" style={{ marginBottom: 12, textDecoration: 'none', width: 'auto', padding: '0 18px' }} href={url} target="_blank" rel="noreferrer">{I.dl} Download the official evaluation resource</a> : null; })()}
+        {(() => { const r = data.evalResources?.[proj.name], url = r?.pdf || r?.page; return url ? <DlBtn href={url} title="Evaluation form" sub="The official resource, to take along" /> : null; })()}
         <div className="obj"><small>Evaluating</small><p style={{ margin: '6px 0 2px', font: '700 20px var(--head)' }}>{who}</p>
           <p style={{ margin: 0 }}>“{target.speech_title || 'Untitled'}” · {target.path_name || proj.path}, Level {target.path_level ?? proj.level}</p></div>
         <div className="obj"><small>{proj.form_title} · {proj.length_text}</small>
@@ -402,21 +429,21 @@ function EvalForm({ data, sheet, setSheet, people, mode }) {
       report={<EvalReport who={who} target={target} sheet={sheet} />}
       form={<>
         <div className="obj slim"><small>Evaluating</small><p style={{ margin: '4px 0 0', font: '700 17px var(--head)' }}>{who}</p><p style={{ margin: '2px 0 0' }}>“{target.speech_title || 'Untitled'}” · {target.path_name || proj.path}, Level {target.path_level ?? proj.level}</p></div>
-        <div className="lab" style={{ marginTop: 18 }}>Rate the speaker · 5 Exemplary → 1 Developing</div>
+        <div className="lab blue" style={{ marginTop: 18 }}>Start with your general comments</div>
+        <TA label="You excelled at" kind="blue" min={120} value={sheet.excelled} onChange={(v) => set({ excelled: v })} placeholder="What worked, with an example" />
+        <TA label="You may want to work on" kind="maroon" min={120} value={sheet.work} onChange={(v) => set({ work: v })} placeholder="One or two things to improve" />
+        <TA label="To challenge yourself" min={96} value={sheet.challenge} onChange={(v) => set({ challenge: v })} placeholder="A stretch for the next speech" />
+        <div className="lab" style={{ marginTop: 30 }}>Then rate the speaker · 5 Exemplary → 1 Developing</div>
         {CRIT.map(([n, desc, lv], i) => (
           <div className="rate-row" key={n}>
             <span><b>{n}:</b> {desc}</span>
             <div className="nums">{[5, 4, 3, 2, 1].map((v) => <button type="button" key={v} className={sheet.ratings[i] === v ? 'on' : ''} onClick={() => rate(i, v)} aria-pressed={sheet.ratings[i] === v}>{v}</button>)}</div>
             <div className="lv">{sheet.ratings[i] ? <><b>{LEVELN[sheet.ratings[i]]}</b>: {lv[sheet.ratings[i] - 1]}</> : 'Tap a number'}</div>
             {sheet.comments[i] || sheet.open[i]
-              ? <textarea className="inp" value={sheet.comments[i]} onChange={(e) => note(i, e.target.value)} placeholder="Comment" />
+              ? <Grow min={48} value={sheet.comments[i]} onChange={(e) => note(i, e.target.value)} placeholder="Comment" />
               : <button type="button" className="lnk" onClick={() => open(i)}>+ Add comment</button>}
           </div>
         ))}
-        <div className="lab blue" style={{ marginTop: 28 }}>General comments</div>
-        <TA label="You excelled at" kind="blue" min={92} value={sheet.excelled} onChange={(v) => set({ excelled: v })} placeholder="What worked, with an example" />
-        <TA label="You may want to work on" kind="maroon" min={92} value={sheet.work} onChange={(v) => set({ work: v })} placeholder="One or two things to improve" />
-        <TA label="To challenge yourself" min={70} value={sheet.challenge} onChange={(v) => set({ challenge: v })} placeholder="A stretch for the next speech" />
       </>} />
   );
 }
@@ -456,7 +483,7 @@ function GESheet({ data, sheet, setSheet, people, mode }) {
               <div className="lab" style={{ marginTop: si ? 28 : 12 }}>{name}</div>
               <Qs si={si} qs={qs} />
               {role.length > 0 && <><div className="lab maroon" style={{ marginTop: 18 }}>Comments for {name === 'General Evaluator' ? 'the Grammarian, Timer and Ah Counter' : `the ${name}`}</div>{role}</>}
-              <textarea className="inp" style={{ marginTop: 8 }} value={sheet.sections[si].notes} onChange={(e) => setN(si, e.target.value)} placeholder="Notes" />
+              <div style={{ marginTop: 8 }}><Grow value={sheet.sections[si].notes} onChange={(e) => setN(si, e.target.value)} placeholder="Notes" /></div>
             </div>);
         })}
         {evalCards.length > 0 && <><div className="lab" style={{ marginTop: 28 }}>Speech Evaluators</div>{evalCards}</>}
