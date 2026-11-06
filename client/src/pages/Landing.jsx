@@ -86,7 +86,7 @@ export default function Landing({ force }) {
     <div className="land">
       <Hero>
         <h1>Feedback is the <span>breakfast</span> of Champions.</h1>
-        <p className="sub">Role players write it. Members read it. The VPE runs the club from one calm place.</p>
+        <p className="sub">Where good meetings turn into better speakers. Rosters, feedback and progress for your Toastmasters club.</p>
       </Hero>
       <section className="land-panel">
         <div className="panel-in">
