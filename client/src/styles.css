@@ -1201,5 +1201,10 @@ textarea.inp.grow{overflow:hidden}
 .joinask.dark .jbtn.ghost{color:#fff;box-shadow:0 0 0 1.5px #fff inset}
 @media (max-width:480px){.joinask{padding:16px}.joinask .jbtn{align-self:stretch}}
 
-.nextag{width:100%;text-align:left;font:inherit;border:0;cursor:pointer}
-.nextag:disabled{opacity:.7}
+
+.notice{flex-wrap:wrap}
+.notice .nbody{flex:1;min-width:0;display:flex;align-items:center;gap:16px;background:transparent;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.notice .nbody:disabled{opacity:.7}
+.notice .nsheet{flex:none;font:700 13px var(--head);color:var(--blue);text-decoration:none;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.75);box-shadow:0 0 0 1.5px rgba(0,65,101,.35) inset}
+.notice .nsheet:hover{background:#fff}
+@media (max-width:480px){.notice .nsheet{margin-left:auto}}

@@ -295,7 +295,7 @@ app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
   const me = req.person, hist = await loadHist(me.club_id);
   const prog = progressFor(me.id, hist);
   const meetings = await myMeetings(me, hist);
-  const up = await q(`select r.label, r.role_key, r.token, r.submitted_at, m.number, ${DATE('m.date')} as date
+  const up = await q(`select r.label, r.role_key, r.token, r.submitted_at, m.id as meeting_id, m.number, ${DATE('m.date')} as date
     from meeting_roles r join meetings m on m.id=r.meeting_id where r.person_id=$1 and m.date >= current_date order by m.date, r.position limit 3`, [me.id]);
   let focus = null;
   if (prog.focus.length) {
@@ -303,7 +303,7 @@ app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
     for (const e of prog.evals) if (e.comments?.[k] && e.ratings[k] && e.ratings[k] <= 3) { c = e.comments[k]; break; }
     focus = { name: prog.criteria[k], avg: prog.avgs[k], comment: c, work: prog.evals[0]?.work || '', by: prog.evals[0]?.by };
   }
-  const [nextMeeting] = await q(`select number, ${DATE('date')} as date from meetings where club_id=$1 and date >= current_date order by date limit 1`, [me.club_id]);
+  const [nextMeeting] = await q(`select id, number, ${DATE('date')} as date from meetings where club_id=$1 and date >= current_date order by date limit 1`, [me.club_id]);
   res.json({ next_meeting: nextMeeting || null, person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
 }));
 app.get('/api/me/given', needPerson, wrap(async (req, res) => res.json(await givenFor(req.person.id))));
@@ -518,13 +518,8 @@ const sendAgenda = async (req, res) => {
   res.send(buf);
 };
 app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(sendAgenda));
-/* any member or guest can download the club's next agenda */
-app.get('/api/me/next-agenda.docx', needPerson, wrap(async (req, res) => {
-  const [n] = await q('select id from meetings where club_id=$1 and date >= current_date order by date limit 1', [req.person.club_id]);
-  if (!n) return bad(res, 'No meeting is planned yet', 404);
-  req.params.id = n.id;
-  return sendAgenda(req, res);
-}));
+/* any member or guest can download the agenda of a meeting in their club */
+app.get('/api/me/meetings/:id/agenda.docx', needPerson, wrap(sendAgenda));
 
 app.get('/api/vpe/meetings/:id/agenda.pdf', needPerson, needVpe, wrap(async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;

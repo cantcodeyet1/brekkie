@@ -32,15 +32,15 @@ function Tile({ to, title, sub, n, tone = '', icon }) {
 const Sect = ({ title, hint, children }) => <section className="sect"><h2>{title}</h2>{hint && <p className="hint">{hint}</p>}{children}</section>;
 
 /* ───────── Home ───────── */
-/* the next meeting's date; one tap downloads its agenda */
-function NextAgenda({ m }) {
+/* the card for a meeting: one tap downloads its agenda. A role's card can also carry a link to the script and sheet. */
+function AgendaCard({ meetingId, date, title, sub, sheet }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const dt = new Date(m.date + 'T12:00:00');
+  const dt = new Date(date + 'T12:00:00');
   const get = async () => {
     setBusy(true);
     try {
-      const res = await fetch('/api/me/next-agenda.docx', { headers: { 'x-token': getToken() } });
+      const res = await fetch(`/api/me/meetings/${meetingId}/agenda.docx`, { headers: { 'x-token': getToken() } });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not get the agenda');
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Agenda.docx';
       const url = URL.createObjectURL(await res.blob());
@@ -49,11 +49,14 @@ function NextAgenda({ m }) {
     } catch (e) { toast(e.message); } finally { setBusy(false); }
   };
   return (
-    <button type="button" className="notice nextag" onClick={get} disabled={busy}>
-      <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
-      <span className="tt"><b>Next meeting</b><span>{fmtDate(m.date, { weekday: 'long' })}. Tap to download the agenda.</span></span>
-      <span className="tc">{busy ? '…' : I.dl}</span>
-    </button>
+    <div className="notice">
+      <button type="button" className="nbody" onClick={get} disabled={busy} aria-label={`${title}. Download the agenda`}>
+        <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
+        <span className="tt"><b>{title}</b><span>{sub}</span></span>
+        <span className="tc">{busy ? '…' : I.dl}</span>
+      </button>
+      {sheet && <Link className="nsheet" to={sheet}>Script and sheet</Link>}
+    </div>
   );
 }
 
@@ -66,19 +69,15 @@ export function MemberHome() {
   return (
     <Page root narrow>
       <h1 className="hello">Hi {first}</h1>
-      {d.next_meeting && <NextAgenda m={d.next_meeting} />}
-
       {d.upcoming.map((u) => {
-        const dt = day(u.date), act = !['toastmaster', 'speaker'].includes(u.role_key);
-        const body = (
-          <>
-            <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
-            <span className="tt"><b>You are {/\d$/.test(u.label) ? '' : /^[AEIOU]/.test(u.label) ? 'an ' : 'a '}{u.label}</b><span>{fmtDate(u.date, { weekday: 'long' })}, meeting {u.number}{act ? '. Tap for your script and sheet.' : '.'}</span></span>
-            {act && <span className="tc">{I.chev}</span>}
-          </>
-        );
-        return act ? <Link key={u.token} className="notice" to={`/r/${u.token}`}>{body}</Link> : <div key={u.token} className="notice">{body}</div>;
+        const act = !['toastmaster', 'speaker'].includes(u.role_key);
+        return <AgendaCard key={u.token} meetingId={u.meeting_id} date={u.date}
+          title={`You are ${/\d$/.test(u.label) ? '' : /^[AEIOU]/.test(u.label) ? 'an ' : 'a '}${u.label}`}
+          sub={`${fmtDate(u.date, { weekday: 'long' })}, meeting ${u.number}. Tap to download the agenda.`}
+          sheet={act ? `/r/${u.token}` : null} />;
       })}
+      {!d.upcoming.length && d.next_meeting && <AgendaCard meetingId={d.next_meeting.id} date={d.next_meeting.date} title="Next meeting"
+        sub={`${fmtDate(d.next_meeting.date, { weekday: 'long' })}, meeting ${d.next_meeting.number}. Tap to download the agenda.`} />}
 
       <p className="lede" style={{ fontSize: 17, marginTop: 0 }}>Tap one to see the feedback people have given you.</p>
 
