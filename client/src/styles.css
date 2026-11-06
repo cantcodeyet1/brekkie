@@ -1114,3 +1114,21 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
 .dlbtn .tx small{font-size:13px;color:var(--mute);margin-top:1px}
 .dlbtn .go{flex:none;color:var(--mute);display:grid;place-items:center;transform:rotate(-90deg)}
 textarea.inp.grow{overflow:hidden}
+
+/* timer cards: the Toastmasters card colours, framed like the club's own slides */
+.stage.green{background:radial-gradient(circle at 50% 50%,#00DD22 0%,#00B31F 58%,#009A1D 100%);color:#fff}
+.stage.yellow{background:#FFF06C;color:#0b1a22}
+.stage.red{background:#DB0500;color:#fff}
+.stage::before{content:'';position:absolute;inset:clamp(14px,4.5vmin,56px);border:clamp(8px,2vmin,28px) solid transparent;pointer-events:none;transition:border-color .7s}
+.stage.green::before{border-color:rgba(0,80,30,.45)}
+.stage.yellow::before{border-color:rgba(255,255,255,.7)}
+.stage.red::before{border-color:rgba(70,0,0,.4)}
+.stage>*{position:relative}
+.stage .st-top{position:absolute;z-index:2}
+.stage .st-top .eye{margin-left:auto;background:transparent;border:0;color:inherit;opacity:.85;cursor:pointer;padding:8px;display:grid;place-items:center;border-radius:10px}
+.stage .st-top .eye:hover{background:rgba(255,255,255,.18)}
+.stage .clk{z-index:2}
+/* hide mode: only a faint clock and the eye stay */
+.stage.hide .who2,.stage.hide .cardname,.stage.hide .thr,.stage.hide .st-btns,.stage.hide .st-top span,.stage.hide .st-top .back{visibility:hidden}
+.stage.hide .clk{opacity:.3;top:auto;bottom:auto;position:static;font-size:clamp(64px,14vw,150px)!important;font-weight:700}
+.stage.hide .st-top .eye{visibility:visible;opacity:.7}

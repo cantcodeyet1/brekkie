@@ -11,6 +11,8 @@ export const I = {
   plus: <Ic w={18} s={2} d="M12 5v14M5 12h14" />, minus: <Ic w={16} s={2.2} d="M5 12h14" />, close: <Ic w={14} s={2} d="M6 6l12 12M18 6L6 18" />,
   check: <Ic w={17} s={2.4} d="M5 12.5l4.5 4.5L19 7.5" />,
   copy: <Ic w={17}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 012-2h9" /></Ic>,
+  eye: <Ic w={22} s={1.8}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></Ic>,
+  eyeoff: <Ic w={22} s={1.8}><path d="M3 3l18 18M10.6 5.1A10 10 0 0112 5c6.4 0 10 7 10 7a17 17 0 01-3.2 4M6.5 6.6A17 17 0 002 12s3.6 7 10 7a9.8 9.8 0 004.4-1" /><path d="M9.9 9.9a3 3 0 004.2 4.2" /></Ic>,
   dl: <Ic w={19} s={2} d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />, send: <Ic w={17} d="M21 3L10 14M21 3l-7 18-4-7-7-4z" />,
   home: <Ic d="M4 11l8-7 8 7v8a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z" />,
   doc: <Ic><path d="M7 3h7l5 5v12a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></Ic>,
@@ -275,8 +277,8 @@ export function PathPick({ catalog, pathName, level, onChange }) {
   const P = catalog.find((p) => p.name === pathName);
   return (
     <div className="ppick">
-      <Select sm value={pathName || ''} placeholder="Path" searchable={false} allowClear options={catalog.map((p) => ({ value: p.name, label: p.name }))}
-        onChange={(v) => onChange({ path_name: v || null, path_level: null })} />
+      <Select sm value={pathName || ''} placeholder="Path" searchable={false} options={[...(pathName ? [{ value: '__none', label: 'No path set' }] : []), ...catalog.map((p) => ({ value: p.name, label: p.name }))]}
+        onChange={(v) => onChange(v === '__none' ? { path_name: null, path_level: null } : { path_name: v, path_level: v === pathName ? level ?? null : null })} />
       <Select sm value={level ?? ''} placeholder="Level" disabled={!P} options={(P?.levels || []).map((l) => ({ value: l.level, label: `Level ${l.level}`, sub: l.title }))}
         onChange={(v) => onChange({ path_name: pathName, path_level: v })} />
     </div>

@@ -351,10 +351,12 @@ function Stage({ row, name, thr, onSave, onPause }) {
     setStarted(Date.now());
   };
   const pause = () => { setBase(cur); setStarted(null); onPause(Math.floor(cur)); };
+  const [hide, setHide] = useState(() => { try { return localStorage.getItem('brekkie-timer-hide') === '1'; } catch { return false; } });
+  const toggleHide = () => setHide((h) => { try { localStorage.setItem('brekkie-timer-hide', h ? '0' : '1'); } catch { /* not saved */ } return !h; });
   const txt = over ? 'Time is up. Please wrap up.' : c === 'under' ? (s <= 0 && started === null ? 'Ready when you are' : 'Counting up to green') : CARDTXT[c];
   return (
-    <div className={'stage ' + c + (over ? ' over' : '')} style={{ position: 'fixed', inset: 0, zIndex: 40, height: '100dvh' }}>
-      <div className="st-top"><button type="button" className="back" onClick={() => onSave(Math.floor(cur))} aria-label="Back">{I.back}</button><span>{row.label}</span></div>
+    <div className={'stage ' + c + (over ? ' over' : '') + (hide ? ' hide' : '')} style={{ position: 'fixed', inset: 0, zIndex: 40, height: '100dvh' }}>
+      <div className="st-top"><button type="button" className="back" onClick={() => onSave(Math.floor(cur))} aria-label="Back">{I.back}</button><span>{row.label}</span><button type="button" className="eye" onClick={toggleHide} aria-label={hide ? 'Show the details' : 'Hide the details'} aria-pressed={hide}>{hide ? I.eyeoff : I.eye}</button></div>
       <div className="clk">{mmss(s)}</div>
       <div className="who2">{name}</div>
       <div className="cardname">{txt}</div>
