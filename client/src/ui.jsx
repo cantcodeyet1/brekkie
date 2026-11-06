@@ -104,7 +104,14 @@ export function Page({ title, root, wide, narrow, full, foot, back, onBack, chil
 export const Foot = ({ children, col }) => <div className={'foot' + (col ? ' col' : '')}>{children}</div>;
 export const Btn = ({ kind = '', sm, children, ...p }) => <button type="button" className={`btn ${kind} ${sm ? 'sm' : ''}`} {...p}>{children}</button>;
 export const Chip = ({ kind = '', children, ...p }) => <span className={'chip ' + kind} {...p}>{children}</span>;
-export const Loading = () => <p className="lede" style={{ marginTop: 24 }}>Loading…</p>;
+/* a calm shimmering outline of a page, tall enough that the card around it does not jump when the content arrives */
+export const Loading = () => (
+  <div className="skel" role="status" aria-label="Loading">
+    <i className="h" /><i className="p" /><i className="p s" />
+    <div className="g"><i /><i /><i /></div>
+    <div className="g"><i /><i /><i /></div>
+  </div>
+);
 export const ErrorMsg = ({ error }) => <p className="err" style={{ marginTop: 24 }}>{error?.message || 'Something went wrong'}</p>;
 export const Meter = ({ v }) => <span className="meter"><i className={v < 3 ? 'lo' : v < 4 ? 'mid' : 'hi'} style={{ width: `${(v / 5) * 100}%` }} /></span>;
 
