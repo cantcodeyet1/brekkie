@@ -1147,3 +1147,8 @@ textarea.inp.grow{overflow:hidden}
 .rtile .openpill{background:#FBE7A6;color:#6B4A00!important;font:700 11.5px var(--head)!important;padding:3px 9px;border-radius:999px;letter-spacing:.02em}
 .rtile.filled .selbtn,.rtile.filled .inp,.rtile.open .selbtn,.rtile.open .inp{background:#fff}
 .rtile.open .selbtn{color:#7A5A12}
+
+/* a field still to fill in stands out in amber; a finished one stays plain white */
+.rtile .selbtn.empty:not(:disabled),.rtile .inp.empty{background:#FFFBEF;box-shadow:0 0 0 1.5px #EBC96A inset}
+.rtile .selbtn.empty:not(:disabled) .sph,.rtile .inp.empty::placeholder{color:#8A6A12}
+.rtile .selbtn.empty:disabled{opacity:.55}
