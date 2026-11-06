@@ -28,7 +28,7 @@ const withCred = (name, cred) => (name ? (cred ? `${name}, ${cred}` : name) : ''
 const lengthText = (t) => String(t || '').replace(/–/g, ' - ').replace(/\s*minutes?/i, ' min').replace(/\s+/g, ' ').trim();
 
 export async function loadContext(meetingId, clubId) {
-  const [m] = await q(`select id, number, to_char(date,'YYYY-MM-DD') as date, theme, theme_quote, theme_quote_by, word, pos, pron, meaning, example, synonyms, agenda, feedback_code
+  const [m] = await q(`select id, number, to_char(date,'YYYY-MM-DD') as date, theme, theme_quote, theme_quote_by, word, pos, pron, meaning, example, synonyms, origin, agenda, feedback_code
     from meetings where id=$1 and club_id=$2`, [meetingId, clubId]);
   if (!m) return null;
   const roles = await q(`select r.id, r.role_key, r.label, r.position, r.target_role_id, r.speech_title, p.name, p.credential, pr.name as project, r.path_name as path, r.path_level as level, (select pp.pos from path_projects pp where pp.path=r.path_name and pp.level=r.path_level and pp.project_id=r.project_id) as pos, (select pp.kind from path_projects pp where pp.path=r.path_name and pp.level=r.path_level and pp.project_id=r.project_id) as pkind, pr.length_text
@@ -155,6 +155,14 @@ export async function buildDocx(ag, ctx, opts = {}) {
   setRunText(wr[7], m.meaning || '');
   setPara(P[47], m.example ? `Example: ${m.example}` : '');
   setPara(P[50], m.synonyms || '');
+  // origin of the word, under the synonyms: same label and text styling as them
+  if (m.origin) {
+    const lab = P[49].cloneNode(true), txt = P[50].cloneNode(true);
+    [lab, txt].forEach((n) => { n.removeAttribute('w14:paraId'); });
+    setPara(lab, 'Origin:'); setPara(txt, m.origin);
+    const cell = P[50].parentNode, after = P[50].nextSibling;
+    cell.insertBefore(lab, after); cell.insertBefore(txt, after);
+  }
 
   // roles table (3 rows x 4 cells: label, name, label, name)
   const rr = rowsOf(T[2]).map(cellsOf);
