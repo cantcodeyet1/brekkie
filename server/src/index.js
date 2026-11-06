@@ -303,7 +303,8 @@ app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
     for (const e of prog.evals) if (e.comments?.[k] && e.ratings[k] && e.ratings[k] <= 3) { c = e.comments[k]; break; }
     focus = { name: prog.criteria[k], avg: prog.avgs[k], comment: c, work: prog.evals[0]?.work || '', by: prog.evals[0]?.by };
   }
-  res.json({ person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
+  const [nextMeeting] = await q(`select number, ${DATE('date')} as date from meetings where club_id=$1 and date >= current_date order by date limit 1`, [me.club_id]);
+  res.json({ next_meeting: nextMeeting || null, person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
 }));
 app.get('/api/me/given', needPerson, wrap(async (req, res) => res.json(await givenFor(req.person.id))));
 app.get('/api/me/given/:id', needPerson, wrap(async (req, res, next) => {
@@ -508,13 +509,21 @@ app.post('/api/vpe/meetings/:id/agenda/reset', needPerson, needVpe, wrap(async (
   const a2 = await agendaFor(req, res);
   res.json({ agenda: a2.merged });
 }));
-app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(async (req, res) => {
+const sendAgenda = async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
   const buf = await buildDocx(a.merged, a.ctx);
   const d = new Date(a.ctx.m.date + 'T12:00:00');
   const name = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}.docx`;
   res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
   res.send(buf);
+};
+app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(sendAgenda));
+/* any member or guest can download the club's next agenda */
+app.get('/api/me/next-agenda.docx', needPerson, wrap(async (req, res) => {
+  const [n] = await q('select id from meetings where club_id=$1 and date >= current_date order by date limit 1', [req.person.club_id]);
+  if (!n) return bad(res, 'No meeting is planned yet', 404);
+  req.params.id = n.id;
+  return sendAgenda(req, res);
 }));
 
 app.get('/api/vpe/meetings/:id/agenda.pdf', needPerson, needVpe, wrap(async (req, res) => {

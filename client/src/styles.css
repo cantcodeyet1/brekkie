@@ -1200,3 +1200,6 @@ textarea.inp.grow{overflow:hidden}
 .joinask.dark .jic{background:#fff;color:var(--blue)}
 .joinask.dark .jbtn.ghost{color:#fff;box-shadow:0 0 0 1.5px #fff inset}
 @media (max-width:480px){.joinask{padding:16px}.joinask .jbtn{align-self:stretch}}
+
+.nextag{width:100%;text-align:left;font:inherit;border:0;cursor:pointer}
+.nextag:disabled{opacity:.7}

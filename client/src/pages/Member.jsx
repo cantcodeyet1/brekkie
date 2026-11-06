@@ -1,11 +1,11 @@
 import { JoinAsk } from './Role.jsx';
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
-import { useApi } from '../api.js';
+import { getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import { EvalSheet, printEval } from '../EvalSheet.jsx';
 import { SubmissionViewer } from './Vpe.jsx';
-import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, useDesk } from '../ui.jsx';
+import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, useDesk, useToast } from '../ui.jsx';
 
 /* The member area is three big, plainly named places: Home, Meetings, Speeches. */
 export const MEMBER_NAV = [];
@@ -32,6 +32,31 @@ function Tile({ to, title, sub, n, tone = '', icon }) {
 const Sect = ({ title, hint, children }) => <section className="sect"><h2>{title}</h2>{hint && <p className="hint">{hint}</p>}{children}</section>;
 
 /* ───────── Home ───────── */
+/* the next meeting's date; one tap downloads its agenda */
+function NextAgenda({ m }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const dt = new Date(m.date + 'T12:00:00');
+  const get = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/me/next-agenda.docx', { headers: { 'x-token': getToken() } });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not get the agenda');
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Agenda.docx';
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      toast('Agenda downloaded');
+    } catch (e) { toast(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <button type="button" className="notice nextag" onClick={get} disabled={busy}>
+      <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
+      <span className="tt"><b>Next meeting</b><span>{fmtDate(m.date, { weekday: 'long' })}. Tap to download the agenda.</span></span>
+      <span className="tc">{busy ? '…' : I.dl}</span>
+    </button>
+  );
+}
+
 export function MemberHome() {
   const { data: d, error, loading } = useApi('/me/overview');
   if (loading) return <Page root narrow><Loading /></Page>;
@@ -41,6 +66,7 @@ export function MemberHome() {
   return (
     <Page root narrow>
       <h1 className="hello">Hi {first}</h1>
+      {d.next_meeting && <NextAgenda m={d.next_meeting} />}
 
       {d.upcoming.map((u) => {
         const dt = day(u.date), act = !['toastmaster', 'speaker'].includes(u.role_key);
