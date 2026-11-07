@@ -782,11 +782,9 @@ a.prow:hover .ibtn,.ibtn:focus-visible{opacity:1}
 }
 /* avatars */
 .av{border-radius:50%;display:grid;place-items:center;font-family:var(--head);font-weight:700;color:#fff;flex:none;letter-spacing:.02em;box-shadow:0 1px 2px rgba(0,0,0,.12)}
-.av-blue{background:linear-gradient(145deg,#0B6194,#004165)}
-.av-maroon{background:linear-gradient(145deg,#9A3A4D,#772432)}
-.av-gold{background:linear-gradient(145deg,#F2DF74,#DEC545);color:#4B4300}
-.av-cool{background:linear-gradient(145deg,#B9C1C0,#A9B2B1);color:#1F2A2E}
-.av-black{background:linear-gradient(145deg,#2B2B2B,#000)}
+.av-blue{background:#004165}
+.av-maroon{background:#772432}
+.av-gold{background:#F2DF74;color:#4B4300}
 .av-gray{background:linear-gradient(145deg,#D0D5D6,#B4BCBE)}
 /* one person */
 .phero{display:flex;gap:22px;align-items:center;margin:2px 0 24px}
