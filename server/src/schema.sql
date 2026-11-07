@@ -231,3 +231,6 @@ create table if not exists member_electives (
 alter table clubs add column if not exists guest_days int not null default 30;
 alter table clubs add column if not exists venue text not null default '';
 alter table clubs add column if not exists meeting_time text not null default '';
+
+-- how many times the word of the day was used
+alter table gram_notes add column if not exists word_uses int not null default 0;

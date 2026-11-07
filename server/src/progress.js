@@ -16,7 +16,7 @@ export async function loadHist(clubId) {
     q(`select t.subject_id as pid, t.seconds, t.kind, t.label, t.green, t.yellow, t.red, t.comment, pr.name as project, m.number, ${D('m.date')} as date, tp.name as by
        from timings t join meetings m on m.id=t.meeting_id join meeting_roles r on r.id=t.role_id left join people tp on tp.id=r.person_id
        left join projects pr on pr.id=t.project_id where m.club_id=$1 and t.seconds is not null order by m.date`, [clubId]),
-    q(`select g.subject_id as pid, g.used_word, g.liked, g.improper, g.suggestion, m.word, m.number, ${D('m.date')} as date, gp.name as by
+    q(`select g.subject_id as pid, g.used_word, g.word_uses, g.liked, g.improper, g.suggestion, m.word, m.number, ${D('m.date')} as date, gp.name as by
        from gram_notes g join meetings m on m.id=g.meeting_id join meeting_roles r on r.id=g.role_id left join people gp on gp.id=r.person_id
        where m.club_id=$1 order by m.date`, [clubId]),
     q(`select tr.person_id as pid, rf.well, rf.improve, tr.label as role, m.number, ${D('m.date')} as date, ap.name as by

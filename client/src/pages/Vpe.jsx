@@ -375,7 +375,7 @@ export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
         {error && <ErrorMsg error={error} />}
         {d && !cur?.submitted_at && <div className="banner"><b>Waiting on {cur.person}.</b> <a className="lnk" href={remind(cur)} target="_blank" rel="noreferrer">Send a reminder</a>{(d.rows?.length || d.evaluation) ? ' Their draft so far is shown below.' : ''}</div>}
         {d && d.role.key === 'grammarian' && (d.rows.length ? d.rows.map((r, k) => (
-          <Card key={k}><div className="who">{r.name}</div><Chip kind={r.used ? 'ok' : ''}>{r.used && I.check}{r.used ? 'Used the word of the day' : 'Did not use the word'}</Chip>
+          <Card key={k}><div className="who">{r.name}</div><Chip kind={r.used ? 'ok' : ''}>{r.used && I.check}{r.used ? (r.uses > 1 ? `Used the word ${r.uses} times` : 'Used the word of the day') : 'Did not use the word'}</Chip>
             {r.liked && <div className="note g" style={{ marginTop: 8 }}><i>Liked</i>{r.liked}</div>}
             {(r.improper || r.suggestion) && <div className="note m" style={{ marginTop: 8 }}><i>To polish</i>{r.improper}{r.improper && r.suggestion ? ' → ' : ''}{r.suggestion}</div>}</Card>)) : <p className="lede">Nothing recorded.</p>)}
         {d && d.role.key === 'ah_counter' && (d.rows.length ? d.rows.map((r, k) => (

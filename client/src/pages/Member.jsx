@@ -209,7 +209,7 @@ export function MeetingDetail() {
           {d.gram.map((g, i) => (
             <div className="say" key={i}>
               <div className="who">{g.by}</div>
-              <Chip kind={g.used_word ? 'ok' : ''}>{g.used_word && I.check}Word “{g.word}” {g.used_word ? 'used' : 'not used'}</Chip>
+              <Chip kind={g.used_word ? 'ok' : ''}>{g.used_word && I.check}Word “{g.word}” {g.used_word ? (g.word_uses > 1 ? `used ${g.word_uses} times` : 'used') : 'not used'}</Chip>
               {g.liked && <div className="note g" style={{ marginTop: 8 }}><i>Liked</i>{g.liked}</div>}
               {(g.improper || g.suggestion) && <div className="note m" style={{ marginTop: 8 }}><i>To polish</i>{g.improper}{g.improper && g.suggestion ? ' → ' : ''}{g.suggestion}</div>}
             </div>))}
@@ -299,7 +299,7 @@ export function FuncHistory() {
             <div className="ent-h"><b>{longDate(r.date)}</b><Link className="lnk" to={`/m/meetings/${r.number}`}>Meeting {r.number}</Link></div>
             <div className="who">From {r.by}</div>
             {key === 'gram' && <>
-              <Chip kind={r.used_word ? 'ok' : ''}>{r.used_word && I.check}Word “{r.word}” {r.used_word ? 'used' : 'not used'}</Chip>
+              <Chip kind={r.used_word ? 'ok' : ''}>{r.used_word && I.check}Word “{r.word}” {r.used_word ? (r.word_uses > 1 ? `used ${r.word_uses} times` : 'used') : 'not used'}</Chip>
               {r.liked && <div className="note g" style={{ marginTop: 8 }}><i>Done well</i>{r.liked}</div>}
               {(r.improper || r.suggestion) && <div className="note m" style={{ marginTop: 8 }}><i>To polish</i>{r.improper}{r.improper && r.suggestion ? ' → ' : ''}{r.suggestion}</div>}
             </>}

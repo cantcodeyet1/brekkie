@@ -10,6 +10,7 @@ import { seedIfEmpty } from './seed.js';
 import { loadHist, progressFor, summary } from './progress.js';
 import { buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda } from './agenda.js';
 import { docxToPdf, pdfAvailable } from './pdf.js';
+import { buildRoleReport, hasOfficialReport } from './roleReport.js';
 import { nextClubDate } from './schedule.js';
 import { checkPw, cleanPattern, describePattern, generateMeetings, hashPw, joinCode, normEmail, nextPatternDate, pwProblem, validEmail } from './club.js';
 import { validWord, wordDetails } from './words.js';
@@ -204,10 +205,29 @@ app.get('/api/role', needRole, wrap(async (req, res) => {
   const people = await q(`select id,name,kind,status from people where club_id=$1 and status<>'inactive' order by name`, [r.club_id]);
   const roles = await q(`select id, role_key, label, position, person_id, project_id, path_name, path_level, speech_title, target_role_id from meeting_roles where meeting_id=$1 order by position`, [r.meeting_id]);
   const projects = await q('select * from projects order by level, id');
+  const [club] = await q('select name from clubs where id=$1', [r.club_id]);
   res.json({
+    club: club?.name || '',
     role: { id: r.id, key: r.role_key, label: r.label, submitted_at: r.submitted_at, target_role_id: r.target_role_id },
     me: req.rolePerson && { ...pub(req.rolePerson), join_requested: !!req.rolePerson.join_requested_at }, meeting, people, roles, projects, sheet: r.sheet || {}, evalResources: r.role_key === 'evaluator' ? EVAL_RESOURCES : undefined,
   });
+}));
+
+/* the role player's notes on Toastmasters International's own script and log (extra detail goes on a plain last page) */
+app.post('/api/role/report.pdf', needRole, wrap(async (req, res) => {
+  const r = req.role;
+  if (!hasOfficialReport(r.role_key)) return bad(res, 'There is no official form for this role', 404);
+  const [meeting] = await q(`select id, number, ${DATE('date')} as date, theme, word, meaning, example from meetings where id=$1`, [r.meeting_id]);
+  const people = await q(`select id,name from people where club_id=$1`, [r.club_id]);
+  const roles = await q('select id, role_key, label, person_id from meeting_roles where meeting_id=$1', [r.meeting_id]);
+  const projects = await q('select id, green, yellow, red from projects');
+  const [club] = await q('select name from clubs where id=$1', [r.club_id]);
+  const sheet = req.body && typeof req.body === 'object' && Object.keys(req.body).length ? req.body : (r.sheet || {});
+  const pdf = await buildRoleReport(r.role_key, { meeting, people, roles, projects, sheet, club: club?.name || '', name: req.rolePerson?.name || '' });
+  const d = new Date(meeting.date + 'T12:00:00');
+  const name = `${r.label.replace(/\s+/g, '-')}-${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}.pdf`;
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
+  res.send(pdf);
 }));
 
 /* a guest says they would like to join the club; the VPE sees it and makes them a member */
@@ -242,9 +262,10 @@ async function saveSheet(role, sheet) {
       await t('delete from gram_notes where role_id=$1', [rid]);
       for (const r of sheet.rows || []) {
         if (!(await ok(r.subject_id))) continue;
-        if (!r.used && !r.liked && !r.improper && !r.suggestion) continue;
-        await t('insert into gram_notes(role_id,meeting_id,subject_id,used_word,liked,improper,suggestion) values ($1,$2,$3,$4,$5,$6,$7)',
-          [rid, mid, r.subject_id, !!r.used, r.liked || '', r.improper || '', r.suggestion || '']);
+        const uses = Math.max(0, parseInt(r.uses, 10) || (r.used ? 1 : 0));
+        if (!uses && !r.liked && !r.improper && !r.suggestion) continue;
+        await t('insert into gram_notes(role_id,meeting_id,subject_id,used_word,word_uses,liked,improper,suggestion) values ($1,$2,$3,$4,$5,$6,$7,$8)',
+          [rid, mid, r.subject_id, uses > 0, uses, r.liked || '', r.improper || '', r.suggestion || '']);
       }
     } else if (role.role_key === 'ah_counter') {
       await t('delete from filler_counts where role_id=$1', [rid]);
@@ -574,7 +595,7 @@ const submissionHandler = wrap(async (req, res) => {
   const nm = (id) => people.find((x) => x.id === id)?.name || 'Someone';
   const sheet = r.sheet || {};
   const out = { role: { id: r.id, key: r.role_key, label: r.label, person: r.person, submitted_at: r.submitted_at, meeting: r.number, date: r.date } };
-  if (r.role_key === 'grammarian') out.rows = (await q('select s.name, g.used_word as used, g.liked, g.improper, g.suggestion from gram_notes g join people s on s.id=g.subject_id where g.role_id=$1 order by g.id', [r.id]));
+  if (r.role_key === 'grammarian') out.rows = (await q('select s.name, g.used_word as used, g.word_uses as uses, g.liked, g.improper, g.suggestion from gram_notes g join people s on s.id=g.subject_id where g.role_id=$1 order by g.id', [r.id]));
   else if (r.role_key === 'ah_counter') out.rows = (await q('select s.name, f.counts, f.comment from filler_counts f join people s on s.id=f.subject_id where f.role_id=$1 order by f.id', [r.id]));
   else if (r.role_key === 'timer') out.rows = (await q(`select s.name, t.label, t.kind, t.seconds, t.green, t.yellow, t.red, t.comment from timings t join people s on s.id=t.subject_id where t.role_id=$1 order by t.id`, [r.id]));
   else if (r.role_key === 'topicsmaster') { out.topics = (Array.isArray(sheet.topics) ? sheet.topics : String(sheet.topics || '').split('\n')).map((x) => String(x).trim()).filter(Boolean); out.rows = (sheet.rows || []).filter((x) => x.subject_id).map((x) => ({ name: nm(x.subject_id), topic: x.topic || '' })); }

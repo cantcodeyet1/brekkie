@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, longDate, mmss, secs, sum } from '../data.js';
-import { printEval, printReport } from '../EvalSheet.jsx';
-import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
+import { printEval } from '../EvalSheet.jsx';
+import { Btn, Chip, ErrorMsg, Foot, I, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
 
 /* ───────── helpers ───────── */
 const fill = (t, v) => t.split(/(\{\w\})/).map((p, i) => { const m = /^\{(\w)\}$/.exec(p); return m ? <em key={i}>{v[m[1]] || '…'}</em> : p; });
@@ -14,7 +14,7 @@ function initSheet(data) {
   const key = data.role.key, saved = data.sheet || {};
   const speakers = data.roles.filter((r) => r.role_key === 'speaker' && r.person_id);
   const subjectRows = (extra) => speakers.map((s) => ({ subject_id: s.person_id, ...extra }));
-  if (key === 'grammarian') return { rows: saved.rows?.length ? saved.rows : subjectRows({ used: false, liked: '', improper: '', suggestion: '' }) };
+  if (key === 'grammarian') return { rows: saved.rows?.length ? saved.rows : subjectRows({ used: false, uses: 0, liked: '', improper: '', suggestion: '' }) };
   if (key === 'ah_counter') return { fillers: saved.fillers || DEFAULT_FILLERS.map(([k, l]) => ({ k, l, custom: false })), rows: saved.rows?.length ? saved.rows : subjectRows({ counts: {}, comment: '' }) };
   if (key === 'timer') {
     const agenda = data.roles.filter((r) => r.person_id && (r.role_key === 'speaker' || r.role_key === 'evaluator' || r.role_key === 'general_evaluator'))
@@ -42,16 +42,6 @@ function evalDoc(data, sheet, people, blank) {
     ratings: blank ? [] : sheet.ratings, comments: blank ? [] : sheet.comments, excelled: blank ? '' : sheet.excelled, work: blank ? '' : sheet.work, challenge: blank ? '' : sheet.challenge,
   };
 }
-function reportNode(key, { data, sheet, people }) {
-  const m = data.meeting;
-  if (key === 'grammarian') return <GramReport m={m} rows={sheet.rows} people={people} />;
-  if (key === 'ah_counter') return <AhReport sheet={sheet} people={people} />;
-  if (key === 'timer') return <TimeReport rows={sheet.rows} projects={data.projects} people={people} />;
-  if (key === 'topicsmaster') return <TTReport topics={sheet.topics} rows={sheet.rows} people={people} />;
-  if (key === 'general_evaluator') return <GEReport data={data} sheet={sheet} people={people} />;
-  return null;
-}
-
 /* the greeting follows the meeting date, since a link can arrive days ahead */
 function greeting(date, role) {
   const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -112,6 +102,8 @@ function RoleBody({ data, token }) {
   const [sheet, setSheet] = useState(() => initSheet(data));
   const [save, setSave] = useState('');
   const [err, setErr] = useState('');
+  const [confirm, setConfirm] = useState(false);
+  const [submitted, setSubmitted] = useState(!!data.role.submitted_at);
   const addGuest = async (name) => {
     const g = await api('/people/guest', { method: 'POST', body: { name }, token });
     setPeople((p) => (p.some((x) => x.id === g.id) ? p : [...p, g].sort((a, b) => a.name.localeCompare(b.name))));
@@ -121,18 +113,39 @@ function RoleBody({ data, token }) {
     try { setSave('Saving…'); await api('/role/sheet', { method: 'PUT', body: sheet, token }); setSave('Saved'); } catch { setSave('Not saved. Check your connection.'); }
   }, [sheet]);
   const submit = async () => {
-    try { await api('/role/submit', { method: 'POST', body: sheet, token }); setView('done'); } catch (e) { setErr(e.message); }
+    setConfirm(false);
+    try { await api('/role/submit', { method: 'POST', body: sheet, token }); setSubmitted(true); setView('done'); } catch (e) { setErr(e.message); }
   };
   const first = (data.me?.name || '').split(' ')[0];
   const desk = useDesk();
-  const downloadPdf = () => {
+  const [dlBusy, setDlBusy] = useState(false);
+  const downloadPdf = async () => {
     if (key === 'evaluator') { const d = evalDoc(data, sheet, people, false); if (d) printEval(d); return; }
-    const node = reportNode(key, { data, sheet, people });
-    if (node) printReport(`${meta.name} report, meeting ${data.meeting.number}`, node);
+    // the official Toastmasters International script and log, filled in with these notes
+    setDlBusy(true); setErr('');
+    try {
+      const res = await fetch('/api/role/report.pdf', { method: 'POST', headers: { 'content-type': 'application/json', 'x-token': token }, body: JSON.stringify(sheet) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not make the PDF');
+      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || `${meta.name}.pdf`;
+      const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) { setErr(e.message); } finally { setDlBusy(false); }
   };
-  const pdfTitle = key === 'evaluator' ? 'Completed evaluation form' : 'My report';
-  const pdfSub = key === 'evaluator' ? 'Your ratings and comments, as a PDF' : 'As a PDF';
+  const pdfTitle = key === 'evaluator' ? 'Completed evaluation form' : 'Official report (PDF)';
+  const pdfSub = key === 'evaluator' ? 'Your ratings and comments, as a PDF' : dlBusy ? 'Filling in the official form…' : 'Your notes on the Toastmasters International form';
   const ctx = { data, sheet, setSheet, people, addGuest, mode };
+  // swipe sideways to move between script, notes and report
+  const touch = useRef(null);
+  const swipe = {
+    start: (e) => { const t = e.touches[0]; touch.current = e.target.closest('input,textarea,select,.stage,[data-noswipe]') ? null : { x: t.clientX, y: t.clientY }; },
+    end: (e) => {
+      const s0 = touch.current; touch.current = null; if (!s0) return;
+      const t = e.changedTouches[0], dx = t.clientX - s0.x, dy = t.clientY - s0.y;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      const order = ['script', 'notes', 'report'], i = order.indexOf(mode), n = order[Math.max(0, Math.min(2, i + (dx < 0 ? 1 : -1)))];
+      if (n !== mode) { setMode(n); document.querySelector('.scroll')?.scrollTo({ top: 0 }); }
+    },
+  };
 
   if (view === 'land') return (
     <div className="main">
@@ -142,17 +155,16 @@ function RoleBody({ data, token }) {
           <div className="tag">Meeting {data.meeting.number} · {longDate(data.meeting.date)}</div>
           <h1>Hi {first}, {greeting(data.meeting.date, data.role.label.replace(/ \d$/, ''))}</h1>
           <p className="sub">{meta?.blurb}</p>
-          <p className="sub">Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p>
-          {data.me?.kind === 'guest' && <div className="rwel-note"><b>Welcome as a visitor.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
-          <JoinAsk data={data} token={token} dark />
-          <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</button>
+          {data.me?.kind === 'guest' && <p className="rwel-note">Welcome as a visitor. Your access is temporary and your notes are kept with {data.club || 'the club'}.</p>}
+          {submitted && <JoinAsk data={data} token={token} dark />}
+          <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{submitted ? 'View or edit my notes' : 'Open my sheet'}</button>
         </div>
       </div>
     </div>
   );
   if (view === 'done') return (
     <Page onBack={() => setView('sheet')} title="" foot={<Foot col><Btn kind="ghost" onClick={() => setView('sheet')}>Edit my notes</Btn></Foot>}>
-      <div className="done"><div className="tick">{I.check}</div><h1 className="pg">Thanks, {first}.</h1><p className="lede">Your {meta.name.toLowerCase()} notes are in. Members will find them in their history from now on.</p>
+      <div className="done"><div className="tick">{I.check}</div><h1 className="pg">Thanks, {first}.</h1><p className="lede">Your {meta.name.toLowerCase()} notes are in. Members will find them in their history from now on. You can open your link again at any time to edit them.</p>
         <div style={{ marginTop: 20, textAlign: 'left' }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>
         <div style={{ marginTop: 20, textAlign: 'left' }}><JoinAsk data={data} token={token} /></div></div>
     </Page>
@@ -160,7 +172,7 @@ function RoleBody({ data, token }) {
 
   const Sheet = { grammarian: GramSheet, ah_counter: AhSheet, timer: TimeSheet, topicsmaster: TTSheet, evaluator: EvalForm, general_evaluator: GESheet }[key];
   return (
-    <Page title={meta.name} narrow onBack={() => setView('land')} foot={<Foot><span className="saving">{save}</span><Btn onClick={submit}>Submit notes</Btn></Foot>}>
+    <Page title={meta.name} narrow onBack={() => setView('land')} foot={<Foot><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></Foot>}>
       <h1 className="pg sm">{meta.name}</h1>
       <div className="meta"><span>{data.me?.name}</span><span>Meeting {data.meeting.number} · {longDate(data.meeting.date)}</span></div>
       {(
@@ -170,9 +182,15 @@ function RoleBody({ data, token }) {
           </div>
         </div>
       )}
-      <Sheet {...ctx} />
+      <div className="swipe" onTouchStart={swipe.start} onTouchEnd={swipe.end}><Sheet {...ctx} /></div>
       {mode === 'report' && <div style={{ marginTop: 14 }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>}
       {err && <p className="err">{err}</p>}
+      {confirm && (
+        <Modal title={submitted ? 'Update your notes?' : 'Submit your notes?'} onClose={() => setConfirm(false)}>
+          <p style={{ margin: '4px 0 0', color: 'var(--mute)', fontSize: 15.5, lineHeight: 1.45 }}>{submitted ? 'Your latest changes replace what members already see.' : 'Members will see what you wrote about them in their history.'} You can open your link again at any time to edit.</p>
+          <div className="row-btns"><Btn kind="ghost" onClick={() => setConfirm(false)}>Not yet</Btn><Btn onClick={submit}>{submitted ? 'Yes, update' : 'Yes, submit'}</Btn></div>
+        </Modal>
+      )}
     </Page>
   );
 }
@@ -232,6 +250,7 @@ const subjectName = (people, id) => people.find((p) => p.id === id)?.name || '';
 function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
   const { upd, del, add } = rowsApi(setSheet);
   const m = data.meeting;
+  const bump = (i, d) => setSheet((x) => ({ ...x, rows: x.rows.map((r, j) => { if (j !== i) return r; const n = Math.max(0, (r.uses || 0) + d); return { ...r, uses: n, used: n > 0 }; }) }));
   return (
     <Modes mode={mode}
       script={<ScriptDoc k="grammarian" vars={{ w: m.word, m: m.meaning, x: m.example }} before={<Wcard m={m} />} />}
@@ -241,13 +260,16 @@ function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
         {sheet.rows.map((r, i) => (
           <Block key={i} i={i} n={sheet.rows.length} onRemove={() => del(i)}>
             <PersonSelect value={r.subject_id} onChange={(v) => upd(i, { subject_id: v })} people={people} onAddGuest={addGuest} />
-            <div className="pill-row"><button type="button" className={'chip ' + (r.used ? 'on' : '')} onClick={() => upd(i, { used: !r.used })}>{r.used && I.check}Used the word of the day</button></div>
+            <div className="wcount" data-noswipe>
+              <span>Times they used the word of the day</span>
+              <div className="stp"><button type="button" onClick={() => bump(i, -1)} aria-label="One fewer">{I.minus}</button><b>{r.uses || 0}</b><button type="button" onClick={() => bump(i, 1)} aria-label="One more">{I.plus}</button></div>
+            </div>
             <TA label="Quote, saying or word you liked" kind="blue" value={r.liked} onChange={(v) => upd(i, { liked: v })} placeholder="What did they say?" />
             <TA label="Improper use" kind="maroon" value={r.improper} onChange={(v) => upd(i, { improper: v })} placeholder="What was said" />
             <TA label="Suggestion" value={r.suggestion} onChange={(v) => upd(i, { suggestion: v })} placeholder="A better way to say it" />
           </Block>
         ))}
-        <AddRow onClick={() => add({ subject_id: null, used: false, liked: '', improper: '', suggestion: '' })}>Add another person</AddRow>
+        <AddRow onClick={() => add({ subject_id: null, used: false, uses: 0, liked: '', improper: '', suggestion: '' })}>Add another person</AddRow>
       </>} />
   );
 }
@@ -535,15 +557,17 @@ function GESheet({ data, sheet, setSheet, people, mode }) {
 function GramReport({ m, rows, people }) {
   const filled = rows.filter((x) => x.subject_id);
   const nm = (x) => subjectName(people, x.subject_id);
-  const used = filled.filter((x) => x.used).map(nm);
-  const any = filled.some((x) => x.used || x.liked || x.improper || x.suggestion);
+  const cnt = (x) => x.uses || (x.used ? 1 : 0);
+  const used = filled.filter((x) => cnt(x) > 0).map((x) => `${nm(x)}${cnt(x) > 1 ? ` (${cnt(x)} times)` : ''}`);
+  const total = filled.reduce((a, x) => a + cnt(x), 0);
+  const any = filled.some((x) => cnt(x) > 0 || x.liked || x.improper || x.suggestion);
   return (
     <div className="rpt">
       <div className="rep-hero"><small>Word of the day</small><b>{m.word || 'Not set'}</b>
-        <p>{any ? (used.length ? `Used by ${joinNames(used)}.` : 'No one used it yet.') : ''}</p></div>
+        <p>{any ? (used.length ? `Used ${total} ${total === 1 ? 'time' : 'times'} in all: ${joinNames(used)}.` : 'No one used it yet.') : ''}</p></div>
       {!any && <RepEmpty />}
       {filled.filter((x) => x.liked || x.improper || x.suggestion).map((x, i) => (
-        <Rep key={i} title={nm(x)} sub={x.used ? 'Used the word' : ''}>
+        <Rep key={i} title={nm(x)} sub={cnt(x) ? (cnt(x) > 1 ? `Used the word ${cnt(x)} times` : 'Used the word') : ''}>
           <RepLine label="Liked" kind="blue">{x.liked}</RepLine>
           <RepLine label="Improper use" kind="maroon">{x.improper}</RepLine>
           <RepLine label="Suggestion">{x.suggestion}</RepLine>
