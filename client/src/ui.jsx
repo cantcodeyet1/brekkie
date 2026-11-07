@@ -296,7 +296,7 @@ export function PathPick({ catalog, pathName, level, onChange }) {
 }
 
 /* A person's initials on a brand-coloured circle. The colour follows the name, so it is the same everywhere. */
-const TONES = ['blue', 'maroon', 'teal', 'gold', 'slate'];
+const TONES = ['blue', 'maroon', 'gold', 'cool', 'black'];
 export function Avatar({ name = '', size = 40, tone }) {
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
   const t = tone || TONES[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % TONES.length];
