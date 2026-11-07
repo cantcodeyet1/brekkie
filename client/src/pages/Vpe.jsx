@@ -216,7 +216,32 @@ export function VpeMeeting() {
         : <input className="inp" type={type} value={m[k] || ''} placeholder={ph} onChange={(e) => (type !== 'date' || e.target.value) && setField({ [k]: e.target.value })} />}
     </div>
   );
-  const msg = (r, kind = 'send') => `Hi ${r.person.split(' ')[0]}, you are the ${r.label} at Champions Toastmasters Club, meeting ${m.number} on ${fmtDate(m.date)}. ${kind === 'remind' ? 'A reminder to fill in your sheet: ' : 'Your sheet and script: '}${roleLink(base, r.token)}`;
+  const msg = (r, kind = 'send') => {
+    const who = people.find((p) => p.id === r.person_id), title = who?.credential ? `${who.credential} ` : '';
+    const sender = people.find((p) => p.is_vpe)?.name;
+    const theme = m.theme ? ` The theme for the evening is "${m.theme}".` : '';
+    const word = r.role_key === 'grammarian' && m.word ? `
+
+The word of the day is "${m.word}". Please introduce it at the start of the meeting and listen for how members use it.` : '';
+    const intro = kind === 'remind'
+      ? `A gentle reminder that you are down as ${r.label} at our club meeting on ${fmtDate(m.date)}.${theme} Your link is below, and your sheet is ready for you to fill in.`
+      : `Thank you for agreeing to serve as ${r.label} at our club meeting on ${fmtDate(m.date)}.${theme}`;
+    return `Hello ${title}${r.person},
+
+I trust this message finds you well.
+
+${intro}${word}
+
+At Champions, we use a tool called Brekkie to run our meetings and share feedback. Your link below opens your personal script and sheet for the role, with no sign-in or app to install. You will still give your report at the meeting as usual, and your notes will be there on the sheet. When you submit it, the feedback goes straight to the people you wrote about.
+
+${roleLink(base, r.token)}
+
+Please let me know when you are available for a quick tutorial, so we can make sure you are ready.
+
+Kind regards,
+${sender || 'Your VPE'}
+VPE, Champions Toastmasters Club`;
+  };
   const copy = async (text) => { toast((await copyText(text)) ? 'Copied' : 'Copy failed'); };
   const all = fb.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
   const upcoming = m.status !== 'Done';
@@ -463,7 +488,6 @@ export function VpePeople() {
             {members.map(memberRow)}
             {!members.length && <p className="empty">No one matches “{qy}”.</p>}
           </div>
-          <p className="pfoot">Speeches are evaluated speeches. Roles done are roles at meetings that have already taken place. Feedback given is the number of role sheets they have submitted.</p>
         </>
       )}
       {tab === 'guests' && (

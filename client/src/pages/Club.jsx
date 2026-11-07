@@ -45,7 +45,7 @@ export default function Club() {
 
       <div className="pstats three cstats">
         {stat(sm?.members, 'Members', 'In the club')}
-        {stat(sm?.guests, 'Guests', 'With access now')}
+        {stat(sm?.guests, 'Visitors', 'With access now')}
         {stat(sm?.ahead, 'Meetings', 'Still to come')}
         {stat(sm?.speeches, 'Speeches', 'Evaluated so far')}
       </div>
