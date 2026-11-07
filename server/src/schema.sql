@@ -218,3 +218,16 @@ create table if not exists member_projects (
   done_at date not null default current_date,
   primary key (person_id, project_id)
 );
+
+alter table people add column if not exists phone text;
+-- the electives a member has chosen for their level (they pick as many as the level asks for)
+create table if not exists member_electives (
+  person_id int not null references people(id) on delete cascade,
+  project_id int not null references projects(id) on delete cascade,
+  primary key (person_id, project_id)
+);
+
+-- club settings: how long a guest keeps access, where and when the club meets
+alter table clubs add column if not exists guest_days int not null default 30;
+alter table clubs add column if not exists venue text not null default '';
+alter table clubs add column if not exists meeting_time text not null default '';

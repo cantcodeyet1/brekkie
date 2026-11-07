@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, getToken, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
-import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, useDebouncedSave, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, I, Loading, Page, useDebouncedSave, useDesk, useToast } from '../ui.jsx';
 
 /* The agenda is the club's own Word template, filled in from this page. Everything here can be edited;
    roles, speakers and evaluators come from the meeting and update themselves unless you change them. */
@@ -89,7 +89,7 @@ export default function Agenda() {
         <div>
           <div className="two">
             <div><label className="fl" style={{ marginTop: 0 }}>Meeting starts (hhmm)</label><input className="inp mono" value={ag.start} maxLength={4} inputMode="numeric" onChange={(e) => changeStart(e.target.value)} /></div>
-            <div><label className="fl" style={{ marginTop: 0 }}>Next meeting date</label><input className="inp" type="date" value={ag.next_meeting} onChange={(e) => e.target.value && setAg((a) => ({ ...a, next_meeting: e.target.value }))} /></div>
+            <div><label className="fl" style={{ marginTop: 0 }}>Next meeting date</label><DatePick value={ag.next_meeting} onChange={(v) => setAg((a) => ({ ...a, next_meeting: v }))} /></div>
           </div>
           <p style={{ margin: '12px 0 0', color: 'var(--mute)', fontSize: 14 }}>Word of the day <b style={{ color: 'var(--ink)' }}>{mt.word || 'not set'}</b>. Edit it on the <Link className="lnk" to={`/v/meetings/${id}`}>meeting page</Link>.</p>
         </div>

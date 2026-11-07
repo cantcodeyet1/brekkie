@@ -192,14 +192,14 @@ export async function seedDemo() {
       if (ge.who) {
         const target = [[1, 'Introduced the word with energy and gave specific examples.', 'Give the grammar report a little sooner.'],
           [2, 'Clear explanation of what counts as a filler.', 'Keep the report to under a minute.'],
-          [3, 'Cards were raised on time and held up clearly.', 'Explain the card colours more slowly for guests.'],
-          [4, 'Called on people without a role first, as good practice.', 'Give guests a gentler topic to start.'],
+          [3, 'Cards were raised on time and held up clearly.', 'Explain the card colours more slowly for visitors.'],
+          [4, 'Called on people without a role first, as good practice.', 'Give visitors a gentler topic to start.'],
           [9, 'Opened with a warm thank you and a clear structure.', 'Finish inside the three minutes.'],
           [0, 'Set the theme well and kept the energy up.', 'Introduce the next role player by name sooner.']];
         for (const [idx, well, improve] of target) if (R[idx].who) await t('insert into role_feedback(meeting_id,author_role_id,target_role_id,well,improve) values ($1,$2,$3,$4,$5)', [M, ge.id, R[idx].id, well, improve]);
       }
       // room feedback from the QR code
-      const ROOM = [['Hannah', 'You made the opening feel like a conversation.', 'Slow down a little in the middle.'], ['A guest', 'I remembered the story a day later.', ''], ['Omar', 'Great energy and clear structure.', 'Look at the back of the room more.']];
+      const ROOM = [['Hannah', 'You made the opening feel like a conversation.', 'Slow down a little in the middle.'], ['A visitor', 'I remembered the story a day later.', ''], ['Omar', 'Great energy and clear structure.', 'Look at the back of the room more.']];
       let k = 0;
       for (const sp of speakers) for (const [from, well, improve] of ROOM.slice(0, 2 + (k++ % 2))) await t('insert into peer_feedback(meeting_id,to_person_id,from_name,well,improve) values ($1,$2,$3,$4,$5)', [M, person[sp.who], from, well, improve]);
       // everyone with a feedback role has submitted, apart from the 143 timer

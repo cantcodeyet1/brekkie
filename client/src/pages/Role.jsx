@@ -74,14 +74,14 @@ export default function RoleApp() {
   return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
 }
 
-/* shown to guests: one tap tells the VPE, and opens a ready-written WhatsApp message to them */
+/* shown to visitors: one tap tells the VPE, and opens a ready-written WhatsApp message to them */
 const VPE_WHATSAPP = '263719373950';
 export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) {
   const [asked, setAsked] = useState(!!data.me?.join_requested);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   if (data.me?.kind !== 'guest') return null;
-  const wa = () => `https://wa.me/${VPE_WHATSAPP}?text=${encodeURIComponent(`Hi, it's ${data.me.name}. I enjoyed being a guest at Champions Toastmasters Club and would like to join as a member. What are the next steps?`)}`;
+  const wa = () => `https://wa.me/${VPE_WHATSAPP}?text=${encodeURIComponent(`Hi, it's ${data.me.name}. I enjoyed being a visitor at Champions Toastmasters Club and would like to join as a member. What are the next steps?`)}`;
   const send = async () => {
     const win = window.open('', '_blank');           // opened on the tap so the browser lets it through
     setBusy(true); setErr('');
@@ -143,7 +143,7 @@ function RoleBody({ data, token }) {
           <h1>Hi {first}, {greeting(data.meeting.date, data.role.label.replace(/ \d$/, ''))}</h1>
           <p className="sub">{meta?.blurb}</p>
           <p className="sub">Your script is ready. Your notes go straight into each member’s history, so they still have them tomorrow.</p>
-          {data.me?.kind === 'guest' && <div className="rwel-note"><b>Welcome as a guest.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
+          {data.me?.kind === 'guest' && <div className="rwel-note"><b>Welcome as a visitor.</b> Your access is temporary. Anything you record is kept with Champions Toastmasters Club.</div>}
           <JoinAsk data={data} token={token} dark />
           <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{data.role.submitted_at ? 'Open my sheet again' : 'Open my sheet'}</button>
         </div>

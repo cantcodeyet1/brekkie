@@ -47,7 +47,7 @@ There are no passwords. Everyone arrives through a link the VPE shares:
 | VPE | `/s/<token>` | Everything below, plus meetings, roles, people |
 | Role player | `/r/<token>` (one per role per meeting, from Meetings, Links) | That one role's sheet for that one meeting |
 
-Reassigning a role issues a new link and the previous one stops working. Role links work for guests too.
+Reassigning a role issues a new link and the previous one stops working. Role links work for visitors too.
 
 ## Feedback beyond the sheets
 
@@ -64,18 +64,18 @@ The VPE opens a meeting and taps **Create the agenda**. Brekkie fills the club's
 - The club mission, officers and the banner stay exactly as they are in the template. To change them, edit the template file. The agenda title shown after a name (TM, DTM) is set per person.
 - The project codes (L2P2 and so on) are stored on each project and can be overridden per speech on the Agenda page.
 
-## Guests (non-members as role players)
+## Visitors (non-members as role players)
 
-Anyone outside the club can take a role. They are stored as **guests**: `kind = guest`, `status = temporary`, with the same `club_id` as every member, so everything they record (and everything recorded about them) is housed under Champions.
+Anyone outside the club can take a role. They are stored as **visitors**: `kind = guest`, `status = temporary`, with the same `club_id` as every member, so everything they record (and everything recorded about them) is housed under Champions.
 
-- The VPE adds a guest from **People**, or straight from any role dropdown (**+ Add a guest**).
-- Role players can add a guest from inside their own sheet when they need to log someone who is not listed. These are flagged "Added from a sheet" so the VPE can review them.
-- Guests get temporary access (30 days, extendable). The VPE can **Make member**, **Extend**, or **Archive**. Archiving hides them from dropdowns but never deletes data.
-- Converting a guest to a member keeps all of their history.
+- The VPE adds a visitor from **People**, or straight from any role dropdown (**+ Add a visitor**).
+- Role players can add a visitor from inside their own sheet when they need to log someone who is not listed. These are flagged "Added from a sheet" so the VPE can review them.
+- Visitors get temporary access (30 days, extendable). The VPE can **Make member**, **Extend**, or **Archive**. Archiving hides them from dropdowns but never deletes data.
+- Converting a visitor to a member keeps all of their history.
 
 ## Data model
 
-`clubs` → `people` (member or guest) and `meetings` → `meeting_roles` (one per role per meeting, each with its own link token). Role sheets are normalised into `gram_notes`, `filler_counts`, `timings` and `evaluations`, which is what members and the VPE read their history from. `projects` holds the Pathways projects with purpose, evaluator notes and timer cards.
+`clubs` → `people` (member or visitor) and `meetings` → `meeting_roles` (one per role per meeting, each with its own link token). Role sheets are normalised into `gram_notes`, `filler_counts`, `timings` and `evaluations`, which is what members and the VPE read their history from. `projects` holds the Pathways projects with purpose, evaluator notes and timer cards.
 
 ## Brand
 

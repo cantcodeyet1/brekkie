@@ -1,18 +1,31 @@
 import { useEffect, useState } from 'react';
-import { api, useApi } from '../api.js';
+import { api } from '../api.js';
 import { fmtDate } from '../data.js';
-import { Btn, I, Loading, PathPick, useToast } from '../ui.jsx';
+import { Btn, I, Loading, PathPick, Select, useToast } from '../ui.jsx';
 
-/* Where a member is on their Pathways path: the path, the level they are on, what is finished and what comes next.
-   The VPE marks a project done here, because being on the agenda does not mean the speech was given. */
-export default function PathCard({ person }) {
+/* Where a member is on their path: the path and a timeline of levels. The detail (next project, what is finished,
+   electives) stays folded away until the VPE opens it. The VPE marks a project done, because being on the agenda
+   does not mean the speech was given. */
+export default function PathCard({ person, mine = false, initial = null }) {
   const toast = useToast();
-  const prog = useApi(`/vpe/people/${person.id}/path`);
-  const cat = useApi('/pathways');
+  const url = mine ? '/me/path' : `/vpe/people/${person.id}/path`;
+  // the page that shows this card already fetched the progress, so there is only one loading stage
+  const [data, setData] = useState(initial);
+  const [err, setErr] = useState(null);
+  const reload = async () => { try { setData(await api(url)); setErr(null); } catch (e) { setErr(e); } };
+  useEffect(() => { if (initial) setData(initial); else reload(); }, [url, initial]); // eslint-disable-line
+  const prog = { data, loading: !data && !err, reload };
+  // the catalogue is only needed to change the path, so it loads then
+  const [catalog, setCatalog] = useState(null);
+  const cat = { data: catalog };
+  const loadCatalog = () => { if (!catalog) api('/pathways').then(setCatalog).catch(() => {}); };
   const [pl, setPl] = useState({ path_name: person.path_name || null, path_level: person.path_level ?? null });
   const [view, setView] = useState(null);
   const [busy, setBusy] = useState(null);
   const [open, setOpen] = useState(false);
+  const [edit, setEditRaw] = useState(false);
+  const setEdit = setEditRaw;
+  useEffect(() => { if (edit || (data && !data.path)) loadCatalog(); }, [edit, data]); // eslint-disable-line
 
   const d = prog.data;
   useEffect(() => { if (d) setView((v) => (d.levels.some((l) => l.level === v) ? v : d.current)); }, [d]);
@@ -21,27 +34,47 @@ export default function PathCard({ person }) {
     setPl(n);
     try { await api(`/vpe/people/${person.id}`, { method: 'PATCH', body: n }); setView(null); await prog.reload(); } catch (e) { toast(e.message); }
   };
-  const setLevel = async (level) => { await savePath({ path_name: pl.path_name, path_level: level }); };
-  const mark = async (p, done) => {
-    setBusy(p.id);
-    try { await api(`/vpe/people/${person.id}/projects`, { method: 'POST', body: { project_id: p.id, done } }); await prog.reload(); toast(done ? `${p.name} marked as done` : 'Marked as not done'); }
-    catch (e) { toast(e.message); } finally { setBusy(null); }
+  const call = async (id, fn, msg) => {
+    setBusy(id);
+    try { await fn(); await prog.reload(); if (msg) toast(msg); } catch (e) { toast(e.message); } finally { setBusy(null); }
   };
+  const mark = (p, done) => call(p.id, () => api(`/vpe/people/${person.id}/projects`, { method: 'POST', body: { project_id: p.id, done } }), done ? `${p.name} marked as done` : 'Marked as not done');
+  const elective = (id, on) => call(id, () => api(`/vpe/people/${person.id}/electives`, { method: 'POST', body: { project_id: id, on } }), on ? 'Elective added' : 'Elective removed');
 
-  const picker = <PathPick catalog={cat.data?.paths || []} pathName={pl.path_name} level={pl.path_level} onChange={savePath} />;
   const head = (
-    <div className="pc-h">
-      <div><small>Pathways</small><h2>{d?.path || 'No path yet'}</h2></div>
-      <div className="pc-pick">{picker}</div>
-    </div>
+    <>
+      <div className="pc-h">
+        <div><small>Pathways</small><h2>{d?.path || 'No path yet'}</h2></div>
+        {!mine && <button type="button" className="pc-chg" onClick={() => setEdit(!edit)} aria-expanded={edit}>{edit ? 'Done' : d?.path ? 'Change path' : 'Choose a path'}</button>}
+      </div>
+      {!mine && (edit || (d && !d.path)) && <div className="pc-pick"><PathPick catalog={cat.data?.paths || []} pathName={pl.path_name} level={pl.path_level} onChange={savePath} /></div>}
+    </>
   );
   if (prog.loading || !d) return <section className="pcard2">{head}<Loading /></section>;
-  if (!d.path) return <section className="pcard2">{head}<p className="pc-empty">Choose a path and level. When this member is put in a speaker slot, their path and next project fill in on their own.</p></section>;
+  if (!d.path) return <section className="pcard2">{head}<p className="pc-empty">{mine ? 'Your VPE sets your path. Once it is set, your next project shows up here.' : 'Choose a path and level. When this member is put in a speaker slot, their path and next project fill in on their own.'}</p></section>;
 
   const lv = d.levels.find((l) => l.level === view) || d.levels.find((l) => l.level === d.current) || d.levels[0];
-  const cur = d.levels.find((l) => l.level === d.current);
   const pct = lv && lv.required_total ? Math.round((lv.required_done / lv.required_total) * 100) : 0;
-  const upLevel = d.levels.find((l) => l.level > d.current)?.level;
+  const reqs = lv ? lv.projects.filter((p) => p.kind === 'required') : [];
+  const els = lv ? lv.projects.filter((p) => p.kind === 'elective') : [];
+
+  const row = (p) => {
+    const isNext = d.next?.id === p.id && lv.level === d.current;
+    return (
+      <li key={p.id} className={(p.done ? 'is-done ' : '') + (isNext ? 'is-next' : '')}>
+        <span className="pc-ic">{p.done ? I.check : isNext ? <i className="pulse" /> : null}</span>
+        <span className="pc-t">{isNext && <em className="pc-tag">Next up</em>}<b>{p.name}</b><small>{p.code ? `${p.code} · ` : ''}{p.kind === 'elective' ? 'Elective' : 'Required'}{p.length ? ` · ${p.length}` : ''}</small></span>
+        <span className="pc-a">
+          {p.done
+            ? <><small>{p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}</small>{!mine && p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
+            : !mine && <>
+                {p.kind === 'elective' && <button type="button" className="lnk" onClick={() => elective(p.id, false)} disabled={busy === p.id}>Remove</button>}
+                <Btn sm kind={isNext ? '' : 'ghost'} onClick={() => mark(p, true)} disabled={busy === p.id}>{isNext && I.check} Mark done</Btn>
+              </>}
+        </span>
+      </li>
+    );
+  };
 
   return (
     <section className="pcard2">
@@ -49,7 +82,7 @@ export default function PathCard({ person }) {
 
       <ol className="pc-steps" aria-label="Levels">
         {d.levels.map((l) => (
-          <li key={l.level} className={l.complete ? 'is-done' : ''}>
+          <li key={l.level} className={(l.complete ? 'is-done ' : '') + (l.level === d.current ? 'cur' : '')}>
             <button type="button" className={(l.complete ? 'is-done ' : '') + (l.level === d.current ? 'is-now ' : '') + (l.level === lv?.level ? 'is-view' : '')} onClick={() => { setView(l.level); setOpen(true); }} aria-label={`Level ${l.level}, ${l.required_done} of ${l.required_total} done${l.complete ? ', complete' : ''}`}>
               {l.complete ? I.check : l.level}
             </button>
@@ -59,48 +92,36 @@ export default function PathCard({ person }) {
         ))}
       </ol>
 
-      {d.level_complete && upLevel && lv?.level === d.current && (
-        <div className="pc-up"><div><b>Level {d.current} is complete.</b><span>Move them up and their next slot picks Level {upLevel}.</span></div>
-          <Btn sm onClick={() => setLevel(upLevel)}>Move to Level {upLevel}</Btn></div>)}
-
-      {d.next && (
-        <div className="pc-next">
-          <div><small>Next up</small><b>{d.next.name}</b><span>{d.next.code ? `${d.next.code} · ` : ''}{d.next.kind === 'elective' ? 'Elective' : 'Required'}</span></div>
-          <Btn sm onClick={() => mark(d.next, true)} disabled={busy === d.next.id}>{I.check} Mark done</Btn>
-        </div>)}
-
       {lv && (
         <>
           <button type="button" className="pc-tog" aria-expanded={open} onClick={() => setOpen(!open)}>
             <span><b>Level {lv.level}</b>{lv.title ? ` · ${lv.title}` : ''}</span>
-            <span className="pc-sum">{lv.required_done} of {lv.required_total} required{lv.choose ? `, ${lv.electives_done}/${lv.choose} electives` : ''}</span>
+            <span className="pc-sum">{`${lv.required_done} of ${lv.required_total} required${lv.choose ? `, ${lv.electives_done}/${lv.choose} electives` : ''}`}</span>
             <span className={'pc-car' + (open ? ' up' : '')}>{I.chev}</span>
           </button>
-          <div className="pc-bar" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100"><i style={{ width: pct + '%' }} /></div>
+
           {open && (
-            <>
-              {lv.level !== d.current && <div className="pc-mk"><button type="button" className="lnk" onClick={() => setLevel(lv.level)}>Make this their current level</button></div>}
-              <ul className="pc-list">
-                {lv.projects.map((p) => {
-                  const isNext = d.next?.id === p.id && lv.level === d.current;
-                  return (
-                    <li key={p.id} className={(p.done ? 'is-done ' : '') + (isNext ? 'is-next' : '')}>
-                      <span className="pc-ic">{p.done ? I.check : isNext ? <i className="pulse" /> : null}</span>
-                      <span className="pc-t"><b>{p.name}</b><small>{p.code ? `${p.code} · ` : ''}{p.kind === 'elective' ? 'Elective' : 'Required'}{p.length ? ` · ${p.length}` : ''}</small></span>
-                      <span className="pc-a">
-                        {p.done
-                          ? <><small>{p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}</small>{p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
-                          : <Btn sm kind="ghost" onClick={() => mark(p, true)} disabled={busy === p.id}>Mark done</Btn>}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
+            <div className="pc-more">
+              <div className="pc-bar" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100"><i style={{ width: pct + '%' }} /></div>
+
+              <ul className="pc-list">{reqs.map(row)}</ul>
+
+              {lv.choose > 0 && (
+                <>
+                  <div className="pc-elh"><b>Electives</b><span>{els.length} of {lv.choose} chosen</span></div>
+                  {els.length > 0 && <ul className="pc-list">{els.map(row)}</ul>}
+                  {!mine && lv.to_pick > 0 && (
+                    <div className="pc-pickel">
+                      <Select sm value="" placeholder={`Choose ${lv.to_pick} elective${lv.to_pick === 1 ? '' : 's'}`} searchable
+                        options={lv.options.map((o) => ({ value: o.id, label: o.name, sub: o.length }))} onChange={(v) => elective(v, true)} />
+                    </div>)}
+                  {mine && lv.to_pick > 0 && <p className="pc-empty" style={{ margin: '6px 2px' }}>Your VPE will add your {lv.to_pick === 1 ? 'elective' : 'electives'} once you have chosen.</p>}
+                </>
+              )}
+            </div>
           )}
         </>
       )}
-      {cur && !cur.projects.length && <p className="pc-empty">This level has no projects in the catalog yet.</p>}
     </section>
   );
 }

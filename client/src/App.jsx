@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { api, setToken, useApi } from './api.js';
+import { api, getToken, setToken, useApi } from './api.js';
 import { Loading, Shell } from './ui.jsx';
 import { EvaluationDetail, Evaluations, FuncHistory, Given, MEMBER_NAV, MeetingDetail, Meetings, MemberHome, Room } from './pages/Member.jsx';
 import Feedback from './pages/Feedback.jsx';
@@ -37,11 +37,17 @@ function Enter() {
   return <Loading />;
 }
 
+/* The last session seen on this device, so the page frame (menu, name) can draw at once while the session is confirmed.
+   It is only used for the frame; the server answer still decides who may be here. */
+const CACHE = 'brekkie_session';
+const readCache = () => { try { const c = JSON.parse(localStorage.getItem(CACHE) || 'null'); return c && c.t === getToken() ? c.d : null; } catch { return null; } };
 function useSession() {
   const nav = useNavigate();
   const s = useApi('/session');
   useEffect(() => { if (s.error) nav('/', { replace: true }); }, [s.error, nav]);
-  return s;
+  useEffect(() => { if (s.data) { try { localStorage.setItem(CACHE, JSON.stringify({ t: getToken(), d: s.data })); } catch { /* storage blocked */ } } }, [s.data]);
+  const [cached] = useState(readCache);
+  return { ...s, data: s.data || (s.error ? null : cached) };
 }
 const signOut = (nav) => () => { setToken(null); nav('/'); };
 
@@ -75,7 +81,7 @@ function VpeArea() {
   if (!data) return <Loading />;
   if (data.type !== 'vpe') return <Navigate to="/m" replace />;
   return (
-    <Shell nav={VPE_NAV} who={data.person.name} sub={`VPE · ${data.club || 'Your club'}`} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
+    <Shell nav={VPE_NAV} who={data.person.name} tag="VPE" sub={data.club || 'Your club'} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
       <Routes>
         <Route index element={<Roster />} />
         <Route path="meetings/:id" element={<VpeMeeting />} />

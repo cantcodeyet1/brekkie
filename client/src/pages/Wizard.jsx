@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
-import { Btn, I, Select, Seg, Wordmark, copyText, useToast } from '../ui.jsx';
+import { Btn, DatePick, I, Select, Seg, Wordmark, copyText, useToast } from '../ui.jsx';
 
 /* ───────── the meeting pattern: when a club meets ───────── */
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -145,7 +145,7 @@ export default function Wizard() {
                 <h2>Your first meeting.</h2>
                 <p className="lede">Pick the date of the next meeting. We will plan a year from there.</p>
                 <div className="two">
-                  <div><label className="fl" htmlFor="w-date">Date</label><input id="w-date" className="inp" type="date" value={pat.start} onChange={(e) => setPat({ ...pat, start: e.target.value })} /></div>
+                  <div><label className="fl" htmlFor="w-date">Date</label><DatePick id="w-date" value={pat.start} onChange={(v) => setPat({ ...pat, start: v })} /></div>
                   <div><label className="fl" htmlFor="w-num">Meeting number</label><input id="w-num" className="inp" type="number" min="1" value={num} onChange={(e) => setNum(Math.max(1, parseInt(e.target.value, 10) || 1))} /></div>
                 </div>
                 {!startOk && pat.start && <p className="err">That date does not fit your pattern. Pick a {DAYS[pat.day]}{pat.mode === 'monthly' ? ' in one of your chosen weeks' : ''}.</p>}

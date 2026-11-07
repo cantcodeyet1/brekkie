@@ -48,7 +48,7 @@ export function ToastProvider({ children }) {
 const ShellCtx = createContext({ nav: [], who: '', onSignOut: null });
 export const Wordmark = ({ className = '' }) => <Link to="/start" className={'wm ' + className} aria-label="Brekkie home">Brekkie<i /></Link>;
 
-export function Shell({ nav, who, sub, onSignOut, onAccount, noSide, bare, topNav, children }) {
+export function Shell({ nav, who, sub, tag, onSignOut, onAccount, noSide, bare, topNav, children }) {
   const desk = useDesk();
   return (
     <ShellCtx.Provider value={{ nav, who, sub, onSignOut, onAccount, bare }}>
@@ -67,7 +67,14 @@ export function Shell({ nav, who, sub, onSignOut, onAccount, noSide, bare, topNa
               {nav.map((it, i) => it.label && !it.to
                 ? <div className="sl" key={i}>{it.label}</div>
                 : <NavLink key={it.to} to={it.to} end={it.end} className={({ isActive }) => (isActive ? 'on' : '')} style={{ textDecoration: 'none' }}>{it.icon}{it.label}</NavLink>)}
-              <div className="me"><b>{who}</b>{sub}{onAccount && <button className="lnk" style={{ display: 'block', marginTop: 6 }} onClick={onAccount}>Account</button>}{onSignOut && <button className="lnk" style={{ display: 'block', marginTop: 2 }} onClick={onSignOut}>Sign out</button>}</div>
+              <div className="me">
+                <div className="me-id"><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b></span>{tag && <em className="role-tag">{tag}</em>}</div>
+                {sub && <div className="clubpill" title={sub}>{sub}</div>}
+                <div className="me-act">
+                  {onAccount && <button type="button" onClick={onAccount}>Account</button>}
+                  {onSignOut && <button type="button" onClick={onSignOut}>{I.out}Sign out</button>}
+                </div>
+              </div>
             </aside>
           )}
           {children}
@@ -82,13 +89,14 @@ export function Page({ title, root, wide, narrow, full, foot, back, onBack, chil
   const desk = useDesk();
   const { nav, who, onSignOut, onAccount, bare } = useContext(ShellCtx);
   const go = useNavigate();
+  const topBar = !root ? <div className="top"><button className="back" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} aria-label="Back">{I.back}</button><span className="ttl" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} style={{ cursor: 'pointer' }}>{title}</span>{!desk && <span style={{ marginLeft: 'auto', paddingRight: 10 }}><Wordmark /></span>}</div> : null;
   return (
     <div className="main">
       {bare && desk && <div className="hdr-r"><Wordmark /><span style={{ fontSize: 13, color: 'var(--mute)' }}>Champions Toastmasters Club</span></div>}
       {bare && !desk && root && <div className="brand"><Wordmark /><span className="who">Champions Toastmasters Club</span></div>}
-      {!root && <div className="top"><button className="back" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} aria-label="Back">{I.back}</button><span className="ttl" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} style={{ cursor: 'pointer' }}>{title}</span>{!desk && <span style={{ marginLeft: 'auto', paddingRight: 10 }}><Wordmark /></span>}</div>}
+      {!root && !desk && topBar}
       {root && !desk && !bare && <div className="brand"><Wordmark /><span className="who"><b>{who}</b>{onAccount && <button className="lnk" style={{ marginLeft: 10 }} onClick={onAccount}>Account</button>}{onSignOut && <button className="lnk" style={{ marginLeft: 10 }} onClick={onSignOut}>Sign out</button>}</span></div>}
-      <div className="scroll"><div className={'in' + (wide ? ' wide' : '') + (narrow ? ' narrow' : '') + (full ? ' full' : '')}>{children}</div></div>
+      <div className="scroll"><div className={'in' + (wide ? ' wide' : '') + (narrow ? ' narrow' : '') + (full ? ' full' : '')}>{desk && topBar}{children}</div></div>
       {foot}
       {root && !desk && nav.some((n) => n.to && !n.desktopOnly) && (
         <nav className="nav">
@@ -134,8 +142,8 @@ export function Modal({ title, children, onClose, wide }) {
 /* ───────── brand dropdown ─────────
    Replaces every native <select>. White card, hairline border, Loyal Blue selection with a Happy Yellow marker,
    type-to-search on long lists, full keyboard support. */
-/* the small yellow G that marks a guest, used everywhere except the agenda */
-export const GBadge = () => <span className="gb" title="Guest" aria-label="Guest">G</span>;
+/* the small yellow G that marks a visitor, used everywhere except the agenda */
+export const GBadge = () => <span className="gb" title="Visitor" aria-label="Visitor">V</span>;
 
 export function Select({ value, onChange, options, placeholder = 'Select', sm, disabled, searchable, addLabel, onAdd, label, className = '' }) {
   const [open, setOpen] = useState(false);
@@ -202,7 +210,66 @@ export function Select({ value, onChange, options, placeholder = 'Select', sm, d
   );
 }
 
-/* A person picker that can also add a guest on the spot. Guests are stored under the club (temporary status). */
+/* A date picker in the Brekkie look (the browser's own calendar cannot be styled). Value is YYYY-MM-DD. */
+const pad2 = (n) => String(n).padStart(2, '0');
+const isoOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export function DatePick({ value, onChange, sm, bare, label, id, placeholder = 'Pick a date', className = '' }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [shown, setShown] = useState(() => (value ? new Date(value + 'T12:00:00') : new Date()));
+  const btn = useRef(), pop = useRef();
+  const cur = value ? new Date(value + 'T12:00:00') : null;
+  const today = isoOf(new Date());
+  const openIt = () => {
+    const r = btn.current.getBoundingClientRect(), w = 304, h = 372;
+    const up = window.innerHeight - r.bottom < h && r.top > window.innerHeight - r.bottom;
+    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), ...(up ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }) });
+    setShown(cur ? new Date(cur) : new Date()); setOpen(true);
+  };
+  const close = useCallback((refocus) => { setOpen(false); if (refocus) btn.current?.focus(); }, []);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e) => { if (!pop.current?.contains(e.target) && !btn.current?.contains(e.target)) close(false); };
+    const away = (e) => { if (!pop.current?.contains(e.target)) close(false); };
+    const esc = (e) => { if (e.key === 'Escape') close(true); };
+    document.addEventListener('mousedown', down); document.addEventListener('keydown', esc); window.addEventListener('resize', away); window.addEventListener('scroll', away, true);
+    return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', esc); window.removeEventListener('resize', away); window.removeEventListener('scroll', away, true); };
+  }, [open, close]);
+  const y = shown.getFullYear(), m = shown.getMonth();
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;                 // Monday first
+  const days = Array.from({ length: 42 }, (_, i) => new Date(y, m, 1 - lead + i));
+  const step = (n) => setShown(new Date(y, m + n, 1));
+  const pick = (d) => { onChange(isoOf(d)); close(true); };
+  const text = cur ? cur.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  return (
+    <div className={'sel dp ' + className}>
+      <button type="button" id={id} ref={btn} className={(bare ? 'dpbare' : 'inp selbtn' + (sm ? ' sm' : '')) + (cur ? '' : ' todo')} aria-haspopup="dialog" aria-expanded={open} aria-label={label}
+        onClick={() => (open ? close(false) : openIt())}>
+        <span className="v">{text ? <span className="nm">{text}</span> : <span className="sph">{placeholder}</span>}</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+      </button>
+      {open && createPortal(
+        <div ref={pop} className="dp-pop" style={pos} role="dialog" aria-label="Choose a date">
+          <div className="dp-h">
+            <button type="button" className="dp-n" onClick={() => step(-1)} aria-label="Previous month">{I.back}</button>
+            <b>{MONTHS[m]} {y}</b>
+            <button type="button" className="dp-n" onClick={() => step(1)} aria-label="Next month">{I.chev}</button>
+          </div>
+          <div className="dp-g dp-w">{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => <span key={d}>{d}</span>)}</div>
+          <div className="dp-g">
+            {days.map((d) => {
+              const iso = isoOf(d);
+              return <button type="button" key={iso} className={'dp-d' + (d.getMonth() !== m ? ' out' : '') + (iso === value ? ' on' : '') + (iso === today ? ' today' : '')} onClick={() => pick(d)} aria-label={d.toDateString()} aria-pressed={iso === value}>{d.getDate()}</button>;
+            })}
+          </div>
+          <div className="dp-f"><button type="button" onClick={() => pick(new Date())}>Today</button></div>
+        </div>, document.body)}
+    </div>
+  );
+}
+
+/* A person picker that can also add a visitor on the spot. Visitors are stored under the club (temporary status). */
 export function PersonSelect({ value, onChange, people, onAddGuest, placeholder = 'Who is this about?', sm, exclude = [], allowClear }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
@@ -217,15 +284,15 @@ export function PersonSelect({ value, onChange, people, onAddGuest, placeholder 
   return (
     <>
       <Select value={value} onChange={(v) => onChange(v === '__none' ? null : v)} options={opts} placeholder={placeholder} sm={sm} searchable={opts.length > 8}
-        onAdd={onAddGuest ? () => setAdding(true) : undefined} addLabel="+ Add a guest" />
+        onAdd={onAddGuest ? () => setAdding(true) : undefined} addLabel="+ Add a visitor" />
       {adding && (
         <div className="addname">
-          <input className="inp" autoFocus placeholder="Full name of the guest" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} aria-label="Guest name" />
+          <input className="inp" autoFocus placeholder="Full name of the visitor" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} aria-label="Visitor name" />
           <Btn sm onClick={add} disabled={busy}>Add</Btn>
           <button type="button" className="x" onClick={() => { setAdding(false); setErr(''); }} aria-label="Cancel">{I.close}</button>
         </div>
       )}
-      {adding && <p className="s" style={{ margin: '6px 2px 0', fontSize: 13, color: 'var(--mute)' }}>Guests get temporary access. Their notes still count as Champions data.</p>}
+      {adding && <p className="s" style={{ margin: '6px 2px 0', fontSize: 13, color: 'var(--mute)' }}>Visitors get temporary access. Their notes still count as Champions data.</p>}
       {err && <p className="err">{err}</p>}
     </>
   );

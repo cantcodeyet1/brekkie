@@ -1,4 +1,5 @@
 import { JoinAsk } from './Role.jsx';
+import PathCard from './PathCard.jsx';
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { getToken, useApi } from '../api.js';
@@ -78,6 +79,8 @@ export function MemberHome() {
       })}
       {!d.upcoming.length && d.next_meeting && <AgendaCard meetingId={d.next_meeting.id} date={d.next_meeting.date} title="Next meeting"
         sub={`${fmtDate(d.next_meeting.date, { weekday: 'long' })}, meeting ${d.next_meeting.number}. Tap to download the agenda.`} />}
+
+      {d.person.kind !== 'guest' && <PathCard person={d.person} mine initial={d.path} />}
 
       <p className="lede" style={{ fontSize: 17, marginTop: 0 }}>Tap one to see the feedback people have given you.</p>
 

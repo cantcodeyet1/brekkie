@@ -121,8 +121,17 @@ app.post('/api/clubs', wrap(async (req, res) => {
 
 /* the signed-in person's account, and their club's details */
 app.get('/api/account', needPerson, wrap(async (req, res) => {
-  const [c] = await q('select name, join_code, pattern from clubs where id=$1', [req.person.club_id]);
-  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern) } });
+  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time from clubs where id=$1', [req.person.club_id]);
+  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '' } });
+}));
+/* the club at a glance, for the VPE's Club page */
+app.get('/api/vpe/club/summary', needPerson, needVpe, wrap(async (req, res) => {
+  const club = req.person.club_id;
+  const [p] = await q(`select count(*) filter (where kind='member' and status<>'inactive')::int as members, count(*) filter (where kind='guest' and status<>'inactive')::int as guests, count(*) filter (where join_requested_at is not null and kind='guest')::int as wants from people where club_id=$1`, [club]);
+  const [m] = await q(`select count(*) filter (where date < current_date)::int as held, count(*) filter (where date >= current_date)::int as ahead from meetings where club_id=$1`, [club]);
+  const [n] = await q(`select number, ${DATE('date')} as date from meetings where club_id=$1 and date >= current_date order by date limit 1`, [club]);
+  const [s] = await q(`select count(*)::int as speeches from evaluations e join meetings mm on mm.id=e.meeting_id where mm.club_id=$1`, [club]);
+  res.json({ ...p, ...m, next: n || null, speeches: s.speeches });
 }));
 app.put('/api/account', needPerson, wrap(async (req, res) => {
   const email = normEmail(req.body.email), pw = req.body.password;
@@ -138,7 +147,9 @@ app.put('/api/account', needPerson, wrap(async (req, res) => {
 app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
   const pc = cleanPattern(req.body.pattern); if (pc.error) return bad(res, pc.error);
   const name = String(req.body.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
-  await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name) where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id]);
+  const gd = Math.min(180, Math.max(7, parseInt(req.body.guest_days, 10) || 30));
+  const venue = String(req.body.venue || '').trim().slice(0, 120), mtime = String(req.body.meeting_time || '').trim().slice(0, 40);
+  await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name), guest_days=$4, venue=$5, meeting_time=$6 where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id, gd, venue, mtime]);
   res.json({ ok: true });
 }));
 app.post('/api/vpe/club/meetings', needPerson, needVpe, wrap(async (req, res) => {
@@ -172,7 +183,8 @@ async function guestFor(clubId, name, email, via, meetingDate) {
     if (ex.status === 'inactive') await q(`update people set status=$2 where id=$1`, [ex.id, ex.kind === 'guest' ? 'temporary' : 'active']);
     return { ...pub(ex), existing: true };
   }
-  const until = new Date((meetingDate ? meetingDate + 'T12:00:00' : Date.now())); until.setDate(until.getDate() + 30);
+  const [cl] = await q('select guest_days from clubs where id=$1', [clubId]);
+  const until = new Date((meetingDate ? meetingDate + 'T12:00:00' : Date.now())); until.setDate(until.getDate() + (cl?.guest_days || 30));
   const [g] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,temp_until) values ($1,$2,$3,'guest','temporary',$4,$5,$6) returning *`,
     [clubId, clean, email || null, token(), via, until.toISOString().slice(0, 10)]);
   return pub(g);
@@ -304,7 +316,7 @@ app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
     focus = { name: prog.criteria[k], avg: prog.avgs[k], comment: c, work: prog.evals[0]?.work || '', by: prog.evals[0]?.by };
   }
   const [nextMeeting] = await q(`select id, number, ${DATE('date')} as date from meetings where club_id=$1 and date >= current_date order by date limit 1`, [me.club_id]);
-  res.json({ next_meeting: nextMeeting || null, person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
+  res.json({ next_meeting: nextMeeting || null, path: me.kind === 'guest' ? null : await pathProgress(me), person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
 }));
 app.get('/api/me/given', needPerson, wrap(async (req, res) => res.json(await givenFor(req.person.id))));
 app.get('/api/me/given/:id', needPerson, wrap(async (req, res, next) => {
@@ -389,6 +401,20 @@ app.post('/api/vpe/meetings', needPerson, needVpe, wrap(async (req, res) => {
     return m;
   });
   res.json(out);
+}));
+
+/* remove a meeting date (a holiday, say) and close the gap: every later meeting moves up one number */
+app.delete('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) => {
+  const [m] = await q('select id, number from meetings where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
+  if (!m) return res.status(404).json({ error: 'Meeting not found' });
+  const [used] = await q(`select (select count(*) from meeting_roles where meeting_id=$1 and submitted_at is not null)::int as sheets, (select count(*) from evaluations where meeting_id=$1)::int as evals, (select count(*) from peer_feedback where meeting_id=$1)::int as room`, [m.id]);
+  if (used.sheets || used.evals || used.room) return bad(res, 'This meeting already has feedback or submitted sheets, so it cannot be removed.');
+  await tx(async (t) => {
+    await t('delete from meetings where id=$1', [m.id]);
+    await t('update meetings set number = -(number - 1) where club_id=$1 and number > $2', [req.person.club_id, m.number]);
+    await t('update meetings set number = -number where club_id=$1 and number < 0', [req.person.club_id]);
+  });
+  res.json({ ok: true, number: m.number });
 }));
 
 const MEETING_FIELDS = ['date', 'theme', 'theme_quote', 'theme_quote_by', 'word', 'pos', 'pron', 'meaning', 'example', 'synonyms', 'origin', 'attendance'];
@@ -612,19 +638,30 @@ async function pathProgress(person) {
   const done = new Map();
   for (const e of await q(`select e.project_id, ${DATE('m.date')} as date, m.number from evaluations e join meetings m on m.id=e.meeting_id where e.speaker_id=$1 order by m.date`, [person.id])) if (!done.has(e.project_id)) done.set(e.project_id, { date: e.date, source: 'evaluation', meeting: e.number });
   for (const m of await q(`select project_id, ${DATE('done_at')} as date from member_projects where person_id=$1`, [person.id])) if (!done.has(m.project_id)) done.set(m.project_id, { date: m.date, source: 'manual' });
+  const picked = new Set((await q('select project_id from member_electives where person_id=$1', [person.id])).map((x) => x.project_id));
   const levels = [];
   for (const r of rows) {
-    let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, projects: [] });
-    lv.projects.push({ id: r.id, name: r.name, kind: r.kind, pos: r.pos, code: r.kind === 'required' ? `L${r.level}P${r.pos}` : '', length: r.length_text, done: done.get(r.id) || null });
+    let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, all: [] });
+    lv.all.push({ id: r.id, name: r.name, kind: r.kind, pos: r.pos, code: r.kind === 'required' ? `L${r.level}P${r.pos}` : '', length: r.length_text, done: done.get(r.id) || null });
   }
   for (const lv of levels) {
-    const req = lv.projects.filter((p) => p.kind === 'required'), el = lv.projects.filter((p) => p.kind === 'elective');
+    // a level shows its required projects and only the electives the member has chosen (or already finished), not the whole list
+    const req = lv.all.filter((p) => p.kind === 'required'), el = lv.all.filter((p) => p.kind === 'elective');
+    const sel = el.filter((p) => p.done || picked.has(p.id));
+    lv.projects = [...req, ...sel];
+    lv.options = el.filter((p) => !sel.includes(p)).map((p) => ({ id: p.id, name: p.name, length: p.length }));
+    lv.to_pick = Math.max(0, (lv.choose || 0) - sel.length);
     lv.required_total = req.length; lv.required_done = req.filter((p) => p.done).length;
     lv.electives_done = el.filter((p) => p.done).length;
     lv.complete = lv.required_done === lv.required_total && lv.electives_done >= (lv.choose || 0);
+    delete lv.all;
   }
   const first = levels.find((l) => !l.complete) || levels[levels.length - 1];
-  const current = levels.some((l) => l.level === person.path_level) ? person.path_level : first?.level ?? null;
+  // where they are follows what they have finished: the first level that is not complete. The level the VPE chose only
+  // counts before any project is done (a new member who starts partway up the path).
+  const started = levels.some((l) => l.projects.some((p) => p.done));
+  const current = started ? (levels.find((l) => !l.complete)?.level ?? levels[levels.length - 1]?.level ?? null)
+    : levels.some((l) => l.level === person.path_level) ? person.path_level : first?.level ?? null;
   const cl = levels.find((l) => l.level === current);
   let next = null;
   if (cl) {
@@ -633,6 +670,23 @@ async function pathProgress(person) {
   }
   return { path, levels, current, next, level_complete: !!cl?.complete, has_next_level: levels.some((l) => l.level > current) };
 }
+app.post('/api/vpe/people/:id/electives', needPerson, needVpe, wrap(async (req, res) => {
+  const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
+  if (!p) return bad(res, 'Not found', 404);
+  const pid = Number(req.body.project_id);
+  const [pp] = await q(`select level, choose from path_projects where path=$1 and project_id=$2 and kind='elective'`, [p.path_name, pid]);
+  if (!pp) return bad(res, 'That is not an elective on their path');
+  if (req.body.on === false) {
+    const [done] = await q('select 1 as x from evaluations where speaker_id=$1 and project_id=$2 union select 1 from member_projects where person_id=$1 and project_id=$2', [p.id, pid]);
+    if (done) return bad(res, 'That elective is already finished, so it stays', 409);
+    await q('delete from member_electives where person_id=$1 and project_id=$2', [p.id, pid]);
+  } else {
+    const cur = (await pathProgress(p)).levels.find((l) => l.level === pp.level);
+    if (cur && cur.to_pick < 1) return bad(res, `They already have ${pp.choose} electives for this level. Remove one first.`, 409);
+    await q('insert into member_electives(person_id, project_id) values ($1,$2) on conflict do nothing', [p.id, pid]);
+  }
+  res.json(await pathProgress(p));
+}));
 app.get('/api/vpe/people/:id/path', needPerson, needVpe, wrap(async (req, res) => {
   const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
   if (!p) return bad(res, 'Not found', 404);
@@ -679,18 +733,24 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
   if (!p) return bad(res, 'Not found', 404);
   const b = req.body;
-  let { name, email, kind, status, credential } = p;
+  let { name, email, kind, status, credential, phone } = p;
+  if ('phone' in b) phone = String(b.phone || '').trim().slice(0, 30) || null;
   if ('credential' in b) credential = String(b.credential || '').trim().slice(0, 20);
   if (typeof b.name === 'string' && b.name.trim().length > 1) name = b.name.trim();
-  if ('email' in b) email = b.email || null;
+  if ('email' in b) {
+    const e = normEmail(b.email);
+    if (e && !validEmail(e)) return bad(res, 'Enter a valid email address');
+    if (e) { const [dup] = await q('select 1 as x from people where club_id=$1 and lower(email)=$2 and id<>$3', [req.person.club_id, e, p.id]); if (dup) return bad(res, 'Someone in the club already uses that email', 409); }
+    email = e || null;
+  }
   if ('path_name' in b) await q('update people set path_name=$1, path_level=$2 where id=$3', [b.path_name || null, b.path_name ? (Number(b.path_level) || null) : null, p.id]);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
-  await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential]);
+  await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,phone=$8,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential, phone]);
   res.json({ ok: true });
 }));
 app.post('/api/vpe/people/:id/extend', needPerson, needVpe, wrap(async (req, res) => {
-  await q(`update people set temp_until = coalesce(temp_until, current_date) + 30, status='temporary' where id=$1 and club_id=$2 and kind='guest'`, [req.params.id, req.person.club_id]);
+  await q(`update people set temp_until = coalesce(temp_until, current_date) + (select coalesce(guest_days, 30) from clubs where id=$2), status='temporary' where id=$1 and club_id=$2 and kind='guest'`, [req.params.id, req.person.club_id]);
   res.json({ ok: true });
 }));
 /** The role sheets a person has submitted, newest first, with a one-line description of each. */
@@ -720,7 +780,7 @@ async function givenFor(pid) {
 /* one member: what they have delivered, the roles they have done, the feedback they have given and received */
 app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const [p] = await q(`select id,name,email,credential,path_name,path_level,kind,status,is_vpe,token,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
+  const [p] = await q(`select id,name,email,phone,credential,path_name,path_level,kind,status,is_vpe,token,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
   if (!p) return bad(res, 'Not found', 404);
   const hist = await loadHist(club);
   const projects = hist.evals.filter((e) => e.pid === p.id).reverse().map((e) => ({ id: e.id, title: e.title, project: e.project, path: e.path, level: e.level, date: e.date, number: e.number, by: e.by, work: e.work }));
@@ -729,7 +789,7 @@ app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res
   const given = await givenFor(p.id);
   const mine = (rows) => rows.filter((r) => r.pid === p.id);
   res.json({
-    person: p, projects, roles, given,
+    person: p, projects, roles, given, path: p.kind === 'guest' ? null : await pathProgress(p),
     received: {
       gram: mine(hist.gram).reverse(), fill: mine(hist.fill).reverse(), time: mine(hist.time).reverse(),
       roleFeedback: mine(hist.rolefb).reverse(), peer: mine(hist.peer).reverse(),

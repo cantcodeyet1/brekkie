@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, Children } from 'react';
 import QRCode from 'qrcode';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import PathCard from './PathCard.jsx';
-import { Btn, Chip, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Roster', icon: I.cal },
@@ -84,7 +84,7 @@ export function VpeHome() {
   const row = (m) => (
     <tr key={m.id}>
       <td><Link className="lnk" to={`/v/meetings/${m.id}`}>No. {m.number}</Link></td>
-      <td><input type="date" value={m.date} onChange={(e) => e.target.value && patch(m, { date: e.target.value })} aria-label="Date" /></td>
+      <td><DatePick bare value={m.date} onChange={(v) => patch(m, { date: v })} label="Date" /></td>
       <td><input value={m.theme} onChange={(e) => patch(m, { theme: e.target.value })} placeholder="Theme" aria-label="Theme" /></td>
       <td><input value={m.word} onChange={(e) => patch(m, { word: e.target.value })} placeholder="Word of the day" aria-label="Word" /></td>
       <td>{flag(m)}</td>
@@ -98,7 +98,7 @@ export function VpeHome() {
     <div className="blk" key={m.id}>
       <div className="blk-h"><Link className="lnk" style={{ font: '700 15px var(--head)' }} to={`/v/meetings/${m.id}`}>No. {m.number}</Link><Chip kind={statusKind(m.status)}>{m.status}</Chip></div>
       <div className="two">
-        <div><label className="fl" style={{ marginTop: 0 }}>Date</label><input className="inp" type="date" value={m.date} onChange={(e) => e.target.value && patch(m, { date: e.target.value })} /></div>
+        <div><label className="fl" style={{ marginTop: 0 }}>Date</label><DatePick value={m.date} onChange={(v) => patch(m, { date: v })} /></div>
         <div><label className="fl" style={{ marginTop: 0 }}>Word</label><input className="inp" value={m.word} placeholder="Not set" onChange={(e) => patch(m, { word: e.target.value })} /></div>
       </div>
       <label className="fl">Theme</label><input className="inp" value={m.theme} placeholder="Theme" onChange={(e) => patch(m, { theme: e.target.value })} />
@@ -212,6 +212,7 @@ export function VpeMeeting() {
       <label className="fl">{label}</label>
       {area
         ? <textarea className="inp" style={{ minHeight: 64 }} value={m[k] || ''} placeholder={ph} onChange={(e) => setField({ [k]: e.target.value })} />
+        : type === 'date' ? <DatePick value={m[k] || ''} onChange={(v) => setField({ [k]: v })} />
         : <input className="inp" type={type} value={m[k] || ''} placeholder={ph} onChange={(e) => (type !== 'date' || e.target.value) && setField({ [k]: e.target.value })} />}
     </div>
   );
@@ -390,7 +391,7 @@ export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
   );
 }
 
-/* ───────── people: members and guests ───────── */
+/* ───────── people: members and visitors ───────── */
 export function VpePeople() {
   const { data, error, loading, reload } = useApi('/vpe/people');
   const desk = useDesk();
@@ -405,15 +406,16 @@ export function VpePeople() {
 
   const hit = (p) => !qy.trim() || `${p.name} ${p.email || ''}`.toLowerCase().includes(qy.trim().toLowerCase());
   const allMembers = data.filter((p) => p.kind === 'member' && p.status !== 'inactive');
-  const guests = data.filter((p) => p.kind === 'guest');
-  const liveGuests = guests.filter((p) => p.status !== 'inactive'), archived = guests.filter((p) => p.status === 'inactive');
+  const visitors = data.filter((p) => p.kind === 'guest');
+  const liveGuests = visitors.filter((p) => p.status !== 'inactive'), archived = visitors.filter((p) => p.status === 'inactive');
   const members = allMembers.filter(hit);                    // the server already returns them A to Z
   const act = async (fn, msg) => { try { await fn(); toast(msg); reload(); } catch (e) { toast(e.message); } };
   const copyLink = async (e, p) => { e.preventDefault(); e.stopPropagation(); toast((await copyText(memberLink(base, p.token))) ? 'Access link copied' : 'Copy failed'); };
 
   const memberRow = (p) => (
     <Link className="prow m" key={p.id} to={`/v/members/${p.id}`}>
-      <span className="who"><Avatar name={p.name} /><span><b>{p.name}{p.is_vpe && <Chip style={{ marginLeft: 8 }}>VPE</Chip>}</b><small>{desk ? p.email : `${p.speeches} ${p.speeches === 1 ? 'speech' : 'speeches'} · ${p.roles_done} ${p.roles_done === 1 ? 'role' : 'roles'} · ${p.feedback_given} feedback given`}</small></span></span>
+      <span className="who"><Avatar name={p.name} /><span><b>{p.name}{p.is_vpe && <Chip style={{ marginLeft: 8 }}>VPE</Chip>}</b><small>{desk ? p.email : `${p.path_name ? `${p.path_name}, L${p.path_level || 1} · ` : ''}${p.speeches} ${p.speeches === 1 ? 'speech' : 'speeches'} · ${p.roles_done} ${p.roles_done === 1 ? 'role' : 'roles'} · ${p.feedback_given} feedback given`}</small></span></span>
+      {desk && <span className="pth">{p.path_name ? <><b>{p.path_name}</b><span className="lvs" aria-label={`Level ${p.path_level || 1} of 5`}>{[1, 2, 3, 4, 5].map((k) => <i key={k} className={k < (p.path_level || 1) ? 'dn' : k === (p.path_level || 1) ? 'now' : ''} />)}<small>Level {p.path_level || 1}</small></span></> : <small className="dim">No path set</small>}</span>}
       {desk && <><span className="num cnt0">{p.speeches}</span><span className="num cnt0">{p.roles_done}</span><span className="num cnt0">{p.feedback_given}</span></>}
       <span className="pact"><button type="button" className="ibtn" onClick={(e) => copyLink(e, p)} aria-label={`Copy ${p.name}'s access link`} title="Copy access link">{I.copy}</button>{I.chev}</span>
     </Link>
@@ -422,16 +424,18 @@ export function VpePeople() {
   const guestRow = (p) => (
     <div className="prow guest" key={p.id}>
       <span className="who"><Avatar name={p.name} tone="gray" /><span><b><Link className="plink" to={`/v/members/${p.id}`}>{p.name}</Link></b><small>{p.email || 'No email'}</small></span></span>
-      <span>{p.status === 'inactive' ? <Chip>Archived</Chip> : p.join_requested_at ? <Chip kind="ok">Wants to join</Chip> : <Chip kind="guest">Temporary</Chip>}{p.temp_until && <small className="dim block">until {longDate(p.temp_until)}</small>}</span>
+      <span className="gstat">{p.status === 'inactive' ? <Status kind="fin">Archived</Status> : p.join_requested_at ? <Status kind="ok">Wants to join</Status> : <Status kind="up">Temporary</Status>}{p.temp_until && <small>until {longDate(p.temp_until)}</small>}</span>
       {desk && <span className="num hm">{p.roles_played} {p.roles_played === 1 ? 'role' : 'roles'}</span>}
       {desk && <span className="hm dim c-opt">{p.created_via === 'role_sheet' ? 'Added from a sheet' : 'Added by VPE'}</span>}
       <span className="gbtns">
         <Btn sm kind={p.join_requested_at ? '' : 'ghost'} onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }), `${p.name} is now a member`)}>Make member</Btn>
-        {p.status !== 'inactive' && <Btn sm kind="ghost" onClick={(e) => copyLink(e, p)}>{I.copy}Access link</Btn>}
+        {p.status !== 'inactive' && <button type="button" className="gico" title="Copy access link" aria-label={`Copy ${p.name}'s access link`} onClick={(e) => copyLink(e, p)}>{I.copy}</button>}
         {p.status === 'inactive'
-          ? <Btn sm kind="ghost" onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { status: 'active' } }), 'Restored')}>Restore</Btn>
-          : <><Btn sm kind="ghost" onClick={() => act(() => api(`/vpe/people/${p.id}/extend`, { method: 'POST' }), 'Extended by 30 days')}>Extend</Btn>
-            <Btn sm kind="ghost" onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { status: 'inactive' } }), 'Archived. Their data is kept.')}>Archive</Btn></>}
+          ? <button type="button" className="gtxt" onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { status: 'active' } }), 'Restored')}>Restore</button>
+          : <>
+              <button type="button" className="gtxt" onClick={() => act(() => api(`/vpe/people/${p.id}/extend`, { method: 'POST' }), 'Extended by 30 days')}>Extend</button>
+              <button type="button" className="gtxt warn" onClick={() => act(() => api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { status: 'inactive' } }), 'Archived. Their data is kept.')}>Archive</button>
+            </>}
       </span>
     </div>
   );
@@ -442,20 +446,20 @@ export function VpePeople() {
         <div>
           <p className="reyebrow">Champions Toastmasters Club</p>
           <h1 className="rtitle">Members</h1>
-          <p className="rsub">{allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}{liveGuests.length ? ` and ${liveGuests.length} ${liveGuests.length === 1 ? 'guest' : 'guests'}` : ''}. Open anyone to see what they have delivered and the feedback they have given.</p>
+          <p className="rsub">{allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}{liveGuests.length ? ` and ${liveGuests.length} ${liveGuests.length === 1 ? 'visitor' : 'visitors'}` : ''}. Open anyone to see what they have delivered and the feedback they have given.</p>
         </div>
         <Btn onClick={() => setAdding(true)}>{I.plus} Add member</Btn>
       </div>
 
       <div className="ptools">
-        <Seg value={tab} onChange={setTab} options={[['members', `Members ${allMembers.length}`], ['guests', `Guests ${liveGuests.length}`]]} style={{ minWidth: 240 }} />
+        <Seg value={tab} onChange={setTab} options={[['members', `Members ${allMembers.length}`], ['guests', `Visitors ${liveGuests.length}`]]} style={{ minWidth: 240 }} />
         <label className="psearch"><span aria-hidden="true">{I.search}</span><input value={qy} onChange={(e) => setQy(e.target.value)} placeholder="Search by name or email" aria-label="Search members" /></label>
       </div>
 
       {tab === 'members' && (
         <>
           <div className="plist">
-            {desk && <div className="prow m hd"><span>Member</span><span className="num" title="Speeches that have been evaluated">Speeches</span><span className="num" title="Roles at meetings that have already happened">Roles done</span><span className="num" title="Role sheets they have submitted">Feedback given</span><span /></div>}
+            {desk && <div className="prow m hd"><span>Member</span><span>Pathway</span><span className="num" title="Speeches that have been evaluated">Speeches</span><span className="num" title="Roles at meetings that have already happened">Roles done</span><span className="num" title="Role sheets they have submitted">Feedback given</span><span /></div>}
             {members.map(memberRow)}
             {!members.length && <p className="empty">No one matches “{qy}”.</p>}
           </div>
@@ -465,11 +469,11 @@ export function VpePeople() {
       {tab === 'guests' && (
         <>
           <div className="plist g">
-            {desk && <div className="prow hd guest"><span>Guest</span><span>Status</span><span className="num">Roles</span><span className="c-opt">Source</span><span /></div>}
+            {desk && <div className="prow hd guest"><span>Visitor</span><span>Status</span><span className="num">Roles</span><span className="c-opt">Source</span><span /></div>}
             {liveGuests.filter(hit).map(guestRow)}
-            {!liveGuests.length && <p className="empty">No guests right now. Add one here, from a role dropdown, or a role player can add them from their sheet.</p>}
+            {!liveGuests.length && <p className="empty">No visitors right now. Add one here, from a role dropdown, or a role player can add them from their sheet.</p>}
           </div>
-          {archived.length > 0 && <><button type="button" className="lnk" style={{ margin: '18px 4px 6px' }} onClick={() => setShowArchived(!showArchived)}>{showArchived ? 'Hide' : 'Show'} archived guests ({archived.length})</button>{showArchived && <div className="plist g">{archived.filter(hit).map(guestRow)}</div>}</>}
+          {archived.length > 0 && <><button type="button" className="lnk" style={{ margin: '18px 4px 6px' }} onClick={() => setShowArchived(!showArchived)}>{showArchived ? 'Hide' : 'Show'} archived visitors ({archived.length})</button>{showArchived && <div className="plist g">{archived.filter(hit).map(guestRow)}</div>}</>}
         </>
       )}
       {adding && <AddPerson onClose={() => setAdding(false)} onDone={(p) => { setAdding(false); toast(`${p.name} added`); setTab(p.kind === 'guest' ? 'guests' : 'members'); reload(); }} />}
@@ -489,8 +493,8 @@ function AddPerson({ onClose, onDone }) {
     try { onDone(await api('/vpe/people', { method: 'POST', body: { name, email, kind, credential: cred } })); } catch (e) { setErr(e.message); setBusy(false); }
   };
   return (
-    <Modal title="Add a member or guest" onClose={onClose}>
-      <Seg style={{ margin: '12px 0 4px' }} value={kind} onChange={setKind} options={[['member', 'Club member'], ['guest', 'Guest (temporary)']]} />
+    <Modal title="Add a member or visitor" onClose={onClose}>
+      <Seg style={{ margin: '12px 0 4px' }} value={kind} onChange={setKind} options={[['member', 'Club member'], ['guest', 'Visitor (temporary)']]} />
       <p style={{ color: 'var(--mute)', fontSize: 14, margin: '6px 0 0' }}>{kind === 'guest' ? 'For someone outside the club taking a role. They get a temporary link, and their data is kept with Champions.' : 'A full member with their own access link and history.'}</p>
       <label className="fl">Full name</label><input className="inp" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name as it should appear" />
       <label className="fl">Email (optional)</label><input className="inp" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@mail.com" />
@@ -502,7 +506,13 @@ function AddPerson({ onClose, onDone }) {
 }
 
 function Rec({ title, count, children }) {
-  return count > 0 ? <details className="rec"><summary><span>{title}</span><span className="dim">{count}</span></summary><div className="rec-in">{children}</div></details> : null;
+  const [all, setAll] = useState(false);
+  const rows = Children.toArray(children), n = 3;
+  return count > 0 ? (
+    <details className="rec"><summary><span>{title}</span><span className="dim">{count}</span></summary>
+      <div className="rec-in">{all ? rows : rows.slice(0, n)}
+        {rows.length > n && <button type="button" className="fold-more" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
+      </div></details>) : null;
 }
 
 /* ───────── one member: what they have delivered, the roles they have done, the feedback they have given ───────── */
@@ -521,6 +531,9 @@ function Strip({ children }) {
     </div>
   );
 }
+
+/* a status as plain text with a small dot, not a pill */
+function Status({ kind, children }) { return <span className={'stt ' + kind}><i />{children}</span>; }
 
 /* a long list shows the first few rows, then a button for the rest */
 function Fold({ items, n = 5, label = 'items', children }) {
@@ -542,29 +555,31 @@ export function VpePerson() {
   if (loading) return <Page title="Members" wide back="/v/members"><Loading /></Page>;
   if (error) return <Page title="Members" wide back="/v/members"><ErrorMsg error={error} /></Page>;
   const { person: p, projects, roles, given, received } = data;
-  const guest = p.kind === 'guest';
+  const visitor = p.kind === 'guest';
   const rolesDone = roles.filter((r) => !r.upcoming);
+  const save = (k, cur) => (e) => { const v = e.target.value.trim(); if (v !== (cur || '')) api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { [k]: v } }).then(() => { toast('Saved'); reload(); }).catch((x) => { toast(x.message); e.target.value = cur || ''; }); };
   const FB = ['grammarian', 'ah_counter', 'timer', 'topicsmaster', 'evaluator', 'general_evaluator'];
   const d = (iso) => fmtDate(iso, { day: 'numeric', month: 'short' });
 
   return (
     <Page title="Members" wide back="/v/members">
       <div className="phero">
-        <Avatar name={p.name} size={84} tone={guest ? 'gray' : undefined} />
+        <Avatar name={p.name} size={84} tone={visitor ? 'gray' : undefined} />
         <div className="pi">
-          <p className="reyebrow" style={{ margin: 0 }}>{guest ? 'Guest, temporary access' : p.is_vpe ? 'VPE' : 'Member'}</p>
+          <p className="reyebrow" style={{ margin: 0 }}>{visitor ? 'Visitor, temporary access' : p.is_vpe ? 'VPE' : 'Member'}</p>
           <h1 className="rtitle" style={{ fontSize: 40, margin: '2px 0 6px' }}>{p.name}</h1>
           <div className="pmeta">
-            <span>{p.email || 'No email'}</span>
+            <label>Email <input className="inp wide" type="email" autoComplete="off" name="member-email" defaultValue={p.email || ''} placeholder="name@example.com" onBlur={save('email', p.email)} aria-label="Email" /></label>
+            <label>Phone <input className="inp wide" type="tel" autoComplete="off" name="member-phone" defaultValue={p.phone || ''} placeholder="+263 7…" maxLength={30} onBlur={save('phone', p.phone)} aria-label="Phone" /></label>
             <label>Agenda title <input className="inp" defaultValue={p.credential || ''} placeholder="TM" maxLength={20} onBlur={(e) => e.target.value !== (p.credential || '') && api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { credential: e.target.value } }).then(() => toast('Saved'))} aria-label="Agenda title" /></label>
           </div>
         </div>
       </div>
-      {guest && (
+      {visitor && (
         <div className="banner"><b>Temporary status.</b> {p.temp_until ? `Access runs until ${longDate(p.temp_until)}. ` : ''}Everything they record is already stored under Champions.
           <div style={{ marginTop: 10 }}><Btn sm onClick={async () => { await api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }); toast(`${p.name} is now a member`); reload(); }}>Make a member</Btn></div></div>)}
 
-      {!guest && <PathCard person={p} />}
+      {!visitor && <PathCard person={p} initial={data.path} />}
 
       <div className="pstats three">
         <div><small>Speeches</small><b>{projects.length}</b><span>delivered and evaluated</span></div>
@@ -587,7 +602,7 @@ export function VpePerson() {
           <Fold items={roles} n={5} label="roles">{(r) => (
             <div className="prow2 static" key={r.id}>
               <span><b>{r.label}</b><small>Meeting {r.number} · {d(r.date)}</small></span>
-              {r.upcoming ? <Chip kind="wait">Upcoming</Chip> : FB.includes(r.role_key) ? (r.submitted_at ? <Chip kind="ok">{I.check}Submitted</Chip> : <Chip kind="wait">Not submitted</Chip>) : <Chip>Done</Chip>}
+              {r.upcoming ? <Status kind="up">Upcoming</Status> : FB.includes(r.role_key) ? (r.submitted_at ? <Status kind="ok">Submitted</Status> : <Status kind="late">Not submitted</Status>) : <Status kind="fin">Done</Status>}
             </div>
           )}</Fold>
         </div>

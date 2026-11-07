@@ -2,49 +2,48 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate } from '../data.js';
-import { Btn, Chip, ErrorMsg, I, Loading, Modal, Page, PersonSelect, ProjectPicker, Select, Wcard, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, PersonSelect, Select, Wcard, useToast } from '../ui.jsx';
 
 /* The meeting roster. One column per meeting, one row per thing to plan, like the club's planner sheet.
    The grid always fits the screen: how many meetings you see depends on the width, and you move between
    meetings with the timeline, the arrows, or "Go to". Every cell saves as you leave it. */
 const FIXED = [['toastmaster', 'Toastmaster of the Day'], ['general_evaluator', 'General Evaluator'], ['timer', 'Timer'], ['grammarian', 'Grammarian'], ['ah_counter', 'Ah Counter'], ['topicsmaster', 'Table Topics Master']];
 const quarter = (iso) => { const d = new Date(iso + 'T12:00:00'); return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`; };
-const MIN_COL = 244;
+const MIN_COL = 180, MAX_COLS = 4;
 
 export default function Roster() {
   const toast = useToast();
   const wrap = useRef(null);
-  const [cols, setCols] = useState(() => Math.max(1, Math.min(6, Math.floor((window.innerWidth - 300) / MIN_COL))));
+  const [cols, setCols] = useState(() => Math.max(1, Math.min(MAX_COLS, Math.floor((window.innerWidth - 300) / MIN_COL))));
   const [from, setFrom] = useState(undefined);
   const [focus, setFocus] = useState(null);
   const [view, setView] = useState(null);                       // last good data, kept on screen while the next page loads
   const rq = useApi(`/vpe/roster?count=${cols}${from === undefined ? '' : `&from=${from}`}`);
   const peopleQ = useApi('/vpe/people');
-  const projQ = useApi('/projects');
-  const catQ = useApi('/pathways');
   const [ms, setMs] = useState([]);
   const [wordFor, setWordFor] = useState(null);
-  const [showSpeeches, setShowSpeeches] = useState(false);
+  const [drag, setDrag] = useState(null), [over, setOver] = useState(null);   // dragging a name between cells
+  const [menu, setMenu] = useState(null);                       // right-click menu on the date strip
+  const [del, setDel] = useState(null), [delBusy, setDelBusy] = useState(false);
   const timers = useRef({}), pending = useRef({}), strip = useRef(null);
 
   // fit the number of columns to the space
   useEffect(() => {
     const el = wrap.current; if (!el) return;
-    const calc = () => { const w = el.clientWidth, pad = w < 900 ? 32 : 88, label = w < 560 ? 112 : 184; setCols(Math.max(1, Math.min(6, Math.floor((w - pad - label) / MIN_COL)))); };
+    const calc = () => { const w = el.clientWidth, pad = w < 900 ? 32 : 88, label = w < 560 ? 112 : 184; setCols(Math.max(1, Math.min(MAX_COLS, Math.floor((w - pad - label) / MIN_COL)))); };
     calc();
     const ro = new ResizeObserver(calc); ro.observe(el);
     return () => ro.disconnect();
-  }, [!!view]);
+  }, [!!view && !peopleQ.loading && !(rq.error || peopleQ.error)]); // the ref moves when the real page replaces the loading state
   useEffect(() => { if (rq.data) { setView(rq.data); setMs(rq.data.meetings); } }, [rq.data]);
   // keep the timeline centred on what you are looking at
   useEffect(() => { strip.current?.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }, [view?.from, view?.count]);
 
   const people = useMemo(() => (peopleQ.data || []).filter((p) => p.status !== 'inactive'), [peopleQ.data]);
 
-  if (!view || peopleQ.loading || projQ.loading || catQ.loading) return <Page root wide full><div ref={wrap}><Loading /></div></Page>;
+  if (!view || peopleQ.loading) return <Page root wide full><div ref={wrap}><Loading /></div></Page>;
   if (rq.error || peopleQ.error) return <Page root wide full><div ref={wrap}><ErrorMsg error={rq.error || peopleQ.error} /></div></Page>;
 
-  const projects = projQ.data, catalog = catQ.data?.paths || [];
   const loadingNext = rq.loading;
   const nameOf = (id) => people.find((p) => p.id === id);
 
@@ -71,6 +70,11 @@ export default function Roster() {
     } catch (e) { toast(e.message); rq.reload(); }
   };
   const addGuest = async (name) => { const g = await api('/people/guest', { method: 'POST', body: { name } }); await peopleQ.reload(); return g; };
+  const removeMeeting = async () => {
+    setDelBusy(true);
+    try { await api(`/vpe/meetings/${del.id}`, { method: 'DELETE' }); toast(`Meeting ${del.number} removed. Later meetings moved up one.`); setDel(null); rq.reload(); }
+    catch (e) { toast(e.message); setDel(null); } finally { setDelBusy(false); }
+  };
   const go = (n) => { setFocus(n); setFrom(n); };
   const addMeeting = async () => { const r = await api('/vpe/meetings', { method: 'POST' }); toast(`Meeting ${r.number} added`); go(r.number); rq.reload(); };
   const addRow = async (key) => { await Promise.all(ms.map((m) => api(`/vpe/meetings/${m.id}/roles`, { method: 'POST', body: { role_key: key } }))); rq.reload(); };
@@ -87,12 +91,20 @@ export default function Roster() {
   const n = ms.length, first = view.from, last = view.from + view.count - 1;
   const cls = (m) => (m.status === 'Next' ? ' isnext' : '') + (focus === m.number ? ' picked' : '');
 
+  const dropOn = async (m, role) => {
+    const from = drag; setDrag(null); setOver(null);
+    if (!from || from.role.id === role.id || !from.role.person_id) return;
+    const mine = from.role.person_id, theirs = role.person_id || null;
+    await setRole(m, role, { person_id: mine });
+    await setRole(from.m, from.role, { person_id: theirs });
+  };
   const cell = (m, role, extra) => {
     if (!role) return <td className={'rc na' + cls(m)} key={m.id}><span>None</span></td>;
     const d = dupes(m), dup = role.person_id && d[role.person_id] > 1;
     return (
-      <td className={'rc' + (role.person_id ? ' filled' : '') + (dup ? ' dup' : '') + cls(m)} key={m.id} title={dup ? 'This person has more than one role at this meeting' : undefined}>
-        <div className="pwrap">
+      <td className={'rc' + (role.person_id ? ' filled' : '') + (dup ? ' dup' : '') + (over === role.id && drag && drag.role.id !== role.id ? ' dropto' : '') + cls(m)} key={m.id} title={dup ? 'This person has more than one role at this meeting' : undefined}
+        onDragOver={(e) => { if (drag) { e.preventDefault(); setOver(role.id); } }} onDragLeave={() => setOver((o) => (o === role.id ? null : o))} onDrop={(e) => { e.preventDefault(); dropOn(m, role); }}>
+        <div className={'pwrap' + (role.person_id ? ' grab' : '')} draggable={!!role.person_id} onDragStart={(e) => { setDrag({ m, role }); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', role.person || ''); }} onDragEnd={() => { setDrag(null); setOver(null); }}>
           <PersonSelect value={role.person_id} placeholder="Assign" sm allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(m, role, { person_id: v })} />
         </div>
         {extra}
@@ -114,8 +126,6 @@ export default function Roster() {
           </div>
           <div className="rbar">
             <div className="rgo"><Select sm value={focus ?? view.from} placeholder="Go to meeting" options={goTo} onChange={go} searchable /></div>
-            {view.next != null && <Btn sm kind="ghost" onClick={() => { setFrom(undefined); setFocus(null); }}>Next meeting</Btn>}
-            <button type="button" className={'chip tog' + (showSpeeches ? ' on' : '')} onClick={() => setShowSpeeches(!showSpeeches)} aria-pressed={showSpeeches}>Speech details</button>
             <Btn sm onClick={addMeeting}>{I.plus} New meeting</Btn>
           </div>
         </div>
@@ -124,7 +134,7 @@ export default function Roster() {
           <button type="button" className="rnav" disabled={!view.has_earlier} onClick={() => go(Math.max(view.lo, first - view.count))} aria-label="Earlier meetings">{I.back}</button>
           <div className="rstrip" ref={strip}>
             {view.index.map((m) => (
-              <button type="button" key={m.number} className={'rp' + (m.number >= first && m.number <= last ? ' on' : '') + (m.status === 'Next' ? ' nx' : '') + (m.status === 'Done' ? ' dn' : '')} onClick={() => go(m.number)} aria-label={`Meeting ${m.number}, ${fmtDate(m.date)}`} aria-current={m.number >= first && m.number <= last ? 'true' : undefined}>
+              <button type="button" key={m.number} className={'rp' + (m.number >= first && m.number <= last ? ' on' : '') + (m.status === 'Next' ? ' nx' : '') + (m.status === 'Done' ? ' dn' : '')} onClick={() => go(m.number)} onContextMenu={(e) => { e.preventDefault(); setMenu({ m, x: Math.min(e.clientX, window.innerWidth - 200), y: e.clientY }); }} aria-label={`Meeting ${m.number}, ${fmtDate(m.date)}`} aria-current={m.number >= first && m.number <= last ? 'true' : undefined}>
                 <b>{m.number}</b><small>{fmtDate(m.date, { day: 'numeric', month: 'short' })}</small>
               </button>
             ))}
@@ -147,7 +157,7 @@ export default function Roster() {
               </tr>
             </thead>
             <tbody>
-              {row('Date', (m) => <td className={'rc' + cls(m)} key={m.id}><input type="date" value={m.date} onChange={(e) => e.target.value && setMeta(m.id, { date: e.target.value })} aria-label={`Date, meeting ${m.number}`} /></td>)}
+              {row('Date', (m) => <td className={'rc' + cls(m)} key={m.id}><DatePick bare value={m.date} onChange={(v) => setMeta(m.id, { date: v })} label={`Date, meeting ${m.number}`} /></td>)}
               {row('Attendance', (m) => <td className={'rc' + cls(m)} key={m.id}><input type="number" min="0" inputMode="numeric" value={m.attendance ?? ''} placeholder={m.status === 'Done' ? 'How many came?' : 'After the meeting'} onChange={(e) => setMeta(m.id, { attendance: e.target.value })} aria-label={`Attendance, meeting ${m.number}`} /></td>)}
               {row('Theme', (m) => <td className={'rc' + cls(m)} key={m.id}><input className="strong" value={m.theme} placeholder="Add a theme" onChange={(e) => setMeta(m.id, { theme: e.target.value })} aria-label={`Theme, meeting ${m.number}`} /></td>)}
               {row('Quotation', (m) => (
@@ -168,24 +178,29 @@ export default function Roster() {
 
               {group('Speakers', <span className="gact"><button type="button" onClick={() => addRow('speaker')}>{I.plus} Add speaker</button>{nS > 3 && <button type="button" onClick={() => removeRow('speaker')}>Remove last</button>}</span>)}
               {Array.from({ length: nS }, (_, k) => row(`Speaker ${k + 1}`, (m) => cell(m, of(m, 'speaker')[k])))}
-              {showSpeeches && Array.from({ length: nS }, (_, k) => row(<span className="sub">Speech {k + 1}</span>, (m) => {
-                const r = of(m, 'speaker')[k];
-                if (!r) return <td className={'rc na' + cls(m)} key={m.id} />;
-                return (
-                  <td className={'rc' + cls(m)} key={m.id}>
-                    <ProjectPicker catalog={catalog} value={r.project_id} pathName={r.path_name} level={r.path_level} onChange={(body) => setRole(m, r, body)} />
-                    <input value={r.speech_title || ''} placeholder="Speech title" onChange={(e) => setMs((cur) => cur.map((x) => (x.id !== m.id ? x : { ...x, roles: x.roles.map((y) => (y.id === r.id ? { ...y, speech_title: e.target.value } : y)) })))} onBlur={(e) => api(`/vpe/roles/${r.id}`, { method: 'PATCH', body: { speech_title: e.target.value } }).catch((er) => toast(er.message))} aria-label="Speech title" />
-                  </td>);
-              }, 'speech'))}
 
               {group('Evaluators', <span className="gact"><button type="button" onClick={() => addRow('evaluator')}>{I.plus} Add evaluator</button>{nE > 3 && <button type="button" onClick={() => removeRow('evaluator')}>Remove last</button>}</span>)}
               {Array.from({ length: nE }, (_, k) => row(`Evaluator ${k + 1}`, (m) => cell(m, of(m, 'evaluator')[k])))}
             </tbody>
           </table>
         </div>
-        <p className="rnote">Evaluator 1 evaluates Speaker 1, and so on. Open a meeting number for its links, feedback and the room QR code.</p>
       </div>
 
+      {menu && (
+        <>
+          <div className="ctx-back" onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
+          <div className="ctx" role="menu" style={{ left: menu.x, top: menu.y }}>
+            <button type="button" role="menuitem" onClick={() => { go(menu.m.number); setMenu(null); }}>Go to meeting {menu.m.number}</button>
+            <button type="button" role="menuitem" className="dng" onClick={() => { setDel(menu.m); setMenu(null); }}>Remove meeting {menu.m.number}</button>
+          </div>
+        </>
+      )}
+      {del && (
+        <Modal title={`Remove meeting ${del.number}?`} onClose={() => setDel(null)}>
+          <p style={{ margin: '4px 0 0', color: 'var(--mute)', fontSize: 15 }}>{fmtDate(del.date)} comes off the roster, along with any roles planned for it. Every later meeting moves up one number, so there is no gap. This cannot be undone.</p>
+          <div className="row-btns"><Btn kind="ghost" onClick={() => setDel(null)}>Keep it</Btn><Btn onClick={removeMeeting} disabled={delBusy}>{delBusy ? 'Removing…' : 'Remove meeting'}</Btn></div>
+        </Modal>
+      )}
       {wordFor && <WordModal m={ms.find((x) => x.id === wordFor)} onChange={(p) => setMeta(wordFor, p)} onClose={() => setWordFor(null)} />}
     </Page>
   );
