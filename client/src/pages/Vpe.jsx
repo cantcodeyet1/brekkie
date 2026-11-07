@@ -522,6 +522,18 @@ function Strip({ children }) {
   );
 }
 
+/* a long list shows the first few rows, then a button for the rest */
+function Fold({ items, n = 5, label = 'items', children }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? items : items.slice(0, n);
+  return (
+    <>
+      <div className="plist2">{shown.map(children)}</div>
+      {items.length > n && <button type="button" className="fold-more" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${items.length} ${label}`}</button>}
+    </>
+  );
+}
+
 export function VpePerson() {
   const { id } = useParams();
   const toast = useToast();
@@ -562,38 +574,32 @@ export function VpePerson() {
 
       <div className="pgrid">
         <div className="pcard">
-          <div className="lab" style={{ marginTop: 0 }}>Projects delivered</div>
+          <div className="lab" style={{ marginTop: 0 }}>Projects delivered<span className="cnt2">{projects.length}</span></div>
           {!projects.length && <p className="empty tight">No speeches yet.</p>}
-          <div className="plist2">
-            {projects.map((x) => (
-              <Link className="prow2" key={x.id} to={`/v/evaluations/${x.id}`}>
-                <span><b>{x.project}</b><small>{x.path}, Level {x.level}</small><small>“{x.title}” · {d(x.date)} · evaluated by {x.by}</small></span>{I.chev}
-              </Link>
-            ))}
-          </div>
+          <Fold items={projects} n={5} label="projects">{(x) => (
+            <Link className="prow2" key={x.id} to={`/v/evaluations/${x.id}`}>
+              <span><b>{x.project}</b><small><i className="lvb">L{x.level}</i>“{x.title}” · {d(x.date)} · {x.by}</small></span>{I.chev}
+            </Link>
+          )}</Fold>
 
-          <div className="lab">Roles</div>
+          <div className="lab">Roles<span className="cnt2">{roles.length}</span></div>
           {!roles.length && <p className="empty tight">No roles yet.</p>}
-          <div className="plist2">
-            {roles.map((r) => (
-              <div className="prow2 static" key={r.id}>
-                <span><b>{r.label}</b><small>Meeting {r.number} · {d(r.date)}</small></span>
-                {r.upcoming ? <Chip kind="wait">Upcoming</Chip> : FB.includes(r.role_key) ? (r.submitted_at ? <Chip kind="ok">{I.check}Submitted</Chip> : <Chip kind="wait">Not submitted</Chip>) : <Chip>Done</Chip>}
-              </div>
-            ))}
-          </div>
+          <Fold items={roles} n={5} label="roles">{(r) => (
+            <div className="prow2 static" key={r.id}>
+              <span><b>{r.label}</b><small>Meeting {r.number} · {d(r.date)}</small></span>
+              {r.upcoming ? <Chip kind="wait">Upcoming</Chip> : FB.includes(r.role_key) ? (r.submitted_at ? <Chip kind="ok">{I.check}Submitted</Chip> : <Chip kind="wait">Not submitted</Chip>) : <Chip>Done</Chip>}
+            </div>
+          )}</Fold>
         </div>
 
         <div className="pcard">
-          <div className="lab" style={{ marginTop: 0 }}>Feedback they have given</div>
+          <div className="lab" style={{ marginTop: 0 }}>Feedback they have given<span className="cnt2">{given.length}</span></div>
           {!given.length && <p className="empty tight">Nothing submitted yet.</p>}
-          <div className="plist2">
-            {given.map((g) => (
-              <button type="button" className="prow2" key={g.id} onClick={() => setViewing(g.id)}>
-                <span><b>{g.label}</b><small>Meeting {g.number} · {d(g.date)}</small><small>{g.summary}</small></span>{I.chev}
-              </button>
-            ))}
-          </div>
+          <Fold items={given} n={5} label="sheets">{(g) => (
+            <button type="button" className="prow2" key={g.id} onClick={() => setViewing(g.id)}>
+              <span><b>{g.label}</b><small>Meeting {g.number} · {d(g.date)} · {g.summary}</small></span>{I.chev}
+            </button>
+          )}</Fold>
 
           <div className="lab">Feedback they have received</div>
           {!(received.gram.length || received.fill.length || received.time.length || received.roleFeedback.length || received.peer.length) && <p className="empty tight">Nothing yet. Their evaluations are under Projects delivered.</p>}

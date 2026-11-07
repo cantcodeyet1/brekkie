@@ -20,7 +20,7 @@ function Hero({ children }) {
       {children}
       <div className="notes" aria-hidden="true">
         {NOTES.map(([who, text, ch], i) => (
-          <div className="note" key={who + i} style={{ '--i': i }}>
+          <div className="lnote" key={who + i} style={{ '--i': i }}>
             <i>{ch}</i><div><b>{who}</b><span>{text}</span></div>
           </div>
         ))}
