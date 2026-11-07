@@ -1579,3 +1579,43 @@ html,body{background:#F5F5F7}
 .wcount .stp button{width:38px;height:38px;border-radius:50%;border:0;background:#fff;color:var(--blue);display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .wcount .stp button:active{transform:scale(.94)}
 .swipe{touch-action:pan-y;min-height:50vh}
+
+/* red pill for a role that still needs someone */
+.redpill{display:inline-flex;align-items:center;gap:7px;margin-top:6px;padding:5px 12px 5px 10px;border-radius:999px;background:#F8E4E7;color:var(--maroon);font:600 13px var(--head)}
+.redpill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--maroon);flex:none}
+
+/* grammarian: word of the day list, paired corrections, full-screen thanks page */
+.rep-hero.wod .wod-sum{margin:10px 0 0;font:700 15px var(--head);color:rgba(255,255,255,.9)}
+.wod-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.wod-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.12);font:600 16px var(--head)}
+.wod-list li b{font:800 18px var(--head);color:#F2DF74}
+.fixrow{display:flex;align-items:flex-start;gap:8px;margin-top:8px}
+.fixno{flex:none;width:24px;height:24px;margin-top:12px;border-radius:50%;background:#F8E4E7;color:var(--maroon);font:700 12px var(--head);display:grid;place-items:center}
+.fixin{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;position:relative}
+.fixarr{position:absolute;left:12px;top:50%;margin-top:-9px;color:#B5B9C0;display:none}
+.fixrow .x{margin-top:8px}
+.fixpair{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:8px;align-items:start;padding:9px 0;border-top:1px solid #EEF0F2;font-size:15.5px;line-height:1.35}
+.fixpair .was{color:var(--maroon);font-weight:600;text-decoration:line-through;text-decoration-color:rgba(119,36,50,.35)}
+.fixpair .arr{color:#8E8E93;text-align:center}
+.fixpair .now{color:#2F6B4B;font-weight:600}
+.done-full .tickbig{width:76px;height:76px;border-radius:50%;background:#F2DF74;color:#004165;display:grid;place-items:center}
+.done-full .tickbig svg{width:34px;height:34px}
+.done-btns{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.done-btns .rwel-go{margin-top:0;align-self:stretch}
+.rwel-go.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6)}
+@media (min-width:900px){.done-btns{flex-direction:row}.done-btns .rwel-go{align-self:auto}}
+/* timer: the counting-up clock is big and centred, in portrait and landscape */
+.stage .clk,.stage:not(.hide) .clk,.stage.hide .clk{position:static!important;order:-1;align-self:center;text-align:center;width:100%;opacity:1;font:800 clamp(64px,24vw,150px)/1 var(--head)!important;letter-spacing:-.04em;font-variant-numeric:tabular-nums;margin:0 0 6px}
+.stage.hide .clk{opacity:.45}
+.desk .stage .clk,.app.desk .stage .clk{font-size:clamp(96px,16vw,220px)!important}
+@media (orientation:landscape) and (max-height:560px){
+  .stage{gap:4px;padding:12px 24px}
+  .stage .clk,.stage:not(.hide) .clk,.stage.hide .clk{font-size:clamp(56px,30vh,130px)!important;margin:0}
+  .stage .who2{font-size:24px}
+  .stage .cardname{font-size:16px;margin-top:0}
+  .stage .thr{font-size:12.5px}
+  .stage .st-btns{flex-direction:row;width:min(560px,92%);margin-top:8px;gap:8px}
+  .stage .st-btns>.btn{flex:1.4;height:46px}
+  .stage .st-btns>div{display:flex;flex:2;gap:8px!important}
+  .stage .st-btns .btn{height:46px;font-size:15px}
+}

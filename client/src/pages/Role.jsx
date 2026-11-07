@@ -163,11 +163,22 @@ function RoleBody({ data, token }) {
     </div>
   );
   if (view === 'done') return (
-    <Page onBack={() => setView('sheet')} title="" foot={<Foot col><Btn kind="ghost" onClick={() => setView('sheet')}>Edit my notes</Btn></Foot>}>
-      <div className="done"><div className="tick">{I.check}</div><h1 className="pg">Thanks, {first}.</h1><p className="lede">Your {meta.name.toLowerCase()} notes are in. Members will find them in their history from now on. You can open your link again at any time to edit them.</p>
-        <div style={{ marginTop: 20, textAlign: 'left' }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>
-        <div style={{ marginTop: 20, textAlign: 'left' }}><JoinAsk data={data} token={token} /></div></div>
-    </Page>
+    <div className="main">
+      <div className="rwel done-full">
+        <Wordmark className="wm-light" />
+        <div className="rwel-in">
+          <div className="tickbig">{I.check}</div>
+          <h1>Thanks, {first}.</h1>
+          <p className="sub">Your {meta.name.toLowerCase()} notes are in. Members will find them in their history from now on. You can open your link again at any time to edit them.</p>
+          <JoinAsk data={data} token={token} dark />
+          <div className="done-btns">
+            <button type="button" className="rwel-go" onClick={downloadPdf} disabled={dlBusy}>{key === 'evaluator' ? 'Download my evaluation (PDF)' : dlBusy ? 'Filling in the form…' : 'Download the official report (PDF)'}</button>
+            <button type="button" className="rwel-go ghost" onClick={() => setView('sheet')}>Edit my notes</button>
+          </div>
+          {err && <p className="err" style={{ color: '#ffd6d6' }}>{err}</p>}
+        </div>
+      </div>
+    </div>
   );
 
   const Sheet = { grammarian: GramSheet, ah_counter: AhSheet, timer: TimeSheet, topicsmaster: TTSheet, evaluator: EvalForm, general_evaluator: GESheet }[key];
@@ -218,6 +229,12 @@ function ScriptDoc({ k, vars, before }) {
     </div>
   );
 }
+/* each improper use is paired with its own suggestion, so they stay linked line for line */
+const fixesOf = (r) => {
+  if (Array.isArray(r.fixes)) return r.fixes;
+  const a = String(r.improper || '').split('\n').filter((x) => x.trim()), b = String(r.suggestion || '').split('\n');
+  return a.length || String(r.suggestion || '').trim() ? Array.from({ length: Math.max(a.length, b.filter((x) => x.trim()).length) }, (_, i) => ({ improper: a[i] || '', suggestion: b[i] || '' })) : [];
+};
 const joinNames = (a) => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
 const Rep = ({ title, sub, children }) => <div className="rep"><div className="rep-h"><b>{title}</b>{sub && <span>{sub}</span>}</div>{children}</div>;
 const RepLine = ({ label, kind, children }) => children ? <p className="rep-l"><span className={kind || ''}>{label}</span>{children}</p> : null;
@@ -250,6 +267,10 @@ const subjectName = (people, id) => people.find((p) => p.id === id)?.name || '';
 function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
   const { upd, del, add } = rowsApi(setSheet);
   const m = data.meeting;
+  const writeFixes = (x, i, fixes) => ({ ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, fixes, improper: fixes.map((f) => f.improper).join('\n'), suggestion: fixes.map((f) => f.suggestion).join('\n') } : r)) });
+  const setFix = (i, k, patch) => setSheet((x) => writeFixes(x, i, fixesOf(x.rows[i]).map((f, n) => (n === k ? { ...f, ...patch } : f))));
+  const addFix = (i) => setSheet((x) => writeFixes(x, i, [...fixesOf(x.rows[i]), { improper: '', suggestion: '' }]));
+  const delFix = (i, k) => setSheet((x) => writeFixes(x, i, fixesOf(x.rows[i]).filter((_, n) => n !== k)));
   const bump = (i, d) => setSheet((x) => ({ ...x, rows: x.rows.map((r, j) => { if (j !== i) return r; const n = Math.max(0, (r.uses || 0) + d); return { ...r, uses: n, used: n > 0 }; }) }));
   return (
     <Modes mode={mode}
@@ -265,8 +286,19 @@ function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
               <div className="stp"><button type="button" onClick={() => bump(i, -1)} aria-label="One fewer">{I.minus}</button><b>{r.uses || 0}</b><button type="button" onClick={() => bump(i, 1)} aria-label="One more">{I.plus}</button></div>
             </div>
             <TA label="Quote, saying or word you liked" kind="blue" value={r.liked} onChange={(v) => upd(i, { liked: v })} placeholder="What did they say?" />
-            <TA label="Improper use" kind="maroon" value={r.improper} onChange={(v) => upd(i, { improper: v })} placeholder="What was said" />
-            <TA label="Suggestion" value={r.suggestion} onChange={(v) => upd(i, { suggestion: v })} placeholder="A better way to say it" />
+            <div className="lab maroon" style={{ marginTop: 14 }}>Improper use and its suggestion</div>
+            {fixesOf(r).map((fx, k) => (
+              <div className="fixrow" key={k}>
+                <span className="fixno">{k + 1}</span>
+                <div className="fixin">
+                  <input className="inp" value={fx.improper} onChange={(e) => setFix(i, k, { improper: e.target.value })} placeholder="What was said" aria-label={`Improper use ${k + 1}`} />
+                  <span className="fixarr" aria-hidden="true">{I.chev}</span>
+                  <input className="inp" value={fx.suggestion} onChange={(e) => setFix(i, k, { suggestion: e.target.value })} placeholder="A better way to say it" aria-label={`Suggestion ${k + 1}`} />
+                </div>
+                <button type="button" className="x" onClick={() => delFix(i, k)} aria-label={`Remove correction ${k + 1}`}>{I.close}</button>
+              </div>
+            ))}
+            <button type="button" className="addrow" onClick={() => addFix(i)}>{I.plus} Add an improper use</button>
           </Block>
         ))}
         <AddRow onClick={() => add({ subject_id: null, used: false, uses: 0, liked: '', improper: '', suggestion: '' })}>Add another person</AddRow>
@@ -558,19 +590,23 @@ function GramReport({ m, rows, people }) {
   const filled = rows.filter((x) => x.subject_id);
   const nm = (x) => subjectName(people, x.subject_id);
   const cnt = (x) => x.uses || (x.used ? 1 : 0);
-  const used = filled.filter((x) => cnt(x) > 0).map((x) => `${nm(x)}${cnt(x) > 1 ? ` (${cnt(x)} times)` : ''}`);
-  const total = filled.reduce((a, x) => a + cnt(x), 0);
-  const any = filled.some((x) => cnt(x) > 0 || x.liked || x.improper || x.suggestion);
+  const users = filled.filter((x) => cnt(x) > 0);
+  const total = users.reduce((a, x) => a + cnt(x), 0);
+  const any = filled.some((x) => cnt(x) > 0 || x.liked || fixesOf(x).length);
   return (
     <div className="rpt">
-      <div className="rep-hero"><small>Word of the day</small><b>{m.word || 'Not set'}</b>
-        <p>{any ? (used.length ? `Used ${total} ${total === 1 ? 'time' : 'times'} in all: ${joinNames(used)}.` : 'No one used it yet.') : ''}</p></div>
+      <div className="rep-hero wod"><small>Word of the day</small><b>{m.word || 'Not set'}</b>
+        {any && (users.length
+          ? <><p className="wod-sum">Used {total} {total === 1 ? 'time' : 'times'} in all</p>
+            <ul className="wod-list">{users.map((x, i) => <li key={i}><span>{nm(x)}</span><b>{cnt(x)}×</b></li>)}</ul></>
+          : <p className="wod-sum">No one used it yet.</p>)}
+      </div>
       {!any && <RepEmpty />}
-      {filled.filter((x) => x.liked || x.improper || x.suggestion).map((x, i) => (
+      {filled.filter((x) => x.liked || fixesOf(x).some((f) => f.improper || f.suggestion)).map((x, i) => (
         <Rep key={i} title={nm(x)} sub={cnt(x) ? (cnt(x) > 1 ? `Used the word ${cnt(x)} times` : 'Used the word') : ''}>
           <RepLine label="Liked" kind="blue">{x.liked}</RepLine>
-          <RepLine label="Improper use" kind="maroon">{x.improper}</RepLine>
-          <RepLine label="Suggestion">{x.suggestion}</RepLine>
+          {fixesOf(x).filter((f) => f.improper || f.suggestion).map((f, k) => (
+            <div className="fixpair" key={k}><span className="was">{f.improper || '…'}</span><span className="arr" aria-hidden="true">→</span><span className="now">{f.suggestion || '…'}</span></div>))}
         </Rep>))}
     </div>
   );

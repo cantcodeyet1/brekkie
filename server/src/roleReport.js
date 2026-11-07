@@ -108,12 +108,20 @@ function grammarian(pen, { meeting: m, name, sheet }) {
   if (used.length > 30) pen.note('Used the word of the day (continued)', used.slice(30).map((r) => `${r.name}${cnt(r) > 1 ? ` (${cnt(r)} times)` : ''}`).join(', '));
   if (used.length) pen.text(0, `Used ${total} ${total === 1 ? 'time' : 'times'} in all`, 36.1, 700, { size: 9, color: GREY });
 
-  const bad = rows.filter((r) => r.improper || r.suggestion), liked = rows.filter((r) => r.liked);
+  // one row per improper use, each beside its own suggestion
+  const fixesOf = (r) => {
+    if (Array.isArray(r.fixes)) return r.fixes.filter((f) => f.improper || f.suggestion);
+    const a = String(r.improper || '').split('\n'), b = String(r.suggestion || '').split('\n');
+    return Array.from({ length: Math.max(a.length, b.length) }, (_, i) => ({ improper: a[i] || '', suggestion: b[i] || '' })).filter((f) => f.improper.trim() || f.suggestion.trim());
+  };
+  const bad = rows.flatMap((r) => fixesOf(r).map((f) => ({ name: r.name, ...f }))), liked = rows.filter((r) => r.liked);
   bad.forEach((r, i) => {
     const top = 113.4 + Math.min(i, 9) * 22.5;
-    if (i >= 10) { pen.note(`Improper use: ${r.name}`, `${r.improper || ''}${r.suggestion ? `\nSuggestion: ${r.suggestion}` : ''}`); return; }
+    if (i >= 10) { pen.note(`Improper use: ${r.name}`, `${r.improper || ''}${r.suggestion ? `
+Suggestion: ${r.suggestion}` : ''}`); return; }
     const a = pen.cellText(1, r.name, 36.1, 216, top, top + 22.5), b = pen.cellText(1, r.improper, 216, 396, top, top + 22.5, { color: MAROON }), c = pen.cellText(1, r.suggestion, 396, 576, top, top + 22.5);
-    if (!a || !b || !c) pen.note(`Improper use: ${r.name}`, `${r.improper || ''}${r.suggestion ? `\nSuggestion: ${r.suggestion}` : ''}`);
+    if (!a || !b || !c) pen.note(`Improper use: ${r.name}`, `${r.improper || ''}${r.suggestion ? `
+Suggestion: ${r.suggestion}` : ''}`);
   });
   liked.forEach((r, i) => {
     const top = 402.1 + Math.min(i, 9) * 22.5;

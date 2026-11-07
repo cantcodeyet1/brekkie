@@ -336,7 +336,7 @@ VPE, Champions Toastmasters Club`;
                 <Btn sm kind="ghost" onClick={() => copy(roleLink(base, r.token))}>{I.copy}Copy</Btn>
                 <a className="btn sm ghost" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(msg(r))} aria-label={`Send ${r.label} link on WhatsApp`}>{I.send}</a>
               </div>
-            ) : <div className="linkrow" key={r.id}><div className="grow"><b>{r.label}</b><br /><small style={{ color: 'var(--maroon)' }}>Assign someone to get a link</small></div></div>)}
+            ) : <div className="linkrow" key={r.id}><div className="grow"><b>{r.label}</b><br /><span className="redpill">Assign someone to get a link</span></div></div>)}
           </div>
         </Panel>
 
