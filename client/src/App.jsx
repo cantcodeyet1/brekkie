@@ -8,6 +8,8 @@ import RoleApp from './pages/Role.jsx';
 import Agenda from './pages/Agenda.jsx';
 import { VPE_NAV, VpeMeeting, VpePeople, VpePerson } from './pages/Vpe.jsx';
 import Roster from './pages/Roster.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Calendar from './pages/Calendar.jsx';
 import Landing from './pages/Landing.jsx';
 import Wizard from './pages/Wizard.jsx';
 import Club, { AccountModal } from './pages/Club.jsx';
@@ -83,7 +85,9 @@ function VpeArea() {
   return (
     <Shell nav={VPE_NAV} who={data.person.name} tag="VPE" sub={data.club || 'Your club'} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
       <Routes>
-        <Route index element={<Roster />} />
+        <Route index element={<Dashboard />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="roster" element={<Roster />} />
         <Route path="meetings/:id" element={<VpeMeeting />} />
         <Route path="meetings/:id/agenda" element={<Agenda />} />
         <Route path="members" element={<VpePeople />} />

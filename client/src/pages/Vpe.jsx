@@ -8,7 +8,9 @@ import PathCard from './PathCard.jsx';
 import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
-  { to: '/v', end: true, label: 'Roster', icon: I.cal },
+  { to: '/v', end: true, label: 'Dashboard', icon: I.chart },
+  { to: '/v/calendar', label: 'Calendar', icon: I.month },
+  { to: '/v/roster', label: 'Roster', icon: I.cal },
   { to: '/v/members', label: 'Members', icon: I.ppl },
   { to: '/v/club', label: 'Club', icon: I.home },
 ];
@@ -161,8 +163,8 @@ export function VpeMeeting() {
     if (todo.length) Promise.all(todo.map(([rid, t]) => api(`/vpe/roles/${rid}`, { method: 'PATCH', body: { target_role_id: t } }))).then(reload).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
-  if (loading || peopleQ.loading || projQ.loading || catQ.loading || !m) return <Page title="Roster" wide back="/v"><Loading /></Page>;
-  if (error || peopleQ.error) return <Page title="Roster" wide back="/v"><ErrorMsg error={error || peopleQ.error} /></Page>;
+  if (loading || peopleQ.loading || projQ.loading || catQ.loading || !m) return <Page title="Roster" wide back="/v/roster"><Loading /></Page>;
+  if (error || peopleQ.error) return <Page title="Roster" wide back="/v/roster"><ErrorMsg error={error || peopleQ.error} /></Page>;
 
   const roles = data.roles, projects = projQ.data, catalog = catQ.data?.paths || [];
   const locked = m.status === 'Done';
@@ -224,19 +226,23 @@ export function VpeMeeting() {
 
 The word of the day is "${m.word}". Please introduce it at the start of the meeting and listen for how members use it.` : '';
     const intro = kind === 'remind'
-      ? `A gentle reminder that you are down as ${r.label} at our club meeting on ${fmtDate(m.date)}.${theme} Your link is below, and your sheet is ready for you to fill in.`
+      ? `Thank you for serving as ${r.label} at our club meeting on ${fmtDate(m.date)}. It really does make the meeting.${theme}
+
+A gentle reminder to fill in your notes on Brekkie when you have a moment. The people you observed benefit most from hearing your feedback while the meeting is still fresh, and it helps every member keep growing in their Pathways journey.`
       : `Thank you for agreeing to serve as ${r.label} at our club meeting on ${fmtDate(m.date)}.${theme}`;
     return `Hello ${title}${r.person},
 
 I trust this message finds you well.
 
-${intro}${word}
+${intro}${kind === 'remind' ? '' : word}
 
-At Champions, we use a tool called Brekkie to run our meetings and share feedback. Your link below opens your personal script and sheet for the role, with no sign-in or app to install. You will still give your report at the meeting as usual, and your notes will be there on the sheet. When you submit it, the feedback goes straight to the people you wrote about.
+${kind === 'remind'
+    ? 'Your link is below. It opens your sheet with your notes as you left them, and you can edit and resubmit at any time.'
+    : 'At Champions, we use a tool called Brekkie to run our meetings and share feedback. Your link below opens your personal script and sheet for the role, with no sign-in or app to install. You will still give your report at the meeting as usual, and your notes will be there on the sheet. When you submit it, the feedback goes straight to the people you wrote about.'}
 
 ${roleLink(base, r.token)}
 
-Please let me know when you are available for a quick tutorial, so we can make sure you are ready.
+${kind === 'remind' ? 'Let me know if you would like any help with it. Thank you again!' : 'Please let me know when you are available for a quick tutorial, so we can make sure you are ready.'}
 
 Kind regards,
 ${sender || 'Your VPE'}
@@ -278,7 +284,7 @@ VPE, Champions Toastmasters Club`;
   );
 
   return (
-    <Page title="Roster" wide back="/v">
+    <Page title="Roster" wide back="/v/roster">
       <div className="mhead">
         <div>
           <div className="meta" style={{ margin: 0 }}><Chip kind={statusKind(m.status)}>{m.status}</Chip><span>Meeting {m.number}</span></div>
@@ -316,7 +322,7 @@ VPE, Champions Toastmasters Club`;
       </Panel>
 
       <Panel k="roles" title="Roles" hint={locked ? 'This meeting has happened. Roles are shown as they were.' : 'Choose who plays each role. They get their link as soon as you assign them.'}
-        right={<Link className="lnk" to="/v">Plan several meetings at once in the roster</Link>}>
+        right={<Link className="lnk" to="/v/roster">Plan several meetings at once in the roster</Link>}>
         <div className="rgroup"><h3>Top table</h3><div className="rgrid">{roles.filter((r) => !['speaker', 'evaluator'].includes(r.role_key)).map(tile)}</div></div>
         <div className="rgroup"><h3>Speakers and their evaluators</h3>{(() => {
           const evs = roles.filter((r) => r.role_key === 'evaluator'), used = new Set();

@@ -6,6 +6,8 @@ import { getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import { EvalSheet, printEval } from '../EvalSheet.jsx';
 import { SubmissionViewer } from './Vpe.jsx';
+import { PlanModal, SpeechRow } from './Dashboard.jsx';
+import { api } from '../api.js';
 import { Btn, Chip, ErrorMsg, Foot, I, Loading, Page, useDesk, useToast } from '../ui.jsx';
 
 /* The member area is three big, plainly named places: Home, Meetings, Speeches. */
@@ -61,6 +63,22 @@ function AgendaCard({ meetingId, date, title, sub, sheet }) {
   );
 }
 
+/* the speeches a member plans to give, at this club or another; they show on the VPE's dashboard too */
+function MyPlans({ me }) {
+  const toast = useToast();
+  const { data, reload } = useApi('/me/plans');
+  const [adding, setAdding] = useState(false);
+  const rows = (data || []).filter((s) => s.date >= new Date().toISOString().slice(0, 10));
+  return (
+    <section className="myplans">
+      <div className="mp-h"><div><small>Speeches</small><h2>Your upcoming speeches</h2></div><Btn sm onClick={() => setAdding(true)}>{I.plus} Add</Btn></div>
+      {!rows.length && <p className="mp-empty">Planning a speech here or at another club? Add it, and your VPE sees it when forecasting your next award.</p>}
+      {rows.map((s) => <SpeechRow key={s.id} s={s} who={false} onRemove={async () => { try { await api(`/me/plans/${s.id}`, { method: 'DELETE' }); reload(); } catch (e) { toast(e.message); } }} />)}
+      {adding && <PlanModal meId={me.id} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); reload(); }} />}
+    </section>
+  );
+}
+
 export function MemberHome() {
   const { data: d, error, loading } = useApi('/me/overview');
   if (loading) return <Page root narrow><Loading /></Page>;
@@ -81,6 +99,7 @@ export function MemberHome() {
         sub={`${fmtDate(d.next_meeting.date, { weekday: 'long' })}, meeting ${d.next_meeting.number}. Tap to download the agenda.`} />}
 
       {d.person.kind !== 'guest' && <PathCard person={d.person} mine initial={d.path} />}
+      {d.person.kind !== 'guest' && <MyPlans me={d.person} />}
 
       <p className="lede" style={{ fontSize: 17, marginTop: 0 }}>Tap one to see the feedback people have given you.</p>
 

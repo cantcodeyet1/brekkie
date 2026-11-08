@@ -15,6 +15,7 @@ import { nextClubDate } from './schedule.js';
 import { checkPw, cleanPattern, describePattern, generateMeetings, hashPw, joinCode, normEmail, nextPatternDate, pwProblem, validEmail } from './club.js';
 import { validWord, wordDetails } from './words.js';
 import { ensurePathways } from './pathways.js';
+import { forecastMember, goalsFrom, programYear } from './dcp.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEMO = process.env.DEMO_MODE !== 'false';
@@ -658,12 +659,21 @@ async function pathProgress(person) {
     from path_projects pp join projects p on p.id=pp.project_id where pp.path=$1 order by pp.level, pp.pos`, [path]);
   const done = new Map();
   for (const e of await q(`select e.project_id, ${DATE('m.date')} as date, m.number from evaluations e join meetings m on m.id=e.meeting_id where e.speaker_id=$1 order by m.date`, [person.id])) if (!done.has(e.project_id)) done.set(e.project_id, { date: e.date, source: 'evaluation', meeting: e.number });
-  for (const m of await q(`select project_id, ${DATE('done_at')} as date from member_projects where person_id=$1`, [person.id])) if (!done.has(m.project_id)) done.set(m.project_id, { date: m.date, source: 'manual' });
+  for (const m of await q(`select project_id, ${DATE('done_at')} as date, venue from member_projects where person_id=$1`, [person.id])) if (!done.has(m.project_id)) done.set(m.project_id, { date: m.date, source: 'manual', venue: m.venue });
   const picked = new Set((await q('select project_id from member_electives where person_id=$1', [person.id])).map((x) => x.project_id));
+  // when each project is scheduled: a speaker slot on a coming meeting, or a speech the member planned (here or elsewhere)
+  const sched = new Map();
+  const when = [
+    ...(await q(`select r.project_id, ${DATE('m.date')} as date, '' as venue, null::int as plan from meeting_roles r join meetings m on m.id=r.meeting_id where r.person_id=$1 and r.project_id is not null`, [person.id])),
+    ...(await q(`select project_id, ${DATE('date')} as date, venue, id as plan from speech_plans where person_id=$1 and project_id is not null and not done`, [person.id])),
+  ].sort((a, b) => a.date.localeCompare(b.date));
+  const now = new Date().toISOString().slice(0, 10);
+  for (const w of when.filter((x) => x.date >= now)) if (!sched.has(w.project_id)) sched.set(w.project_id, { date: w.date, venue: w.venue, plan: w.plan });
+  for (const w of when.filter((x) => x.date < now).reverse()) if (!sched.has(w.project_id)) sched.set(w.project_id, { date: w.date, venue: w.venue, plan: w.plan });
   const levels = [];
   for (const r of rows) {
     let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, all: [] });
-    lv.all.push({ id: r.id, name: r.name, kind: r.kind, pos: r.pos, code: r.kind === 'required' ? `L${r.level}P${r.pos}` : '', length: r.length_text, done: done.get(r.id) || null });
+    lv.all.push({ id: r.id, name: r.name, kind: r.kind, pos: r.pos, code: r.kind === 'required' ? `L${r.level}P${r.pos}` : '', length: r.length_text, done: done.get(r.id) || null, sched: sched.get(r.id) || null });
   }
   for (const lv of levels) {
     // a level shows its required projects and only the electives the member has chosen (or already finished), not the whole list
@@ -714,6 +724,99 @@ app.get('/api/vpe/people/:id/path', needPerson, needVpe, wrap(async (req, res) =
   res.json(await pathProgress(p));
 }));
 app.get('/api/me/path', needPerson, wrap(async (req, res) => res.json(await pathProgress(req.person))));
+/* ───────── Dashboard: the first six DCP goals, a forecast per member, and upcoming speeches ───────── */
+const cleanDate = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s : null);
+async function planRows(club, where = '', args = []) {
+  return q(`select s.id, s.person_id, p.name as person, s.project_id, pr.name as project, s.title, ${DATE('s.date')} as date, s.venue, s.done,
+      pp.level, case when pp.kind='required' then 'L'||pp.level||'P'||pp.pos end as code, p.path_name as path, pr.length_text as length
+    from speech_plans s join people p on p.id=s.person_id left join projects pr on pr.id=s.project_id
+    left join path_projects pp on pp.project_id=s.project_id and pp.path=p.path_name
+    where s.club_id=$1 ${where} order by s.date, s.id`, [club, ...args]);
+}
+app.get('/api/vpe/dashboard', needPerson, needVpe, wrap(async (req, res) => {
+  const club = req.person.club_id, today = new Date().toISOString().slice(0, 10);
+  const year = programYear(today);
+  const people = await q(`select * from people where club_id=$1 and kind='member' and status='active' order by name`, [club]);
+  const roles = await q(`select r.person_id, r.speech_title, ${DATE('m.date')} as date, m.number, pr.name as project from meeting_roles r join meetings m on m.id=r.meeting_id
+    left join projects pr on pr.id=r.project_id where m.club_id=$1 and r.role_key='speaker' and r.person_id is not null and m.date >= current_date order by m.date`, [club]);
+  const plans = await planRows(club, 'and s.date >= current_date and not s.done');
+  const progs = await Promise.all(people.map((p) => pathProgress(p)));
+  const members = people.map((p, i) => ({ id: p.id, name: p.name, path: progs[i].path, current: progs[i].current, ...(progs[i].path ? forecastMember(progs[i], { year, today }) : { levels: {} }) }));
+  const goals = goalsFrom(members.filter((m) => m.path), year);
+  const upcoming = [
+    ...roles.map((r) => ({ kind: 'club', person_id: r.person_id, person: people.find((p) => p.id === r.person_id)?.name, project: r.project, title: r.speech_title, date: r.date, venue: '', meeting: r.number })),
+    ...plans.map((s) => ({ kind: 'plan', id: s.id, person_id: s.person_id, person: s.person, project: s.project, title: s.title, date: s.date, venue: s.venue })),
+  ].filter((u) => u.person).sort((a, b) => a.date.localeCompare(b.date));
+  const past = await planRows(club, 'and s.date < current_date and not s.done');
+  res.json({ today, year, goals, members, upcoming, past });
+}));
+/* everything dated in a range: meetings, speaker slots on them, and speeches planned here or at other clubs */
+app.get('/api/vpe/calendar', needPerson, needVpe, wrap(async (req, res) => {
+  const club = req.person.club_id, from = cleanDate(req.query.from), to = cleanDate(req.query.to);
+  if (!from || !to) return bad(res, 'from and to are required');
+  const meetings = await q(`select id, number, ${DATE('date')} as date, theme from meetings where club_id=$1 and date between $2 and $3 order by date`, [club, from, to]);
+  const roles = await q(`select r.id, r.person_id, p.name as person, r.speech_title as title, r.project_id, pr.name as project, ${DATE('m.date')} as date, m.number, m.id as meeting_id, pr.length_text as length,
+      coalesce(r.path_name, p.path_name) as path, pp.level, case when pp.kind='required' then 'L'||pp.level||'P'||pp.pos end as code,
+      (exists (select 1 from evaluations e where e.meeting_id=r.meeting_id and e.speaker_id=r.person_id) or exists (select 1 from member_projects mp where mp.person_id=r.person_id and mp.project_id=r.project_id)) as done
+    from meeting_roles r join meetings m on m.id=r.meeting_id join people p on p.id=r.person_id left join projects pr on pr.id=r.project_id
+    left join path_projects pp on pp.project_id=r.project_id and pp.path=coalesce(r.path_name, p.path_name)
+    where m.club_id=$1 and r.role_key='speaker' and m.date between $2 and $3 order by m.date`, [club, from, to]);
+  const plans = await planRows(club, 'and s.date between $2 and $3', [from, to]);
+  const pending = await planRows(club, 'and s.date < current_date and not s.done');
+  res.json({
+    today: new Date().toISOString().slice(0, 10), meetings, pending,
+    speeches: [
+      ...roles.map((r) => ({ kind: 'club', key: `r${r.id}`, person_id: r.person_id, person: r.person, project_id: r.project_id, project: r.project, code: r.code, level: r.level, path: r.path, length: r.length, title: r.title, date: r.date, venue: '', meeting: r.number, meeting_id: r.meeting_id, done: !!r.done })),
+      ...plans.map((s) => ({ kind: 'plan', key: `p${s.id}`, id: s.id, person_id: s.person_id, person: s.person, project_id: s.project_id, project: s.project, code: s.code, level: s.level, path: s.path, length: s.length, title: s.title, date: s.date, venue: s.venue, done: s.done })),
+    ],
+  });
+}));
+app.get('/api/me/plans', needPerson, wrap(async (req, res) => res.json(await planRows(req.person.club_id, 'and s.person_id=$2 and not s.done and s.date >= current_date - 30', [req.person.id]))));
+async function addPlan(req, res, person) {
+  const date = cleanDate(req.body.date); if (!date) return bad(res, 'Choose a date');
+  const pid = req.body.project_id ? Number(req.body.project_id) : null;
+  if (pid && !(await q('select 1 as x from projects where id=$1', [pid])).length) return bad(res, 'Unknown project');
+  const venue = String(req.body.venue || '').trim().slice(0, 80), title = String(req.body.title || '').trim().slice(0, 120);
+  await q('insert into speech_plans(club_id, person_id, project_id, title, date, venue) values ($1,$2,$3,$4,$5,$6)', [person.club_id, person.id, pid, title, date, venue]);
+  res.json({ ok: true });
+}
+app.post('/api/me/plans', needPerson, wrap(async (req, res) => addPlan(req, res, req.person)));
+app.post('/api/vpe/people/:id/plans', needPerson, needVpe, wrap(async (req, res) => {
+  const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
+  p ? addPlan(req, res, p) : bad(res, 'Not found', 404);
+}));
+app.delete('/api/me/plans/:id', needPerson, wrap(async (req, res) => {
+  const r = await q(`delete from speech_plans where id=$1 and club_id=$2 and (person_id=$3 or $4) returning id`, [req.params.id, req.person.club_id, req.person.id, !!req.person.is_vpe]);
+  r.length ? res.json({ ok: true }) : bad(res, 'Not found', 404);
+}));
+/* change a planned speech: any of date, project, title, venue. A VPE can change anyone's, a member their own. */
+app.patch('/api/me/plans/:id', needPerson, wrap(async (req, res) => {
+  const [s] = await q('select * from speech_plans where id=$1 and club_id=$2 and (person_id=$3 or $4)', [req.params.id, req.person.club_id, req.person.id, !!req.person.is_vpe]);
+  if (!s) return bad(res, 'Not found', 404);
+  if (s.done) return bad(res, 'Undo done before changing this speech');
+  const b = req.body || {};
+  const date = 'date' in b ? cleanDate(b.date) : null; if ('date' in b && !date) return bad(res, 'Choose a date');
+  let pid = s.project_id;
+  if ('project_id' in b) {
+    pid = b.project_id ? Number(b.project_id) : null;
+    if (pid && !(await q('select 1 as x from projects where id=$1', [pid])).length) return bad(res, 'Unknown project');
+  }
+  const venue = 'venue' in b ? String(b.venue || '').trim().slice(0, 80) : s.venue;
+  const title = 'title' in b ? String(b.title || '').trim().slice(0, 120) : s.title;
+  await q('update speech_plans set date=coalesce($2,date), project_id=$3, venue=$4, title=$5 where id=$1', [s.id, date, pid, venue, title]);
+  res.json({ ok: true });
+}));
+/* a planned speech that has happened: the project is marked done on its date, and the plan goes away */
+app.post('/api/vpe/plans/:id/complete', needPerson, needVpe, wrap(async (req, res) => {
+  const [s] = await q(`select s.*, ${DATE('s.date')} as d from speech_plans s where s.id=$1 and s.club_id=$2`, [req.params.id, req.person.club_id]);
+  if (!s) return bad(res, 'Not found', 404);
+  const [p] = await q('select * from people where id=$1', [s.person_id]);
+  const pid = s.project_id || (await pathProgress(p)).next?.id;
+  if (pid) await q('insert into member_projects(person_id, project_id, done_at) values ($1,$2,$3::date) on conflict (person_id, project_id) do update set done_at=excluded.done_at', [p.id, pid, s.d]);
+  await q('update speech_plans set done=true where id=$1', [s.id]);
+  res.json({ ok: true, marked: !!pid });
+}));
+
 app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, res) => {
   const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
   if (!p) return bad(res, 'Not found', 404);
@@ -724,9 +827,14 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
     const [ev] = await q('select 1 as x from evaluations where speaker_id=$1 and project_id=$2', [p.id, pid]);
     if (ev) return bad(res, 'This one was delivered and evaluated at a meeting, so it stays done', 409);
     await q('delete from member_projects where person_id=$1 and project_id=$2', [p.id, pid]);
+    await q('update speech_plans set done=false where person_id=$1 and project_id=$2', [p.id, pid]);
   } else {
     const d = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : null;
-    await q('insert into member_projects(person_id, project_id, done_at) values ($1,$2,coalesce($3::date, current_date)) on conflict (person_id, project_id) do update set done_at=excluded.done_at', [p.id, pid, d]);
+    // a speech given at another club keeps the club's name: from the plan that was scheduled, or typed in when marking it done
+    const [pl] = await q('select venue from speech_plans where person_id=$1 and project_id=$2 order by date limit 1', [p.id, pid]);
+    const venue = String(req.body.venue ?? pl?.venue ?? '').trim().slice(0, 80);
+    await q('insert into member_projects(person_id, project_id, done_at, venue) values ($1,$2,coalesce($3::date, current_date),$4) on conflict (person_id, project_id) do update set done_at=excluded.done_at, venue=excluded.venue', [p.id, pid, d, venue]);
+    await q('update speech_plans set done=true where person_id=$1 and project_id=$2', [p.id, pid]);
   }
   res.json(await pathProgress(p));
 }));

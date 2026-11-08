@@ -234,3 +234,22 @@ alter table clubs add column if not exists meeting_time text not null default ''
 
 -- how many times the word of the day was used
 alter table gram_notes add column if not exists word_uses int not null default 0;
+
+-- speeches a member plans to give, at this club or another (empty venue means this club)
+create table if not exists speech_plans (
+  id serial primary key,
+  club_id int not null references clubs(id) on delete cascade,
+  person_id int not null references people(id) on delete cascade,
+  project_id int references projects(id) on delete set null,
+  title text not null default '',
+  date date not null,
+  venue text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists speech_plans_idx on speech_plans(club_id, date);
+
+-- where a manually finished project was given (empty means at this club)
+alter table member_projects add column if not exists venue text not null default '';
+
+-- a planned speech that has been marked done stays on the calendar, shown as done
+alter table speech_plans add column if not exists done boolean not null default false;

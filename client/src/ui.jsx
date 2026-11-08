@@ -22,6 +22,10 @@ export const I = {
   hash: <Ic d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16" />,
   clock: <Ic><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Ic>,
   search: <Ic w={16} s={2}><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></Ic>,
+  month: <Ic><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" /></Ic>,
+  pencil: <Ic w={16} s={2}><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></Ic>,
+  bin: <Ic w={16} s={2}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 001 1h8a1 1 0 001-1l1-12M9 7V4h6v3" /></Ic>,
+  chart: <Ic d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
   out: <Ic d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4M16 8l4 4-4 4M20 12H9" />,
 };
 

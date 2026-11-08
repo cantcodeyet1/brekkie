@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { fmtDate } from '../data.js';
 import { Btn, I, Loading, PathPick, Select, useToast } from '../ui.jsx';
+import { PlanModal } from './Dashboard.jsx';
 
 /* Where a member is on their path: the path and a timeline of levels. The detail (next project, what is finished,
    electives) stays folded away until the VPE opens it. The VPE marks a project done, because being on the agenda
@@ -22,6 +23,8 @@ export default function PathCard({ person, mine = false, initial = null }) {
   const [pl, setPl] = useState({ path_name: person.path_name || null, path_level: person.path_level ?? null });
   const [view, setView] = useState(null);
   const [busy, setBusy] = useState(null);
+  const [plan, setPlan] = useState(null);
+  const unplan = (id) => call(id, () => api(`/me/plans/${id}`, { method: 'DELETE' }), 'Unscheduled');
   const [open, setOpen] = useState(false);
   const [edit, setEditRaw] = useState(false);
   const setEdit = setEditRaw;
@@ -38,7 +41,7 @@ export default function PathCard({ person, mine = false, initial = null }) {
     setBusy(id);
     try { await fn(); await prog.reload(); if (msg) toast(msg); } catch (e) { toast(e.message); } finally { setBusy(null); }
   };
-  const mark = (p, done) => call(p.id, () => api(`/vpe/people/${person.id}/projects`, { method: 'POST', body: { project_id: p.id, done } }), done ? `${p.name} marked as done` : 'Marked as not done');
+  const mark = (p, done) => call(p.id, () => api(`/vpe/people/${person.id}/projects`, { method: 'POST', body: { project_id: p.id, done, ...(done && p.sched && p.sched.date <= new Date().toISOString().slice(0, 10) ? { date: p.sched.date } : {}) } }), done ? `${p.name} marked as done` : 'Marked as not done');
   const elective = (id, on) => call(id, () => api(`/vpe/people/${person.id}/electives`, { method: 'POST', body: { project_id: id, on } }), on ? 'Elective added' : 'Elective removed');
 
   const head = (
@@ -63,13 +66,17 @@ export default function PathCard({ person, mine = false, initial = null }) {
     return (
       <li key={p.id} className={(p.done ? 'is-done ' : '') + (isNext ? 'is-next' : '')}>
         <span className="pc-ic">{p.done ? I.check : isNext ? <i className="pulse" /> : null}</span>
-        <span className="pc-t">{isNext && <em className="pc-tag">Next up</em>}<b>{p.name}</b><small>{p.code ? `${p.code} · ` : ''}{p.kind === 'elective' ? 'Elective' : 'Required'}{p.length ? ` · ${p.length}` : ''}</small></span>
+        <span className="pc-t">{isNext && <em className="pc-tag">Next up</em>}<b>{p.name}</b><small>{p.code ? `${p.code} · ` : ''}{p.kind === 'elective' ? 'Elective' : 'Required'}{p.length ? ` · ${p.length}` : ''}</small>{!p.done && p.sched && <small className="pc-when">{p.sched.date < new Date().toISOString().slice(0, 10) ? 'Was scheduled' : 'Scheduled'} {fmtDate(p.sched.date, { weekday: 'short', day: 'numeric', month: 'short' })}{p.sched.venue ? ` at ${p.sched.venue}` : ''}</small>}</span>
         <span className="pc-a">
           {p.done
-            ? <><small>{p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}</small>{!mine && p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
-            : !mine && <>
+            ? <><small>{p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}{p.done.venue ? ` at ${p.done.venue}` : ''}</small>{!mine && p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
+            : <>
+                {!p.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, project: p.id, label: p.code || p.name })}>Schedule</button>}
+                {p.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(p.sched.plan)}>Unschedule</button>}
+              {!mine && <>
                 {p.kind === 'elective' && <button type="button" className="lnk" onClick={() => elective(p.id, false)} disabled={busy === p.id}>Remove</button>}
                 <Btn sm kind={isNext ? '' : 'ghost'} onClick={() => mark(p, true)} disabled={busy === p.id}>{isNext && I.check} Mark done</Btn>
+              </>}
               </>}
         </span>
       </li>
@@ -122,6 +129,7 @@ export default function PathCard({ person, mine = false, initial = null }) {
           )}
         </>
       )}
+      {plan && <PlanModal preset={plan} meId={mine ? person.id : undefined} onClose={() => setPlan(null)} onSaved={() => { setPlan(null); reload(); }} />}
     </section>
   );
 }
