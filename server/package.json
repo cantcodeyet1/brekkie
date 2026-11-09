@@ -7,7 +7,8 @@
     "start": "node --env-file-if-exists=../.env src/index.js",
     "seed": "node --env-file-if-exists=../.env src/seed.js --force",
     "schedule": "node --env-file-if-exists=../.env src/schedule.js",
-    "pathways": "node --env-file-if-exists=../.env src/pathways.js"
+    "pathways": "node --env-file-if-exists=../.env src/pathways.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.17",

@@ -83,7 +83,8 @@ export const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 export function hashPw(pw) { const salt = crypto.randomBytes(16).toString('hex'); return `${salt}:${crypto.scryptSync(pw, salt, 32).toString('hex')}`; }
 export function checkPw(pw, stored) {
   if (!stored) return false;
-  const [salt, hash] = stored.split(':');
+  const [salt, hash] = String(stored).split(':');
+  if (!salt || !hash) return false;   // a malformed stored value never matches (and never throws)
   const a = Buffer.from(hash, 'hex'), b = crypto.scryptSync(String(pw), salt, 32);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }

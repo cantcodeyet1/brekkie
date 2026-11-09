@@ -3,14 +3,20 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "workspaces": ["server", "client"],
+  "workspaces": [
+    "server",
+    "client"
+  ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",
     "start": "npm run start -w server",
     "seed": "npm run seed -w server",
     "schedule": "npm run schedule -w server",
-    "pathways": "npm run pathways -w server"
+    "pathways": "npm run pathways -w server",
+    "test": "npm run test -w server && npm run test -w client"
   },
-  "devDependencies": { "concurrently": "^9.0.0" }
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
 }

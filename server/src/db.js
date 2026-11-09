@@ -34,7 +34,7 @@ export async function initDb() {
     await run(schema);
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
-    const db = new PGlite(path.join(here, '..', '.pglite'));
+    const db = new PGlite(process.env.PGLITE_DIR || path.join(here, '..', '.pglite'));   // PGLITE_DIR=memory:// gives a throwaway database (used by the tests)
     await db.waitReady;
     impl = {
       kind: 'pglite',

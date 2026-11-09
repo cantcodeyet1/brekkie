@@ -1156,7 +1156,7 @@ if (fs.existsSync(dist)) {
   app.use(express.static(dist));
   app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
-app.use((err, _req, res, _next) => { console.error(err); res.status(500).json({ error: 'Something went wrong' }); });
+app.use((err, _req, res, _next) => { if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') return res.status(err.status || 400).json({ error: err.type === 'entity.too.large' ? 'That is too large' : 'That request was not valid JSON' }); console.error(err); res.status(500).json({ error: 'Something went wrong' }); });
 
 // Start-up work (schema, pathways, demo data). A hosted function waits on `ready` before it answers.
 // A failed start (a dropped connection, say) is not remembered: the next request tries again instead of
