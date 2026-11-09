@@ -29,8 +29,8 @@ export const ROLE_META = {
   topicsmaster: { name: 'Topicsmaster', blurb: 'Your script, the theme, and a log of who spoke on which topic.' },
   evaluator: { name: 'Speech Evaluator', blurb: 'Your speaker’s project, objectives and the evaluation form, in one place.' },
   general_evaluator: { name: 'General Evaluator', blurb: 'Your script and the meeting checklist, section by section.' },
-  toastmaster: { name: 'Toastmaster of the Day', blurb: '' },
-  speaker: { name: 'Speaker', blurb: '' },
+  toastmaster: { name: 'Toastmaster of the Day', blurb: 'You run the meeting. Download the agenda to work from.' },
+  speaker: { name: 'Speaker', blurb: 'Download the agenda for the evening. Your evaluator’s feedback will be waiting for you in Brekkie afterwards.' },
 };
 export const FEEDBACK_ROLES = ['grammarian', 'ah_counter', 'timer', 'topicsmaster', 'evaluator', 'general_evaluator'];
 

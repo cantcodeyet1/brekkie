@@ -585,6 +585,8 @@ const sendAgenda = async (req, res) => {
   res.send(buf);
 };
 app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(sendAgenda));
+/* a role link can fetch the agenda of its own meeting (Toastmaster and speakers have no sheet, only the agenda) */
+app.get('/api/role/agenda.docx', needRole, wrap((req, res) => { req.params.id = req.role.meeting_id; req.person = { club_id: req.role.club_id }; return sendAgenda(req, res); }));
 /* any member or guest can download the agenda of a meeting in their club */
 app.get('/api/me/meetings/:id/agenda.docx', needPerson, wrap(sendAgenda));
 

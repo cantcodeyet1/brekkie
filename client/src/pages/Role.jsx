@@ -59,8 +59,8 @@ function greeting(date, role) {
 export default function RoleApp() {
   const { token } = useParams();
   const { data, error, loading } = useApi('/role', { token });
-  if (loading) return <Shell nav={[]} who="" bare><div className="main"><div className="rwel"><Wordmark className="wm-light" /></div></div></Shell>;
-  if (error) return <Shell nav={[]} who="" bare><Page root><h1 className="pg">This link is not valid</h1><p className="lede">It may have been replaced by a newer one. Ask the VPE to send your link again.</p></Page></Shell>;
+  if (loading) return <Shell nav={[]} who="" noSide bare><div className="main"><div className="rwel rwel-sk" aria-busy="true" aria-label="Loading"><Wordmark className="wm-light" /><div className="rwel-in"><i className="sk1 s-tag" /><i className="sk1 s-h" /><i className="sk1 s-h b" /><i className="sk1 s-p" /><i className="sk1 s-btn" /></div></div></div></Shell>;
+  if (error) return <Shell nav={[]} who="" noSide bare><div className="main"><div className="rwel"><Wordmark className="wm-light" /><div className="rwel-in"><div className="tag">Brekkie</div><h1>This link is not valid.</h1><p className="sub">It may have been replaced by a newer one. Ask your VPE to send your link again.</p></div></div></div></Shell>;
   return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
 }
 
@@ -97,7 +97,8 @@ export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) 
 function RoleBody({ data, token }) {
   const key = data.role.key, meta = ROLE_META[key];
   const [view, setView] = useState('land');
-  const [mode, setMode] = useState('script');
+  const desk0 = useDesk();
+  const [mode, setMode] = useState(desk0 ? 'notes' : 'script');
   const [people, setPeople] = useState(data.people);
   const [sheet, setSheet] = useState(() => initSheet(data));
   const [save, setSave] = useState('');
@@ -117,7 +118,19 @@ function RoleBody({ data, token }) {
     try { await api('/role/submit', { method: 'POST', body: sheet, token }); setSubmitted(true); setView('done'); } catch (e) { setErr(e.message); }
   };
   const first = (data.me?.name || '').split(' ')[0];
-  const desk = useDesk();
+  const Sheet = { grammarian: GramSheet, ah_counter: AhSheet, timer: TimeSheet, topicsmaster: TTSheet, evaluator: EvalForm, general_evaluator: GESheet }[key];
+  const [agBusy, setAgBusy] = useState(false);
+  const getAgenda = async () => {
+    setAgBusy(true); setErr('');
+    try {
+      const res = await fetch('/api/role/agenda.docx', { headers: { 'x-token': token } });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not get the agenda');
+      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'Agenda.docx';
+      const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) { setErr(e.message); } finally { setAgBusy(false); }
+  };
+  const desk = desk0;
   const [dlBusy, setDlBusy] = useState(false);
   const downloadPdf = async () => {
     if (key === 'evaluator') { const d = evalDoc(data, sheet, people, false); if (d) printEval(d); return; }
@@ -157,7 +170,10 @@ function RoleBody({ data, token }) {
           <p className="sub">{meta?.blurb}</p>
           {data.me?.kind === 'guest' && <p className="rwel-note">Welcome as a visitor. Your access is temporary and your notes are kept with {data.club || 'the club'}.</p>}
           {submitted && <JoinAsk data={data} token={token} dark />}
-          <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{submitted ? 'View or edit my notes' : 'Open my sheet'}</button>
+          {Sheet
+            ? <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{submitted ? 'View or edit my notes' : 'Open my sheet'}</button>
+            : <button type="button" className="rwel-go" onClick={getAgenda} disabled={agBusy}>{agBusy ? 'Getting it…' : 'Download the agenda'}</button>}
+          {err && <p className="err" style={{ color: '#ffd6d6' }}>{err}</p>}
         </div>
       </div>
     </div>
@@ -181,15 +197,14 @@ function RoleBody({ data, token }) {
     </div>
   );
 
-  const Sheet = { grammarian: GramSheet, ah_counter: AhSheet, timer: TimeSheet, topicsmaster: TTSheet, evaluator: EvalForm, general_evaluator: GESheet }[key];
   return (
-    <Page title={meta.name} narrow onBack={() => setView('land')} foot={<Foot><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></Foot>}>
+    <Page title={meta.name} narrow={!desk} wide={desk} onBack={() => setView('land')} foot={<Foot><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></Foot>}>
       <h1 className="pg sm">{meta.name}</h1>
       <div className="meta"><span>{data.me?.name}</span><span>Meeting {data.meeting.number} · {longDate(data.meeting.date)}</span></div>
       {(
         <div className="modebar">
           <div className="modes" role="tablist" aria-label="View">
-            {[['script', 'Script'], ['notes', 'Notes'], ['report', 'Report']].map(([k, l]) => <button type="button" role="tab" aria-selected={mode === k} key={k} className={mode === k ? 'on' : ''} onClick={() => { setMode(k); document.querySelector('.scroll')?.scrollTo({ top: 0 }); }}>{l}</button>)}
+            {(desk ? [['notes', 'Script and notes'], ['report', 'Report']] : [['script', 'Script'], ['notes', 'Notes'], ['report', 'Report']]).map(([k, l]) => <button type="button" role="tab" aria-selected={mode === k} key={k} className={mode === k ? 'on' : ''} onClick={() => { setMode(k); document.querySelector('.scroll')?.scrollTo({ top: 0 }); }}>{l}</button>)}
           </div>
         </div>
       )}
@@ -220,7 +235,13 @@ function Script({ k, vars }) {
   );
 }
 /* one role, three ways to read it: the script to speak from, the notes to take, the report to give */
-function Modes({ mode, script, form, report }) { return mode === 'script' ? script : mode === 'report' ? report : form; }
+function Modes({ mode, script, form, report }) {
+  const desk = useDesk();
+  if (mode === 'report') return report;
+  // on a computer the script sits beside the notes, so you can read and write at once
+  if (desk) return <Split wide side={script} form={form} />;
+  return mode === 'script' ? script : form;
+}
 function ScriptDoc({ k, vars, before }) {
   return (
     <div className="sv">

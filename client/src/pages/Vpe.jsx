@@ -9,8 +9,8 @@ import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, SkPage, SkRows, Meter, 
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Dashboard', icon: I.chart },
-  { to: '/v/calendar', label: 'Calendar', icon: I.month },
   { to: '/v/roster', label: 'Roster', icon: I.cal },
+  { to: '/v/calendar', label: 'Calendar', icon: I.month },
   { to: '/v/members', label: 'Members', icon: I.ppl },
   { to: '/v/club', label: 'Club', icon: I.home },
 ];
