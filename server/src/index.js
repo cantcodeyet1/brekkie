@@ -770,7 +770,7 @@ app.get('/api/vpe/calendar', needPerson, needVpe, wrap(async (req, res) => {
   res.json({
     today: new Date().toISOString().slice(0, 10), meetings, pending,
     speeches: [
-      ...roles.map((r) => ({ kind: 'club', key: `r${r.id}`, person_id: r.person_id, person: r.person, project_id: r.project_id, project: r.project, code: r.code, level: r.level, path: r.path, length: r.length, title: r.title, date: r.date, venue: '', meeting: r.number, meeting_id: r.meeting_id, done: !!r.done })),
+      ...roles.map((r) => ({ kind: 'club', key: `r${r.id}`, id: r.id, person_id: r.person_id, person: r.person, project_id: r.project_id, project: r.project, code: r.code, level: r.level, path: r.path, length: r.length, title: r.title, date: r.date, venue: '', meeting: r.number, meeting_id: r.meeting_id, done: !!r.done })),
       ...plans.map((s) => ({ kind: 'plan', key: `p${s.id}`, id: s.id, person_id: s.person_id, person: s.person, project_id: s.project_id, project: s.project, code: s.code, level: s.level, path: s.path, length: s.length, title: s.title, date: s.date, venue: s.venue, done: s.done })),
     ],
   });
@@ -781,6 +781,16 @@ async function addPlan(req, res, person) {
   const pid = req.body.project_id ? Number(req.body.project_id) : null;
   if (pid && !(await q('select 1 as x from projects where id=$1', [pid])).length) return bad(res, 'Unknown project');
   const venue = String(req.body.venue || '').trim().slice(0, 80), title = String(req.body.title || '').trim().slice(0, 120);
+  // an elective they have not picked yet becomes one of their electives, as long as the level still has room for it
+  if (pid && person.path_name) {
+    const [el] = await q(`select level, choose from path_projects where path=$1 and project_id=$2 and kind='elective'`, [person.path_name, pid]);
+    const [have] = el ? await q('select 1 as x from member_electives where person_id=$1 and project_id=$2', [person.id, pid]) : [];
+    if (el && !have) {
+      const lv = (await pathProgress(person)).levels.find((l) => l.level === el.level);
+      if (lv && !lv.projects.some((x) => x.id === pid) && lv.to_pick < 1) return bad(res, `They already have ${el.choose} electives for Level ${el.level}. Pick one of those, or remove one first.`, 409);
+      await q('insert into member_electives(person_id, project_id) values ($1,$2) on conflict do nothing', [person.id, pid]);
+    }
+  }
   await q('insert into speech_plans(club_id, person_id, project_id, title, date, venue) values ($1,$2,$3,$4,$5,$6)', [person.club_id, person.id, pid, title, date, venue]);
   res.json({ ok: true });
 }

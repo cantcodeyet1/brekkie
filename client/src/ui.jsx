@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 
@@ -169,7 +169,7 @@ export function Select({ value, onChange, options, placeholder = 'Select', sm, d
     setQy(''); setHi(Math.max(0, options.findIndex((o) => String(o.value) === String(value)))); setOpen(true);
   };
   const close = useCallback((refocus) => { setOpen(false); if (refocus) btn.current?.focus(); }, []);
-  const pick = (o) => { close(true); if (o.add) onAdd?.(); else onChange(o.value); };
+  const pick = (o) => { if (o.disabled) return; close(true); if (o.add) onAdd?.(); else onChange(o.value); };
 
   useEffect(() => {
     if (!open) return;
@@ -203,11 +203,14 @@ export function Select({ value, onChange, options, placeholder = 'Select', sm, d
           {showSearch && <input className="sel-q" placeholder="Search" value={qy} onChange={(e) => { setQy(e.target.value); setHi(0); }} aria-label="Search options" />}
           {!items.length && <div className="sel-empty">No matches</div>}
           {items.map((o, i) => (
-            <div key={String(o.value)} role="option" aria-selected={!o.add && String(o.value) === String(value)}
-              className={'sel-opt' + (i === hi ? ' hi' : '') + (!o.add && String(o.value) === String(value) ? ' on' : '') + (o.add ? ' add' : '')}
-              onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); pick(o); }}>
-              <span className="t">{o.label}{o.guest && <GBadge />}{o.sub && <small>{o.sub}</small>}</span>
-            </div>
+            <Fragment key={String(o.value)}>
+              {o.group && o.group !== items[i - 1]?.group && <div className="sel-grp" role="presentation">{o.group}</div>}
+              <div role="option" aria-selected={!o.add && String(o.value) === String(value)} aria-disabled={o.disabled || undefined}
+                className={'sel-opt' + (i === hi ? ' hi' : '') + (!o.add && String(o.value) === String(value) ? ' on' : '') + (o.add ? ' add' : '') + (o.disabled ? ' dis' : '')}
+                onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); pick(o); }}>
+                <span className="t">{o.label}{o.guest && <GBadge />}{o.tag && <em className="sel-tag">{o.tag}</em>}{o.sub && <small>{o.sub}</small>}</span>
+              </div>
+            </Fragment>
           ))}
         </div>, document.body)}
     </div>

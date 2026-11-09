@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
 import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
-import { PlanModal } from './Dashboard.jsx';
+import { PlanModal, projectOptions } from './Dashboard.jsx';
 
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -27,7 +27,7 @@ function Chip({ s, today, onOpen }) {
     <button type="button" className={'cal-c ' + st + (s.venue ? ' away' : '')} onClick={(e) => { e.stopPropagation(); onOpen(s); }}
       draggable={drag} onDragStart={drag ? (e) => { e.dataTransfer.setData('text/plain', String(s.id)); e.dataTransfer.effectAllowed = 'move'; } : undefined}
       title={`${s.person}${s.project ? `, ${s.project}` : ''}${s.venue ? `, at ${s.venue}` : ''}`}>
-      {st === 'k-done' && <span className="cal-ck">{I.check}</span>}
+      <span className="cal-st">{st === 'k-done' ? I.check : null}</span>
       <b>{first(s.person)}</b>{s.venue ? <em>{s.venue}</em> : null}
     </button>
   );
@@ -36,6 +36,7 @@ function Chip({ s, today, onOpen }) {
 /* change a planned speech: date, where, project, title */
 function EditModal({ s, onClose, onSaved }) {
   const toast = useToast();
+  const club = s.kind === 'club';   // a speaker slot on a meeting: its date is the meeting's
   const [date, setDate] = useState(s.date);
   const [where, setWhere] = useState(s.venue ? 'there' : 'here');
   const [venue, setVenue] = useState(s.venue || '');
@@ -45,8 +46,7 @@ function EditModal({ s, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     api(`/vpe/people/${s.person_id}/path`).then((d) => {
-      setOpts(d.levels.filter((l) => l.level >= (d.current ?? 0)).flatMap((l) => l.projects.filter((p) => p.id === s.project_id || (!p.done && !p.sched))
-        .map((p) => ({ value: p.id, label: p.code ? `${p.code} ${p.name}` : p.name, sub: `Level ${l.level} · ${p.kind === 'required' ? 'Required' : 'Elective'}` }))));
+      setOpts(projectOptions(d, s.project_id));
     }).catch(() => {});
   }, [s.person_id, s.project_id]);
   const save = async () => {
@@ -54,17 +54,22 @@ function EditModal({ s, onClose, onSaved }) {
     if (where === 'there' && !venue.trim()) return toast('Enter the club name');
     setBusy(true);
     try {
-      await api(`/me/plans/${s.id}`, { method: 'PATCH', body: { date, project_id: project || null, title, venue: where === 'there' ? venue : '' } });
+      if (club) await api(`/vpe/roles/${s.id}`, { method: 'PATCH', body: { project_id: project || null, speech_title: title } });
+      else await api(`/me/plans/${s.id}`, { method: 'PATCH', body: { date, project_id: project || null, title, venue: where === 'there' ? venue : '' } });
       toast('Speech updated'); onSaved();
     } catch (e) { toast(e.message); setBusy(false); }
   };
   return (
     <Modal title={`Edit ${first(s.person)}'s speech`} onClose={onClose}>
       <div className="pm">
-        <label className="pmf"><span className="fl">Date</span><DatePick value={date} onChange={setDate} /></label>
-        <div className="pmf"><span className="fl">Where</span><Seg value={where} onChange={setWhere} options={[['here', 'This club'], ['there', 'Another club']]} /></div>
-        {where === 'there' && <label className="pmf"><span className="fl">Club name</span><input className="inp" value={venue} onChange={(e) => setVenue(e.target.value)} maxLength={80} /></label>}
-        <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={setProject} placeholder="Choose the project" searchable options={opts} /></label>
+        {club
+          ? <div className="pmf"><span className="fl">Meeting</span><p className="pm-fix">Meeting {s.meeting} · {longDate(s.date)}. Change the date from the meeting.</p></div>
+          : <>
+              <label className="pmf"><span className="fl">Date</span><DatePick value={date} onChange={setDate} /></label>
+              <div className="pmf"><span className="fl">Where</span><Seg value={where} onChange={setWhere} options={[['here', 'This club'], ['there', 'Another club']]} /></div>
+            </>}
+        {!club && where === 'there' && <label className="pmf"><span className="fl">Club name</span><input className="inp" value={venue} onChange={(e) => setVenue(e.target.value)} maxLength={80} /></label>}
+        <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={setProject} placeholder="Choose the project" searchable options={project && !opts.some((o) => o.value === project) ? [{ value: project, label: s.project || 'Current project', sub: 'Current choice' }, ...opts] : opts} /></label>
         <label className="pmf"><span className="fl">Speech title <i>(optional)</i></span><input className="inp" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} /></label>
         <div className="pm-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy}>Save</Btn></div>
       </div>
@@ -76,17 +81,17 @@ function EditModal({ s, onClose, onSaved }) {
 function SpeechModal({ s, today, onClose, onChanged, onEdit }) {
   const toast = useToast();
   const st = stateOf(s, today);
-  const call = async (fn, msg) => { try { await fn(); toast(msg); onChanged(); onClose(); } catch (e) { toast(e.message); } };
+  const call = async (fn, msg, stay) => { try { await fn(); toast(msg); onChanged(); if (!stay) onClose(); } catch (e) { toast(e.message); } };
   const row = (k, v) => v ? <div className="sd-r"><span>{k}</span><b>{v}</b></div> : null;
   return (
     <Modal title={s.person} onClose={onClose}>
       <div className="sd">
         <div className="sd-top">
           <span className={'sd-st ' + st}>{st === 'k-done' && I.check} {STATE_TEXT[st]}</span>
-          {s.kind === 'plan' && !s.done && (
+          {!s.done && (
             <span className="sd-ic">
               <button type="button" className="sp-x" onClick={() => onEdit(s)} aria-label="Edit this speech" title="Edit">{I.pencil}</button>
-              <button type="button" className="sp-x" onClick={() => call(() => api(`/me/plans/${s.id}`, { method: 'DELETE' }), 'Removed')} aria-label="Remove this speech" title="Remove">{I.bin}</button>
+              <button type="button" className="sp-x" onClick={() => call(() => (s.kind === 'club' ? api(`/vpe/roles/${s.id}`, { method: 'PATCH', body: { person_id: null } }) : api(`/me/plans/${s.id}`, { method: 'DELETE' })), s.kind === 'club' ? 'Removed from the roster' : 'Removed')} aria-label={s.kind === 'club' ? 'Remove from the roster' : 'Remove this speech'} title={s.kind === 'club' ? 'Remove from the roster' : 'Remove'}>{I.bin}</button>
             </span>
           )}
         </div>
@@ -99,8 +104,8 @@ function SpeechModal({ s, today, onClose, onChanged, onEdit }) {
         <div className="pm-btns sd-b">
           <Link className="btn ghost" to={`/v/members/${s.person_id}`}>Open member</Link>
           {s.kind === 'club' && <Link className="btn ghost" to={`/v/meetings/${s.meeting_id}`}>Open meeting</Link>}
-          {s.kind === 'plan' && s.done && s.project_id && <Btn kind="ghost" onClick={() => call(() => api(`/vpe/people/${s.person_id}/projects`, { method: 'POST', body: { project_id: s.project_id, done: false } }), 'Marked as not done')}>Undo done</Btn>}
-          {s.kind === 'plan' && !s.done && <Btn onClick={() => call(() => api(`/vpe/plans/${s.id}/complete`, { method: 'POST' }), 'Marked as done')}>{I.check} Mark done</Btn>}
+          {s.kind === 'plan' && s.done && s.project_id && <Btn kind="ghost" onClick={() => call(() => api(`/vpe/people/${s.person_id}/projects`, { method: 'POST', body: { project_id: s.project_id, done: false } }), 'Marked as not done', true)}>Undo done</Btn>}
+          {s.kind === 'plan' && !s.done && <Btn onClick={() => call(() => api(`/vpe/plans/${s.id}/complete`, { method: 'POST' }), 'Marked as done', true)}>{I.check} Mark done</Btn>}
         </div>
       </div>
     </Modal>
@@ -137,13 +142,17 @@ export default function Calendar() {
   const [mode, setMode] = useState('month');
   const [who, setWho] = useState('all');
   const [day, setDay] = useState(null);
-  const [open, setOpen] = useState(null);           // the speech whose details are showing
+  const [openKey, setOpen] = useState(null);         // the speech whose details are showing, by key, so it stays current after a change
   const [editing, setEditing] = useState(null);
   const [over, setOver] = useState(null);
   const [adding, setAdding] = useState(null);       // a date to plan on, or '' for none chosen
   const days = useMemo(() => gridOf(ym.y, ym.m), [ym]);
   const from = iso(days[0]), to = iso(days[41]);
-  const { data: d, error, reload } = useApi(`/vpe/calendar?from=${from}&to=${to}`);
+  const { data: fresh, error, reload } = useApi(`/vpe/calendar?from=${from}&to=${to}`);
+  // keep showing the last month while the next one loads, so the card never collapses or flashes
+  const last = useRef(null);
+  if (fresh) last.current = fresh;
+  const d = fresh || last.current, busy = !fresh;
   const people = useApi('/vpe/people');
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 760);
   useEffect(() => { const f = () => setNarrow(window.innerWidth < 760); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
@@ -155,6 +164,7 @@ export default function Calendar() {
   (d?.speeches || []).filter((s) => who === 'all' || s.person_id === who).forEach((s) => { (by[s.date] ||= []).push(s); });
   const meet = {};
   (d?.meetings || []).forEach((m) => { meet[m.date] = m; });
+  const open = openKey ? (d?.speeches || []).find((x) => x.key === openKey) || null : null;
   const view = narrow ? 'list' : mode;
   const inMonth = (dt) => dt.getMonth() === ym.m;
   const prefix = `${ym.y}-${pad(ym.m + 1)}`;
@@ -165,7 +175,7 @@ export default function Calendar() {
     const sp = (d?.speeches || []).find((x) => x.kind === 'plan' && String(x.id) === e.dataTransfer.getData('text/plain'));
     if (sp && sp.date !== k) call(() => api(`/me/plans/${sp.id}`, { method: 'PATCH', body: { date: k } }), `Moved to ${fmtDate(k, { day: 'numeric', month: 'long' })}`);
   };
-  const openSpeech = (s) => { setDay(null); setOpen(s); };
+  const openSpeech = (s) => { setDay(null); setOpen(s.key); };
 
   return (
     <Page root wide full>
@@ -180,16 +190,20 @@ export default function Calendar() {
             <div className="cal-who"><Select sm value={who} onChange={setWho} searchable label="Filter by member"
               options={[{ value: 'all', label: 'All members' }, ...members.map((p) => ({ value: p.id, label: p.name }))]} /></div>
             {!narrow && <Seg value={mode} onChange={setMode} options={[['month', 'Month'], ['list', 'List']]} />}
-            <button type="button" className="cal-n" onClick={() => step(-1)} aria-label="Previous month">{I.back}</button>
-            <Btn sm kind="ghost" onClick={() => setYm({ y: now.getFullYear(), m: now.getMonth() })}>Today</Btn>
-            <button type="button" className="cal-n" onClick={() => step(1)} aria-label="Next month">{I.chev}</button>
+            <div className="cal-nav" role="group" aria-label="Change month">
+              <button type="button" onClick={() => step(-1)} aria-label="Previous month">{I.back}</button>
+              <button type="button" className="t" onClick={() => setYm({ y: now.getFullYear(), m: now.getMonth() })}>Today</button>
+              <button type="button" onClick={() => step(1)} aria-label="Next month">{I.chev}</button>
+            </div>
             <Btn sm onClick={() => setAdding('')}>{I.plus} Plan a speech</Btn>
           </div>
         </div>
 
+        <div className={'cal-card' + (busy && d ? ' busy' : '')}>
         {d?.pending?.filter((s) => who === 'all' || s.person_id === who).length > 0 && (
           <section className="cal-pend">
             <h2>Did these happen?</h2>
+            <div className="cal-pl">
             {d.pending.filter((s) => who === 'all' || s.person_id === who).map((s) => (
               <div key={s.id} className="sprow">
                 <span className="sp-t"><b>{s.person}</b><span>{[s.project || s.title, s.venue || 'This club', longDate(s.date)].filter(Boolean).join(' · ')}</span></span>
@@ -197,10 +211,11 @@ export default function Calendar() {
                 <Btn sm kind="ghost" onClick={() => call(() => api(`/me/plans/${s.id}`, { method: 'DELETE' }), 'Removed')}>Remove</Btn>
               </div>
             ))}
+            </div>
           </section>
         )}
 
-        {!d ? <Loading /> : view === 'month' ? (
+        {!d ? <div className="cal-load"><Loading /></div> : view === 'month' ? (
           <div className="cal" role="grid" aria-label={`${MONTHS[ym.m]} ${ym.y}`}>
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((n) => <div key={n} className="cal-h" role="columnheader">{n}</div>)}
             {days.map((dt) => {
@@ -229,10 +244,10 @@ export default function Calendar() {
                 {(by[k] || []).map((s) => {
                   const st = stateOf(s, d.today);
                   return (
-                    <button type="button" key={s.key} className={'sprow sp-btn ' + st} onClick={() => setOpen(s)}>
+                    <button type="button" key={s.key} className={'sprow sp-btn ' + st} onClick={() => setOpen(s.key)}>
                       <span className={'sp-dot ' + st}>{st === 'k-done' ? I.check : ''}</span>
                       <span className="sp-t"><b>{s.person}</b><span>{s.project || s.title || 'Speech'}</span></span>
-                      <span className={'sp-w' + (s.venue ? ' away' : '')}>{s.venue || (s.kind === 'club' ? `Meeting ${s.meeting}` : 'This club')}</span>
+                      {s.venue && <span className="sp-w away">{s.venue}</span>}
                       <span className="tc">{I.chev}</span>
                     </button>
                   );
@@ -242,6 +257,7 @@ export default function Calendar() {
             ))}
           </div>
         )}
+        </div>
       </div>
       {day && <DayModal day={day} items={by[day] || []} meeting={meet[day]} today={d.today} onClose={() => setDay(null)} onOpen={openSpeech} onAdd={() => { setAdding(day); setDay(null); }} />}
       {open && <SpeechModal s={open} today={d.today} onClose={() => setOpen(null)} onChanged={reload} onEdit={(x) => { setOpen(null); setEditing(x); }} />}

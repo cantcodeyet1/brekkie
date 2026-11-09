@@ -6,6 +6,32 @@ import { printEval } from '../EvalSheet.jsx';
 import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
 
 /* Plan a speech: at this club or another. The VPE picks the member; a member plans their own. */
+/* every project on a member's path for the project picker: their next one first, then the rest of the level they are on and above,
+   with earlier levels last. Finished and already scheduled projects stay in the list, greyed, so the whole path is visible. */
+export function projectOptions(d, keepId) {
+  const cur = d.current ?? 0;
+  const levels = [...d.levels].sort((a, b) => ((a.level >= cur ? 0 : 1) - (b.level >= cur ? 0 : 1)) || a.level - b.level);
+  const groups = [];
+  for (const l of levels) {
+    const group = `Level ${l.level}${l.title ? ` · ${l.title}` : ''}`, on = [], off = [];
+    for (const p of l.projects) {
+      const label = p.code ? `${p.code} ${p.name}` : p.name;
+      if (p.done) off.push({ value: p.id, label, group, disabled: true, sub: `Done ${fmtDate(p.done.date, { day: 'numeric', month: 'short' })}` });
+      else if (p.sched && p.id !== keepId) off.push({ value: p.id, label, group, disabled: true, sub: `Scheduled ${fmtDate(p.sched.date, { day: 'numeric', month: 'short' })}` });
+      else on.push({ value: p.id, label, group, sub: p.kind === 'required' ? 'Required' : 'Elective', req: p.kind === 'required' });
+    }
+    // electives not picked yet can be scheduled too while the level has room; scheduling one adds it to their electives
+    if (l.to_pick > 0) for (const p of l.options || []) on.push({ value: p.id, label: p.name, group, sub: `Elective · ${p.length}` });
+    groups.push([...on, ...off]);
+  }
+  // finished or fully scheduled levels go last, and the first project still open is their next one
+  groups.sort((a, b) => (a.some((o) => !o.disabled) ? 0 : 1) - (b.some((o) => !o.disabled) ? 0 : 1));
+  const out = groups.flat();
+  const nx = out.find((o) => !o.disabled && o.req);
+  if (nx) nx.tag = 'Next up';
+  return out;
+}
+
 export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved }) {
   const toast = useToast();
   const [who, setWho] = useState(preset?.person || meId || '');
@@ -23,16 +49,17 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
     if (!preset?.project) setProject('');
     if (!who || preset?.project) return;
     api(who === meId ? '/me/path' : `/vpe/people/${who}/path`).then((d) => {
-      // every project still to do, from their current level up, that is not already scheduled
-      setOpts(d.levels.filter((l) => l.level >= (d.current ?? 0)).flatMap((l) => l.projects.filter((p) => !p.done && !p.sched)
-        .map((p) => ({ value: p.id, label: p.code ? `${p.code} ${p.name}` : p.name, sub: `Level ${l.level} · ${p.kind === 'required' ? 'Required' : 'Elective'}` }))));
+      const list = projectOptions(d);
+      setOpts(list);
+      const nx = list.find((o) => o.tag && !o.disabled);   // the roster fills in the next project, so start there
+      if (nx) setProject(nx.value);
     }).catch(() => {});
   }, [who, meId, preset]);
   const save = async () => {
     if (!who) return toast('Choose who is speaking');
     if (!date) return toast('Choose a date');
     if (where === 'there' && !venue.trim()) return toast('Enter the club name');
-    if (!preset?.project && opts.length && !project) return toast('Choose the project, so it counts towards their level');
+    if (!preset?.project && opts.some((o) => !o.disabled) && !project) return toast('Choose the project, so it counts towards their level');
     setBusy(true);
     try {
       const body = { date, project_id: project || null, title, venue: where === 'there' ? venue : '' };
