@@ -865,11 +865,11 @@ app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   res.json(people.map((p) => ({ ...p, roles_played: assigned[p.id] || 0, speeches: speeches[p.id] || 0, roles_done: done[p.id] || 0, feedback_given: given[p.id] || 0 })));
 }));
 app.post('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
-  const { name, email, kind } = req.body, cred = String(req.body.credential || '').trim().slice(0, 20);
-  if (kind === 'guest') { const g = await guestFor(req.person.club_id, name, email, 'vpe'); if (!g) return bad(res, 'Enter a name'); if (cred) await q('update people set credential=$1 where id=$2', [cred, g.id]); return res.json(g); }
+  const { name, email, kind } = req.body, cred = String(req.body.credential || '').trim().slice(0, 20), phone = String(req.body.phone || '').trim().slice(0, 30) || null;
+  if (kind === 'guest') { const g = await guestFor(req.person.club_id, name, email, 'vpe'); if (!g) return bad(res, 'Enter a name'); if (cred) await q('update people set credential=$1 where id=$2', [cred, g.id]); if (phone) await q('update people set phone=$1 where id=$2', [phone, g.id]); return res.json(g); }
   const clean = String(name || '').trim();
   if (clean.length < 2) return bad(res, 'Enter a name');
-  const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential) values ($1,$2,$3,'member','active',$4,'vpe',$5) returning *`, [req.person.club_id, clean, email || null, token(), cred]);
+  const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [req.person.club_id, clean, email || null, token(), cred, phone]);
   res.json(pub(p));
 }));
 app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {

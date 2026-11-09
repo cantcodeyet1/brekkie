@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
-import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
 import { PlanModal, projectOptions } from './Dashboard.jsx';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -135,6 +135,32 @@ function DayModal({ day, items, meeting, today, onClose, onAdd, onOpen }) {
   );
 }
 
+/* the shape of the page while it loads: the month grid, or a few day groups in the list */
+function CalSkeleton({ list }) {
+  if (list) return (
+    <div className="cal-list" role="status" aria-label="Loading">
+      {[2, 1, 3].map((n, g) => (
+        <section key={g} className="cal-lg">
+          <i className="sk sk-h" />
+          {Array.from({ length: n }, (_, i) => <div key={i} className="sk-row"><i className="sk sk-dot" /><span><i className="sk sk-l" /><i className="sk sk-l s" /></span></div>)}
+        </section>
+      ))}
+    </div>
+  );
+  return (
+    <div className="cal" role="status" aria-label="Loading">
+      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((n) => <div key={n} className="cal-h">{n}</div>)}
+      {Array.from({ length: 42 }, (_, i) => (
+        <div key={i} className="cal-d sk-cell">
+          <i className="sk sk-n" />
+          {(i * 7 + 3) % 5 < 2 && <i className="sk sk-c" />}
+          {(i * 5 + 1) % 7 === 0 && <i className="sk sk-c s" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Calendar() {
   const toast = useToast();
   const now = new Date();
@@ -215,7 +241,7 @@ export default function Calendar() {
           </section>
         )}
 
-        {!d ? <div className="cal-load"><Loading /></div> : view === 'month' ? (
+        {!d ? <CalSkeleton list={view !== 'month'} /> : view === 'month' ? (
           <div className="cal" role="grid" aria-label={`${MONTHS[ym.m]} ${ym.y}`}>
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((n) => <div key={n} className="cal-h" role="columnheader">{n}</div>)}
             {days.map((dt) => {

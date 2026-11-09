@@ -2274,3 +2274,133 @@ html,body{background:#F5F5F7}
 @media (max-width:899px){.cl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cl-st:nth-child(2){border-right:0}.cl-st:nth-child(-n+2){border-bottom:1px solid #F0F2F3}.cl-sec{grid-template-columns:1fr;gap:14px;padding:22px 20px}}
 @media (max-width:560px){.cl-st{padding:16px 18px}.cl-st b{font-size:28px}}
 .cl-btns .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 18px;border-radius:99px;font-size:14px;text-decoration:none;white-space:nowrap}
+
+/* your account */
+.ac{display:flex;flex-direction:column;gap:6px;min-width:min(440px,100%)}
+.ac-me{display:flex;align-items:center;gap:14px;padding:4px 0 16px;border-bottom:1px solid #EEF0F2;margin-bottom:6px}
+.ac-me b{display:block;font:700 17px var(--head);color:#1D1D1F}
+.ac-me div span{font-size:13.5px;color:#6E6E73}
+.ac-sec{display:flex;flex-direction:column;gap:8px;padding:14px 0 16px;border-bottom:1px solid #EEF0F2}
+.ac-sec:last-of-type{border-bottom:0}
+.ac-sec h3{margin:0 0 2px;font:700 11px var(--head);letter-spacing:.1em;text-transform:uppercase;color:#8A979C}
+.ac-sec .fl{margin:6px 0 0;font-size:13px;color:#5E6B70}
+.ac-sec .fl i{font-style:normal;color:#8E8E93;font-weight:400}
+.ac-note{margin:2px 0 0;font-size:13px;line-height:1.45;color:#8E8E93}
+.ac .ppick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ac .row2{margin-top:8px;display:flex;gap:10px}
+.ac .row2 .btn{flex:1 1 0;min-width:0;width:auto}
+@media (max-width:560px){.ac{min-width:0}.ac .ppick{grid-template-columns:1fr}}
+
+/* interface chrome is not text to select: a double click or drag on it should not paint it blue */
+.rhead,.dv-tabs,.dv-bar,.dv-h,.dv-more,.cal,.cal-h,.cal-d,.cal-c,.cal-nav,.cl-stats,.it-wrap>.it,.rtbl,.rstrip,
+.desk .side,.desk nav,.tabbar,[role=button],[role=tab],button{-webkit-user-select:none;user-select:none}
+.it-more,.dv-card input,.dv-card textarea,.modal input{-webkit-user-select:text;user-select:text}
+.side,.side *,.tabbar,.tabbar *,a.btn,.btn{-webkit-user-select:none;user-select:none}
+/* calendar loading shape */
+.sk{display:block;border-radius:8px;background:linear-gradient(100deg,#EDEFF1 30%,#F7F8F9 50%,#EDEFF1 70%);background-size:300% 100%;animation:skel 1.4s ease-in-out infinite}
+.sk-cell{cursor:default;pointer-events:none}
+.sk-cell:hover{background:#fff}
+.sk-n{width:22px;height:14px;margin:4px 6px}
+.sk-c{height:16px;width:72%;margin:3px 6px 0}
+.sk-c.s{width:52%}
+.sk-h{width:150px;height:12px;margin:2px 0 14px}
+.sk-row{display:flex;align-items:center;gap:12px;padding:10px 0}
+.sk-row>span{flex:1;display:flex;flex-direction:column;gap:7px}
+.sk-dot{width:18px;height:18px;border-radius:50%;flex:none}
+.sk-l{height:13px;width:46%}
+.sk-l.s{width:68%;height:11px}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+/* page-shaped skeletons */
+.sk-t{margin:12px 0 12px}
+.sk-card{background:#fff;border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 18px 44px -24px rgba(0,0,0,.18);overflow:clip;min-height:380px}
+.sk-line{display:flex;align-items:center;gap:14px;padding:18px 24px;border-top:1px solid #EEF0F2}
+.sk-line:first-child{border-top:0}
+.sk-line>span{flex:1;display:flex;flex-direction:column;gap:8px}
+.sk-tabs{display:flex;gap:10px;padding:18px 24px;border-bottom:1px solid #EEF0F2}
+.sk-stats{display:flex;gap:40px;padding:22px 24px;border-bottom:1px solid #EEF0F2}
+.sk-stats>div{display:flex;flex-direction:column;gap:8px}
+.sk-plain .rhead{margin-bottom:18px}
+.sk-path{padding:6px 0 4px;display:flex;flex-direction:column;gap:18px}
+.sk-steps{display:flex;justify-content:space-between;padding:0 8px}
+.sk-steps>div{display:flex;flex-direction:column;align-items:center;gap:8px}
+@media (max-width:640px){.sk-line{padding:16px}.sk-tabs,.sk-stats{padding:16px;gap:12px;overflow:hidden}}
+
+/* member area, in the Brekkie feel */
+.mb-in{max-width:880px;margin:0 auto}
+.mb-card{background:#fff;border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 18px 44px -24px rgba(0,0,0,.18);overflow:clip}
+.mb-sec{padding:22px 28px 10px;border-top:1px solid #EEF0F2}
+.mb-card>.mb-sec:first-child{border-top:0}
+.mb-lab{font:700 11.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:#8A8A90;margin:0 0 6px}
+.mb-hint{margin:0 0 8px;color:#6E6E73;font-size:15px}
+.mb-empty{margin:0;padding:26px 28px;color:#6E6E73;font-size:16px}
+.mb-lvl{font:700 11px var(--head);letter-spacing:.12em;text-transform:uppercase;color:#8A8A90;margin:14px 0 2px}
+.mb-sec .mb-row{margin:0 -28px;padding-left:28px;padding-right:28px}
+.mb-sec .mb-row{padding:16px 28px}
+.mb-card>.mb-row{width:100%;border-top:1px solid #EEF0F2}
+.mb-card>.mb-row:first-child{border-top:0}
+.mb-row{display:flex;align-items:center;gap:14px;padding:16px 28px;border:0;border-top:1px solid #EEF0F2;background:none;color:inherit;text-decoration:none;text-align:left;font:inherit;cursor:pointer;transition:background .12s}
+.mb-row:hover{background:#FAFAFB}
+.mb-sec .mb-row:first-of-type{border-top:0}
+.mb-row .tt{flex:1;min-width:0}
+.mb-row .tt b{display:block;font:600 16px/1.25 var(--head);letter-spacing:-.015em;color:#1D1D1F}
+.mb-row .tt>span{display:block;color:#6E6E73;font-size:14.5px;margin-top:3px;line-height:1.35}
+.mb-row .bn{font:600 13px var(--head);color:#4A4A50;background:#F2F2F5;border-radius:999px;padding:4px 11px;min-width:30px;text-align:center}
+.mb-row .tc{color:#C7C7CC;flex:none}
+.mb-row .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mb-next{border-bottom:1px solid #EEF0F2}
+.mb-next .nbody{display:flex;align-items:center;gap:16px;width:100%;padding:20px 28px;background:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.mb-next .nbody:hover{background:#FAFAFB}
+.mb-next .calbox{width:54px;height:58px;border-radius:14px;background:#F5F5F7;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}
+.mb-next .calbox small{font:700 10.5px var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--maroon)}
+.mb-next .calbox b{font:700 22px/1 var(--head);letter-spacing:-.03em}
+.mb-next .tt{flex:1;min-width:0}
+.mb-next .tt b{display:block;font:600 17px var(--head);letter-spacing:-.02em}
+.mb-next .tt span{display:block;color:#6E6E73;font-size:14.5px;margin-top:2px}
+.mb-next .tc{color:#8A8A90}
+.mb-next .nsheet{display:block;padding:0 28px 18px 98px;margin-top:-8px;color:var(--blue);font-weight:600;font-size:14.5px}
+.mb-card .pcard2{box-shadow:none;border:0;border-radius:0;margin:0;padding:24px 28px;border-bottom:1px solid #EEF0F2}
+.mb-card .myplans{background:none;border-radius:0;margin:0;padding:22px 28px 12px;border-bottom:1px solid #EEF0F2}
+.mb-card .pc-h h2{font-size:22px}
+.mb-trend{padding:22px 28px;border-bottom:1px solid #EEF0F2}
+.mb-trend small{display:block;font:700 11.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:#8A8A90}
+.mb-trend b{display:block;margin-top:6px;font:700 24px var(--head);letter-spacing:-.03em}
+.mb-list{padding:8px 28px 22px}
+.mb-card .say{border:0;background:#F5F5F7;border-radius:16px}
+.mb-card .card{border:0;background:#F5F5F7;border-radius:16px;box-shadow:none}
+.mb-card .mb-sec .say:last-child{margin-bottom:12px}
+@media (max-width:640px){
+  .mb-sec,.mb-card .pcard2,.mb-card .myplans,.mb-trend{padding-left:16px;padding-right:16px}
+  .mb-list{padding:8px 16px 18px}
+  .mb-sec .mb-row{margin:0 -16px;padding-left:16px;padding-right:16px}
+  .mb-card>.mb-row{padding:16px}
+  .mb-next .nbody{padding:16px}.mb-next .nsheet{padding-left:86px}
+  .mb-empty{padding:20px 16px}
+}
+.sk{max-width:100%}
+.mb-card .card{background:none;padding:2px 0 8px;border-radius:0}
+.mb-row .chips .chip{font-size:12px;padding:3px 9px}
+
+/* the Brekkie mark in the sidebar is not a nav row: no big hover block */
+.app.desk .side a.wm,.app.desk .side a.wm:hover{background:none;box-shadow:none;display:inline-flex;align-items:baseline;gap:2px;width:max-content;color:#fff}
+.app.desk .side a.wm:hover{opacity:.8}
+.mb-stack{display:flex;flex-direction:column;gap:16px}
+.mb-stack .mb-next{border-bottom:0}
+.mb-stack .mb-card .pcard2,.mb-stack .mb-card .myplans{border-bottom:0}
+.mb-stack .mb-card .myplans{padding-bottom:14px}
+.mb-stack .mb-sec{padding-bottom:6px}
+.mb-stack .mb-sec .mb-row:last-child{border-bottom:0}
+
+/* members page in the Brekkie feel */
+.pp-card{background:#fff;border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 18px 44px -24px rgba(0,0,0,.18);overflow:clip;padding-bottom:10px}
+.pp-card .ptools{padding:18px 24px;margin:0;border-bottom:1px solid #EEF0F2}
+.pp-card .plist{padding:0 12px}
+.pp-card .prow.hd{margin:0;padding:16px 12px 12px;border-bottom:1px solid #EEF0F2}
+.pp-card .prow:not(.hd){border-radius:0;border-bottom:1px solid #F1F2F4}
+.pp-card .prow:not(.hd):last-child{border-bottom:0}
+.pp-card .prow:not(.hd):hover{background:#FAFAFB}
+.pp-card .empty{padding:26px 12px;margin:0}
+.pp-card>.lnk{margin:12px 24px!important}
+.pp-card>.plist.g{padding-top:6px}
+@media (max-width:640px){.pp-card .ptools{padding:14px 16px}.pp-card .plist{padding:0 8px}}
+.rhead>.btn{width:auto;padding:0 24px;flex:none}

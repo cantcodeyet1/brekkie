@@ -5,7 +5,7 @@ import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import PathCard from './PathCard.jsx';
-import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, Loading, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Dashboard', icon: I.chart },
@@ -55,7 +55,7 @@ export function VpeHome() {
   const desk = useDesk();
   const toast = useToast();
   const timers = useRef({}), pending = useRef({});
-  if (loading) return <Page root wide><Loading /></Page>;
+  if (loading) return <Page root wide><SkPage rows={6} avatar /></Page>;
   if (error) return <Page root wide><ErrorMsg error={error} /></Page>;
 
   const patch = (m, fields) => {
@@ -163,7 +163,7 @@ export function VpeMeeting() {
     if (todo.length) Promise.all(todo.map(([rid, t]) => api(`/vpe/roles/${rid}`, { method: 'PATCH', body: { target_role_id: t } }))).then(reload).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
-  if (loading || peopleQ.loading || projQ.loading || catQ.loading || !m) return <Page title="Roster" wide back="/v/roster"><Loading /></Page>;
+  if (loading || peopleQ.loading || projQ.loading || catQ.loading || !m) return <Page title="Roster" wide back="/v/roster"><SkPage plain rows={7} /></Page>;
   if (error || peopleQ.error) return <Page title="Roster" wide back="/v/roster"><ErrorMsg error={error || peopleQ.error} /></Page>;
 
   const roles = data.roles, projects = projQ.data, catalog = catQ.data?.paths || [];
@@ -377,7 +377,7 @@ export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
         {cur?.submitted_at ? `Submitted ${longDate(String(cur.submitted_at).slice(0, 10))}` : 'Not submitted yet'}{d?.role ? ` · Meeting ${d.role.meeting}` : ''}
       </p>
       <div className="viewer">
-        {loading && <Loading />}
+        {loading && <SkRows n={4} avatar />}
         {error && <ErrorMsg error={error} />}
         {d && !cur?.submitted_at && <div className="banner"><b>Waiting on {cur.person}.</b> <a className="lnk" href={remind(cur)} target="_blank" rel="noreferrer">Send a reminder</a>{(d.rows?.length || d.evaluation) ? ' Their draft so far is shown below.' : ''}</div>}
         {d && d.role.key === 'grammarian' && (d.rows.length ? d.rows.map((r, k) => (
@@ -432,8 +432,8 @@ export function VpePeople() {
   const [qy, setQy] = useState('');
   const [adding, setAdding] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  if (loading) return <Page root wide><Loading /></Page>;
-  if (error) return <Page root wide><ErrorMsg error={error} /></Page>;
+  if (loading) return <Page root wide full><SkPage avatar rows={8} /></Page>;
+  if (error) return <Page root wide full><div className="rpage"><ErrorMsg error={error} /></div></Page>;
 
   const hit = (p) => !qy.trim() || `${p.name} ${p.email || ''}`.toLowerCase().includes(qy.trim().toLowerCase());
   const allMembers = data.filter((p) => p.kind === 'member' && p.status !== 'inactive');
@@ -472,16 +472,18 @@ export function VpePeople() {
   );
 
   return (
-    <Page root wide>
-      <div className="phead">
+    <Page root wide full>
+      <div className="rpage">
+      <div className="rhead">
         <div>
           <p className="reyebrow">Champions Toastmasters Club</p>
           <h1 className="rtitle">Members</h1>
-          <p className="rsub">{allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}{liveGuests.length ? ` and ${liveGuests.length} ${liveGuests.length === 1 ? 'visitor' : 'visitors'}` : ''}. Open anyone to see what they have delivered and the feedback they have given.</p>
+          <p className="rsub">Open anyone to see what they have delivered and the feedback they have given.</p>
         </div>
         <Btn onClick={() => setAdding(true)}>{I.plus} Add member</Btn>
       </div>
 
+      <div className="pp-card">
       <div className="ptools">
         <Seg value={tab} onChange={setTab} options={[['members', `Members ${allMembers.length}`], ['guests', `Visitors ${liveGuests.length}`]]} style={{ minWidth: 240 }} />
         <label className="psearch"><span aria-hidden="true">{I.search}</span><input value={qy} onChange={(e) => setQy(e.target.value)} placeholder="Search by name or email" aria-label="Search members" /></label>
@@ -506,7 +508,9 @@ export function VpePeople() {
           {archived.length > 0 && <><button type="button" className="lnk" style={{ margin: '18px 4px 6px' }} onClick={() => setShowArchived(!showArchived)}>{showArchived ? 'Hide' : 'Show'} archived visitors ({archived.length})</button>{showArchived && <div className="plist g">{archived.filter(hit).map(guestRow)}</div>}</>}
         </>
       )}
+      </div>
       {adding && <AddPerson onClose={() => setAdding(false)} onDone={(p) => { setAdding(false); toast(`${p.name} added`); setTab(p.kind === 'guest' ? 'guests' : 'members'); reload(); }} />}
+      </div>
     </Page>
   );
 }
@@ -515,12 +519,13 @@ function AddPerson({ onClose, onDone }) {
   const [kind, setKind] = useState('member');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [cred, setCred] = useState('TM');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true); setErr('');
-    try { onDone(await api('/vpe/people', { method: 'POST', body: { name, email, kind, credential: cred } })); } catch (e) { setErr(e.message); setBusy(false); }
+    try { onDone(await api('/vpe/people', { method: 'POST', body: { name, email, phone, kind, credential: cred } })); } catch (e) { setErr(e.message); setBusy(false); }
   };
   return (
     <Modal title="Add a member or visitor" onClose={onClose}>
@@ -528,6 +533,8 @@ function AddPerson({ onClose, onDone }) {
       <p style={{ color: 'var(--mute)', fontSize: 14, margin: '6px 0 0' }}>{kind === 'guest' ? 'For someone outside the club taking a role. They get a temporary link, and their data is kept with Champions.' : 'A full member with their own access link and history.'}</p>
       <label className="fl">Full name</label><input className="inp" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name as it should appear" />
       <label className="fl">Email (optional)</label><input className="inp" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@mail.com" />
+      <label className="fl">Phone (optional)</label><input className="inp" type="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+263 7…" maxLength={30} />
+      <p className="fine" style={{ margin: '2px 0 0' }}>Used to message them on WhatsApp about their role.</p>
       <label className="fl">Toastmasters title on the agenda (optional)</label><input className="inp" value={cred} onChange={(e) => setCred(e.target.value)} placeholder="TM, DTM, ACB…" maxLength={20} />
       {err && <p className="err">{err}</p>}
       <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy}>Add</Btn></div>
@@ -582,7 +589,7 @@ export function VpePerson() {
   const toast = useToast();
   const { data, error, loading, reload } = useApi(`/vpe/people/${id}/profile`);
   const [viewing, setViewing] = useState(null);
-  if (loading) return <Page title="Members" wide back="/v/members"><Loading /></Page>;
+  if (loading) return <Page title="Members" wide back="/v/members"><SkPage plain rows={6} stats={3} pill={false} /></Page>;
   if (error) return <Page title="Members" wide back="/v/members"><ErrorMsg error={error} /></Page>;
   const { person: p, projects, roles, given, received } = data;
   const visitor = p.kind === 'guest';

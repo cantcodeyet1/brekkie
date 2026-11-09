@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, useApi } from '../api.js';
-import { Btn, ErrorMsg, I, Loading, Modal, Page, PathPick, Select, copyText, useToast } from '../ui.jsx';
+import { Avatar, Btn, ErrorMsg, I, SkPage, SkRows, Modal, Page, PathPick, Select, copyText, useToast } from '../ui.jsx';
 import { PatternFields, datesFor, fmtDate, newPattern } from './Wizard.jsx';
 
 /* ───────── the VPE's club page: at a glance, invite, meeting pattern, visitor access ───────── */
@@ -15,7 +15,7 @@ export default function Club() {
   const [err, setErr] = useState('');
   const [num, setNum] = useState(1);
   useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setGd(data.club.guest_days || 30); } }, [data]);
-  if (loading || !pat) return <Page title="Club" root wide full><Loading /></Page>;
+  if (loading || !pat) return <Page title="Club" root wide full><SkPage stats={3} rows={4} pill={false} /></Page>;
   if (error) return <Page title="Club" root wide full><ErrorMsg error={error} /></Page>;
 
   const code = data.club.join_code;
@@ -111,20 +111,32 @@ export function AccountModal({ onClose }) {
   };
   return (
     <Modal title="Your account" onClose={onClose}>
-      {!data ? <Loading /> : (
-        <>
-          <p className="lede" style={{ marginTop: 0 }}>{data.has_password ? 'Change your email or password. Your personal link keeps working.' : 'Add a password so you can sign in with your email, not just your link.'}</p>
-          <label className="fl" htmlFor="a-email">Email</label>
-          <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" />
-          <label className="fl">Your Pathways path</label>
-          <PathPick catalog={cat.data?.paths || []} pathName={f.path_name} level={f.path_level} onChange={(v) => setF((x) => ({ ...x, ...v }))} />
-          <p style={{ margin: '6px 0 0', fontSize: 13.5, color: 'var(--mute)' }}>Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
-          {data.has_password && <><label className="fl" htmlFor="a-cur">Current password (only to change it)</label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} autoComplete="current-password" /></>}
-          <label className="fl" htmlFor="a-pw">{data.has_password ? 'New password (optional)' : 'Password'}</label>
-          <input id="a-pw" className="inp" type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" placeholder="At least 8 characters" />
+      {!data ? <div className="ac-sk"><SkRows n={4} pill={false} /></div> : (
+        <div className="ac">
+          <div className="ac-me">
+            <Avatar name={data.name || ''} size={52} />
+            <div><b>{data.name}</b><span>{data.club?.name}</span></div>
+          </div>
+
+          <section className="ac-sec">
+            <h3>Sign in</h3>
+            <label className="fl" htmlFor="a-email">Email</label>
+            <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" />
+            {data.has_password && <><label className="fl" htmlFor="a-cur">Current password <i>(only to change it)</i></label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} autoComplete="current-password" /></>}
+            <label className="fl" htmlFor="a-pw">{data.has_password ? 'New password' : 'Password'} {data.has_password && <i>(optional)</i>}</label>
+            <input id="a-pw" className="inp" type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" placeholder="At least 8 characters" />
+            <p className="ac-note">{data.has_password ? 'Your personal link keeps working if you change these.' : 'Add a password so you can sign in with your email, not just your link.'}</p>
+          </section>
+
+          <section className="ac-sec">
+            <h3>Your Pathways path</h3>
+            <PathPick catalog={cat.data?.paths || []} pathName={f.path_name} level={f.path_level} onChange={(v) => setF((x) => ({ ...x, ...v }))} />
+            <p className="ac-note">Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
+          </section>
+
           {err && <p className="err">{err}</p>}
-          <div className="row2" style={{ marginTop: 16 }}><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && f.password.length < 8)}>{busy ? 'Saving…' : 'Save'}</Btn></div>
-        </>
+          <div className="row2"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && f.password.length < 8)}>{busy ? 'Saving…' : 'Save'}</Btn></div>
+        </div>
       )}
     </Modal>
   );

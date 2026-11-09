@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { fmtDate } from '../data.js';
-import { Btn, I, Loading, PathPick, Select, useToast } from '../ui.jsx';
+import { Btn, I, SkPath, PathPick, Select, useToast } from '../ui.jsx';
 import { PlanModal } from './Dashboard.jsx';
 
 /* Where a member is on their path: the path and a timeline of levels. The detail (next project, what is finished,
@@ -58,7 +58,7 @@ export default function PathCard({ person, mine = false, initial = null }) {
       {!mine && (edit || (d && !d.path)) && <div className="pc-pick"><PathPick catalog={cat.data?.paths || []} pathName={pl.path_name} level={pl.path_level} onChange={savePath} /></div>}
     </>
   );
-  if (prog.loading || !d) return <section className="pcard2">{head}<Loading /></section>;
+  if (prog.loading || !d) return <section className="pcard2">{head}<SkPath /></section>;
   if (!d.path) return <section className="pcard2">{head}<p className="pc-empty">{mine ? 'Your VPE sets your path. Once it is set, your next project shows up here.' : 'Choose a path and level. When this member is put in a speaker slot, their path and next project fill in on their own.'}</p></section>;
 
   const lv = d.levels.find((l) => l.level === view) || d.levels.find((l) => l.level === d.current) || d.levels[0];

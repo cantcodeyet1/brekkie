@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate } from '../data.js';
-import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, PersonSelect, Select, Wcard, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, SkPage, Modal, Page, PersonSelect, Select, Wcard, useToast } from '../ui.jsx';
 
 /* The meeting roster. One column per meeting, one row per thing to plan, like the club's planner sheet.
    The grid always fits the screen: how many meetings you see depends on the width, and you move between
@@ -41,7 +41,7 @@ export default function Roster() {
 
   const people = useMemo(() => (peopleQ.data || []).filter((p) => p.status !== 'inactive'), [peopleQ.data]);
 
-  if (!view || peopleQ.loading) return <Page root wide full><div ref={wrap}><Loading /></div></Page>;
+  if (!view || peopleQ.loading) return <Page root wide full><div ref={wrap}><SkPage rows={9} avatar pill={false} /></div></Page>;
   if (rq.error || peopleQ.error) return <Page root wide full><div ref={wrap}><ErrorMsg error={rq.error || peopleQ.error} /></div></Page>;
 
   const loadingNext = rq.loading;

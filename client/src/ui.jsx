@@ -124,7 +124,35 @@ export const Loading = () => (
     <div className="g"><i /><i /><i /></div>
   </div>
 );
-export const ErrorMsg = ({ error }) => <p className="err" style={{ marginTop: 24 }}>{error?.message || 'Something went wrong'}</p>;
+/* Page-shaped skeletons: the same header, card and rows as the page they stand in for, so nothing jumps on arrival */
+const Sk = ({ w, h, r, cls = '' }) => <i className={'sk ' + cls} style={{ width: w, height: h, borderRadius: r }} />;
+export const SkRows = ({ n = 5, avatar = false, pill = true }) => Array.from({ length: n }, (_, i) => (
+  <div key={i} className="sk-line">
+    {avatar && <Sk w={36} h={36} r="50%" />}
+    <span><Sk w={`${42 + ((i * 17) % 28)}%`} h={14} /><Sk w={`${24 + ((i * 11) % 24)}%`} h={11} /></span>
+    {pill && <Sk w={74} h={26} r={13} />}
+  </div>
+));
+export function SkPage({ rows = 6, avatar = false, tabs = 0, stats = 0, plain = false, pill = true, sub = true, children }) {
+  const body = (
+    <>
+      <div className="rhead"><div><Sk w={150} h={12} /><Sk w={280} h={40} r={10} cls="sk-t" />{sub && <Sk w={360} h={14} />}</div></div>
+      <div className="sk-card">
+        {tabs > 0 && <div className="sk-tabs">{Array.from({ length: tabs }, (_, i) => <Sk key={i} w={86} h={30} r={15} />)}</div>}
+        {stats > 0 && <div className="sk-stats">{Array.from({ length: stats }, (_, i) => <div key={i}><Sk w={54} h={24} /><Sk w={90} h={11} /></div>)}</div>}
+        {children || <SkRows n={rows} avatar={avatar} pill={pill} />}
+      </div>
+    </>
+  );
+  return <div className={plain ? 'sk-plain' : 'rpage'} role="status" aria-label="Loading">{body}</div>;
+}
+export const SkPath = () => (
+  <div className="sk-path" role="status" aria-label="Loading">
+    <div className="sk-steps">{[1, 2, 3, 4, 5].map((n) => <div key={n}><Sk w={34} h={34} r="50%" /><Sk w={50} h={11} /></div>)}</div>
+    <Sk w="100%" h={44} r={14} />
+  </div>
+);
+export const ErrorMsg =({ error }) => <p className="err" style={{ marginTop: 24 }}>{error?.message || 'Something went wrong'}</p>;
 export const Meter = ({ v }) => <span className="meter"><i className={v < 3 ? 'lo' : v < 4 ? 'mid' : 'hi'} style={{ width: `${(v / 5) * 100}%` }} /></span>;
 
 export function Seg({ value, onChange, options, className = '', style }) {

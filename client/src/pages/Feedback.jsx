@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate } from '../data.js';
-import { Btn, ErrorMsg, I, Loading, Select, Wordmark } from '../ui.jsx';
+import { Btn, ErrorMsg, I, SkRows, Select, Wordmark } from '../ui.jsx';
 
 /* Public page behind the QR code: anyone at the meeting picks who they want to write to. No sign-in. */
 export default function Feedback() {
@@ -14,7 +14,7 @@ export default function Feedback() {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(0);
 
-  if (loading) return <div className="ffwrap"><div className="ff"><Loading /></div></div>;
+  if (loading) return <div className="ffwrap"><div className="ff"><Wordmark /><SkRows n={4} pill={false} /></div></div>;
   if (error) return <div className="ffwrap"><div className="ff"><Wordmark /><h1>This link is not valid</h1><p className="lede">Ask someone at the meeting to show you the QR code again.</p></div></div>;
 
   const has = (id) => picked.some((p) => p.id === id);

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, getToken, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
-import { Btn, Chip, DatePick, ErrorMsg, Foot, I, Loading, Page, useDebouncedSave, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, I, SkPage, Page, useDebouncedSave, useDesk, useToast } from '../ui.jsx';
 
 /* The agenda is the club's own Word template, filled in from this page. Everything here can be edited;
    roles, speakers and evaluators come from the meeting and update themselves unless you change them. */
@@ -23,7 +23,7 @@ export default function Agenda() {
     try { setSave('Saving…'); await api(`/vpe/meetings/${id}/agenda`, { method: 'PUT', body: ag }); setSave('Saved'); } catch { setSave('Not saved'); }
   }, [ag]);
 
-  if (loading || !ag) return <Page title="Agenda" wide back={`/v/meetings/${id}`}><Loading /></Page>;
+  if (loading || !ag) return <Page title="Agenda" wide back={`/v/meetings/${id}`}><SkPage plain rows={8} pill={false} /></Page>;
   if (error) return <Page title="Agenda" wide back={`/v/meetings/${id}`}><ErrorMsg error={error} /></Page>;
 
   const setMeta = (patch) => {

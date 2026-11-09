@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
-import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, SkPage, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
 
 /* Plan a speech: at this club or another. The VPE picks the member; a member plans their own. */
 /* every project on a member's path for the project picker: their next one first, then the rest of the level they are on and above,
@@ -209,7 +209,7 @@ export default function Dashboard() {
   const [pick, setPick] = useState(null);
   const [all, setAll] = useState(false);
   if (error) return <Page title="Dashboard" root wide full><ErrorMsg error={error} /></Page>;
-  if (!d) return <Page title="Dashboard" root wide full><Loading /></Page>;
+  if (!d) return <Page title="Dashboard" root wide full><SkPage tabs={5} avatar rows={6} /></Page>;
   const goal = (n) => d.goals.find((g) => g.n === n);
   const groups = GROUPS.map((g) => {
     const gs = g.goals.map(goal), need = gs.reduce((a, x) => a + x.need, 0), have = gs.reduce((a, x) => a + x.have, 0);
