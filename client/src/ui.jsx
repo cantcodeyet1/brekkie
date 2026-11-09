@@ -60,9 +60,13 @@ export function Shell({ nav, who, sub, tag, onSignOut, onAccount, noSide, bare, 
       <div className={'app' + (desk ? ' desk' : '') + (topNav ? ' topnav-app' : '')}>
         {desk && topNav && (
           <header className="topnav">
-            <Wordmark />
-            <nav>{nav.filter((n) => n.to).map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'on' : '')}>{n.icon}{n.label}</NavLink>)}</nav>
-            {who && <span className="who"><b>{who}</b>{onAccount && <button type="button" className="lnk" onClick={onAccount}>Account</button>}{onSignOut && <button type="button" className="lnk" onClick={onSignOut}>Sign out</button>}</span>}
+            <div className="tn-in">
+              <Wordmark />
+              <nav>{nav.filter((n) => n.to).map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'on' : '')}>{n.icon}{n.label}</NavLink>)}</nav>
+              {who && onAccount && <button type="button" className="tn-me" onClick={onAccount} aria-label={`Your account, ${who}`} title={who}>
+                <span className="tn-av" aria-hidden="true">{who.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>
+              </button>}
+            </div>
           </header>
         )}
         <div className="screen">
@@ -100,7 +104,7 @@ export function Page({ title, root, wide, narrow, full, foot, back, onBack, chil
       {bare && desk && <div className="hdr-r"><Wordmark /><span style={{ fontSize: 13, color: 'var(--mute)' }}>Champions Toastmasters Club</span></div>}
       {bare && !desk && root && <div className="brand"><Wordmark /><span className="who">Champions Toastmasters Club</span></div>}
       {!root && !desk && topBar}
-      {root && !desk && !bare && <div className="brand"><Wordmark /><span className="who"><b>{who}</b>{onAccount && <button className="lnk" style={{ marginLeft: 10 }} onClick={onAccount}>Account</button>}{onSignOut && <button className="lnk" style={{ marginLeft: 10 }} onClick={onSignOut}>Sign out</button>}</span></div>}
+      {root && !desk && !bare && <div className="brand"><Wordmark /><span className="who">{onAccount ? <button type="button" className="tn-me" onClick={onAccount} aria-label={`Your account, ${who}`}><span className="tn-av" aria-hidden="true">{who.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span></button> : <b>{who}</b>}{!onAccount && onSignOut && <button className="lnk" style={{ marginLeft: 10 }} onClick={onSignOut}>Sign out</button>}</span></div>}
       <div className="scroll"><div className={'in' + (wide ? ' wide' : '') + (narrow ? ' narrow' : '') + (full ? ' full' : '')}>{desk && topBar}{children}</div></div>
       {foot}
       {root && !desk && nav.some((n) => n.to && !n.desktopOnly) && (

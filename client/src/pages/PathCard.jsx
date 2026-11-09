@@ -8,7 +8,7 @@ import { PlanModal } from './Dashboard.jsx';
 /* Where a member is on their path: the path and a timeline of levels. The detail (next project, what is finished,
    electives) stays folded away until the VPE opens it. The VPE marks a project done, because being on the agenda
    does not mean the speech was given. */
-export default function PathCard({ person, mine = false, initial = null }) {
+export default function PathCard({ person, mine = false, initial = null, canPlan = true }) {
   const toast = useToast();
   const url = mine ? '/me/path' : `/vpe/people/${person.id}/path`;
   // the page that shows this card already fetched the progress, so there is only one loading stage
@@ -76,8 +76,8 @@ export default function PathCard({ person, mine = false, initial = null }) {
           {p.done
             ? <><small>{p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}{p.done.venue ? ` at ${p.done.venue}` : ''}</small>{!mine && p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
             : <>
-                {!p.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code })}>Schedule</button>}
-                {p.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(p.sched.plan)}>Unschedule</button>}
+                {canPlan && !p.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code })}>Schedule</button>}
+                {canPlan && p.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(p.sched.plan)}>Unschedule</button>}
               {!mine && <>
                 {p.kind === 'elective' && <button type="button" className="lnk" onClick={() => elective(p.id, false)} disabled={busy === p.id}>Remove</button>}
                 <Btn sm kind={isNext ? '' : 'ghost'} onClick={() => mark(p, true)} disabled={busy === p.id}>{isNext && I.check} Mark done</Btn>
@@ -108,7 +108,7 @@ export default function PathCard({ person, mine = false, initial = null }) {
         <>
           <button type="button" className="pc-tog" aria-expanded={open} onClick={() => setOpen(!open)}>
             <span><b>Level {lv.level}</b>{lv.title ? ` · ${lv.title}` : ''}</span>
-            <span className="pc-sum">{`${lv.required_done} of ${lv.required_total} required${lv.choose ? `, ${lv.electives_done}/${lv.choose} electives` : ''}`}</span>
+            <span className="pc-sum">{(() => { const left = lv.required_total - lv.required_done + Math.max(0, (lv.choose || 0) - lv.electives_done); return lv.complete || left <= 0 ? 'Level complete' : `${left} project${left === 1 ? '' : 's'} to go`; })()}</span>
             <span className={'pc-car' + (open ? ' up' : '')}>{I.chev}</span>
           </button>
 

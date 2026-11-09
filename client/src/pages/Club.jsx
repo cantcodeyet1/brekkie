@@ -104,9 +104,8 @@ export default function Club() {
 }
 
 /* ───────── your account: email and password ───────── */
-export function AccountModal({ onClose }) {
+export function AccountModal({ account: data, onClose, onSignOut, showPath = false }) {
   const toast = useToast();
-  const { data } = useApi('/account');
   const cat = useApi('/pathways');
   const [f, setF] = useState({ email: '', current: '', password: '' });
   const [err, setErr] = useState('');
@@ -119,7 +118,7 @@ export function AccountModal({ onClose }) {
   return (
     <Modal title="Your account" onClose={onClose}>
       {!data ? <div className="ac-sk"><SkRows n={4} pill={false} /></div> : (
-        <div className="ac">
+        <div className="ac ac-in">
           <div className="ac-me">
             <Avatar name={data.name || ''} size={52} />
             <div><b>{data.name}</b><span>{data.club?.name}</span></div>
@@ -132,14 +131,16 @@ export function AccountModal({ onClose }) {
             {data.has_password && <><label className="fl" htmlFor="a-cur">Current password <i>(only to change it)</i></label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} autoComplete="current-password" /></>}
             {data.has_password ? <p className="fl" style={{ marginBottom: 0 }}>New password <i>(optional)</i></p> : null}
             <PwPair id="a-pw" value={f.password} again={f.again || ''} onChange={(e) => setF({ ...f, password: e.target.value })} onAgain={(e) => setF({ ...f, again: e.target.value })} />
-            <p className="ac-note">{data.has_password ? 'Your personal link keeps working if you change these.' : 'Add a password so you can sign in with your email, not just your link.'}</p>
+            <p className="ac-note">{data.has_password ? 'Leave the password boxes empty to keep your current one.' : 'Add a password so you can sign in with your email.'}</p>
           </section>
 
-          <section className="ac-sec">
+          {showPath && <section className="ac-sec">
             <h3>Your Pathways path</h3>
             <PathPick catalog={cat.data?.paths || []} pathName={f.path_name} level={f.path_level} onChange={(v) => setF((x) => ({ ...x, ...v }))} />
             <p className="ac-note">Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
-          </section>
+          </section>}
+
+          {onSignOut && <button type="button" className="ac-out" onClick={onSignOut}>{I.out} Sign out</button>}
 
           {err && <p className="err">{err}</p>}
           <div className="row2"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && !pwGood(f.password, f.again || '')) || (data.has_password && !!f.password && !pwGood(f.password, f.again || ''))}>{busy ? 'Saving…' : 'Save'}</Btn></div>

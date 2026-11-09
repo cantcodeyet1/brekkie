@@ -1,17 +1,15 @@
 import { JoinAsk } from './Role.jsx';
-import PathCard from './PathCard.jsx';
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import { EvalSheet, printEval } from '../EvalSheet.jsx';
 import { SubmissionViewer } from './Vpe.jsx';
-import { PlanModal, SpeechRow } from './Dashboard.jsx';
 import { api } from '../api.js';
 import { Btn, Chip, ErrorMsg, Foot, I, Page, SkPage, SkRows, useDesk, useToast } from '../ui.jsx';
 
 /* The member area is three big, plainly named places: Home, Meetings, Speeches. */
-export const MEMBER_NAV = [];
+export const MEMBER_NAV = [];   // no menu: Home is the only hub, every other page has a Back button
 
 const FUNC = {
   gram: { name: 'Grammar notes', lede: 'What the Grammarian noticed in your speaking, and whether you used the word of the day.' },
@@ -62,69 +60,52 @@ function AgendaCard({ meetingId, date, title, sub, sheet }) {
     } catch (e) { toast(e.message); } finally { setBusy(false); }
   };
   return (
-    <div className="mb-next">
-      <button type="button" className="nbody" onClick={get} disabled={busy} aria-label={`${title}. Download the agenda`}>
-        <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
-        <span className="tt"><b>{title}</b><span>{sub}</span></span>
-        <span className="tc">{busy ? '…' : I.dl}</span>
-      </button>
-      {sheet && <Link className="nsheet" to={sheet}>Script and sheet</Link>}
+    <div className="mb-card mr-next">
+      <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
+      <span className="tt"><b>{title}</b><span>{sub}</span></span>
+      <span className="mh-acts">
+        <button type="button" className="mh-go" onClick={get} disabled={busy}>{I.dl} {busy ? 'Getting it…' : 'Download the agenda'}</button>
+        {sheet && <Link className="mr-sheet" to={sheet}>Open your role sheet</Link>}
+      </span>
     </div>
-  );
-}
-
-/* the speeches a member plans to give, at this club or another; they show on the VPE's dashboard too */
-function MyPlans({ me }) {
-  const toast = useToast();
-  const { data, reload } = useApi('/me/plans');
-  const [adding, setAdding] = useState(false);
-  const rows = (data || []).filter((s) => s.date >= new Date().toISOString().slice(0, 10));
-  return (
-    <section className="myplans">
-      <div className="mp-h"><div><small>Speeches</small><h2>Your upcoming speeches</h2></div><Btn sm onClick={() => setAdding(true)}>{I.plus} Add</Btn></div>
-      {!rows.length && <p className="mp-empty">Planning a speech here or at another club? Add it, and your VPE sees it when forecasting your next award.</p>}
-      {rows.map((s) => <SpeechRow key={s.id} s={s} who={false} onRemove={async () => { try { await api(`/me/plans/${s.id}`, { method: 'DELETE' }); reload(); } catch (e) { toast(e.message); } }} />)}
-      {adding && <PlanModal meId={me.id} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); reload(); }} />}
-    </section>
   );
 }
 
 export function MemberHome() {
   const { data: d, error, loading } = useApi('/me/overview');
-  if (loading) return <MSk root rows={4} />;
+  if (loading) return <MSk root rows={5} />;
   if (error) return <Page root wide full><div className="rpage mb"><div className="mb-in"><ErrorMsg error={error} /></div></div></Page>;
   const first = d.person.name.split(' ')[0];
   const guest = d.person.kind === 'guest';
+  const fb = [
+    { to: '/m/speeches', icon: I.mic, n: d.evals.count, title: 'My speeches', sub: 'What my evaluators said about each speech' },
+    { to: '/m/meetings', icon: I.month, n: d.meetings, title: 'Meeting by meeting', sub: 'Everything from one evening, in one place' },
+    { to: '/m/role/gram', icon: I.doc, n: d.gram.count, title: 'Grammar notes', sub: 'From the Grammarian' },
+    { to: '/m/role/ah', icon: I.hash, n: d.ah.count, title: 'Ums and ahs', sub: 'Filler words counted for me' },
+    { to: '/m/role/time', icon: I.clock, n: d.time.count, title: 'My timing', sub: 'How long I spoke, green to red' },
+    ...(d.given > 0 ? [{ to: '/m/given', icon: I.send, n: d.given, title: 'Notes I wrote', sub: 'My role sheets for other people' }] : []),
+  ];
   return (
-    <MPage root eyebrow="Champions Toastmasters" title={`Hi ${first}`} sub="Your next role, your path and the feedback people have given you.">
+    <MPage root eyebrow="Champions Toastmasters" title={`Hi ${first}`} sub="Your feedback from the club, all in one place.">
       <div className="mb-stack">
         {d.upcoming.map((u) => {
           const act = !['toastmaster', 'speaker'].includes(u.role_key);
-          return <div className="mb-card" key={u.token}><AgendaCard meetingId={u.meeting_id} date={u.date}
+          return <AgendaCard key={u.token} meetingId={u.meeting_id} date={u.date}
             title={`You are ${/\d$/.test(u.label) ? '' : /^[AEIOU]/.test(u.label) ? 'an ' : 'a '}${u.label}`}
-            sub={`${fmtDate(u.date, { weekday: 'long' })}, meeting ${u.number}. Tap to download the agenda.`}
-            sheet={act ? `/r/${u.token}` : null} /></div>;
+            sub={`${fmtDate(u.date, { weekday: 'long', day: 'numeric', month: 'long' })}, meeting ${u.number}`}
+            sheet={act ? `/r/${u.token}` : null} />;
         })}
-        {!d.upcoming.length && d.next_meeting && <div className="mb-card"><AgendaCard meetingId={d.next_meeting.id} date={d.next_meeting.date} title="Next meeting"
-          sub={`${fmtDate(d.next_meeting.date, { weekday: 'long' })}, meeting ${d.next_meeting.number}. Tap to download the agenda.`} /></div>}
 
-        {!guest && <div className="mb-card"><PathCard person={d.person} mine initial={d.path} /></div>}
-        {!guest && <div className="mb-card"><MyPlans me={d.person} /></div>}
+        <div className="mb-card">
+          <div className="mr-lab">Your feedback</div>
+          {fb.map((t) => (
+            <Link key={t.to} to={t.to} className="mr-row"><span className="mr-h"><span className="mr-ic">{t.icon}</span><span className="mr-t"><b>{t.title}</b><span>{t.sub}</span></span><span className="mr-r"><em className="mr-n">{t.n}</em></span><span className="mr-go">{I.chev}</span></span></Link>
+          ))}
+        </div>
 
-        <div className="mb-card"><Sect title="Feedback you have received">
-          <Tile to="/m/speeches" title="Speech feedback" sub="What your evaluators said about each speech" n={d.evals.count} />
-          <Tile to="/m/meetings" title="Feedback by meeting" sub="Everything from one evening, in one place" n={d.meetings} />
-          <Tile to="/m/role/gram" title="Grammar notes" sub="From the Grammarian" n={d.gram.count} />
-          <Tile to="/m/role/ah" title="Filler words" sub="From the Ah Counter" n={d.ah.count} />
-          <Tile to="/m/role/time" title="Timing" sub="From the Timer" n={d.time.count} />
-        </Sect></div>
-
-        {d.given > 0 && (
-          <div className="mb-card"><Sect title="Feedback you have given">
-            <Tile to="/m/given" title="Your role sheets" sub="The notes you wrote as Grammarian, Evaluator and more" n={d.given} />
-          </Sect></div>
+        {!d.upcoming.length && d.next_meeting && (
+          <p className="mr-foot">Our next meeting is {fmtDate(d.next_meeting.date, { weekday: 'long', day: 'numeric', month: 'long' })}. You do not have a role yet.</p>
         )}
-
         {guest && <div className="mb-card"><div className="mb-sec"><JoinAsk data={{ me: d.person }} endpoint="/me/join-request" /></div></div>}
       </div>
     </MPage>
@@ -164,6 +145,7 @@ export function Meetings() {
         {!data.length && <p className="mb-empty">Nothing yet. After your first meeting, it appears here.</p>}
         {data.map((m) => (
           <Link key={m.id} className="mb-row" to={`/m/meetings/${m.number}`}>
+            <span className="ev-d"><small>{fmtDate(m.date, { month: 'short' })}</small><b>{fmtDate(m.date, { day: 'numeric' })}</b></span>
             <span className="tt"><b>{shortDate(m.date)}</b><span>Meeting {m.number}{m.theme ? ` · ${m.theme}` : ''}</span>
               <span className="chips">{m.roles.map((r) => <Chip key={r} kind="on">{r}</Chip>)}{m.items.filter((i) => i !== 'role').map((i) => <Chip key={i}>{ITEM_TEXT[i]}</Chip>)}</span></span>
             <span className="tc">{I.chev}</span>
@@ -276,24 +258,48 @@ export function Evaluations() {
       <div className="mb-card">
       {!data.length && <p className="mb-empty">No speeches yet. Your first one will appear here.</p>}
       {Object.entries(paths).map(([path, levels]) => (
-        <Sect key={path} title={path} hint={`${Object.values(levels).flat().length} ${Object.values(levels).flat().length === 1 ? 'speech' : 'speeches'} so far`}>
+        <section key={path} className="mb-path">
+          <div className="mb-ph"><small>Path</small><b>{path}</b><span>{Object.values(levels).flat().length} {Object.values(levels).flat().length === 1 ? 'speech' : 'speeches'} so far</span></div>
           {Object.keys(levels).sort((a, b) => a - b).map((lv) => (
             <div key={lv}>
-              <div className="mb-lvl">Level {lv}</div>
+              <div className="mb-lvl"><span>Level {lv}</span><em>{levels[lv].length} {levels[lv].length === 1 ? 'speech' : 'speeches'}</em></div>
               <div>
                 {levels[lv].map((e) => (
                   <Link key={e.id} className="mb-row" to={`/m/speeches/${e.id}`}>
-                    <span className="tt"><b>{e.project}</b><span>“{e.title}” · {longDate(e.date)}</span><span>Evaluated by {e.by}</span></span>
-                    <span className="bn" title="Average out of 5">{mean(e.ratings.filter(Boolean)).toFixed(1)}</span><span className="tc">{I.chev}</span>
+                    <span className="ev-d"><small>{fmtDate(e.date, { month: 'short' })}</small><b>{fmtDate(e.date, { day: 'numeric' })}</b></span>
+                    <span className="tt"><b>{e.project}</b><span className="ev-ti">“{e.title}”</span><span>Evaluated by {e.by} · {fmtDate(e.date, { year: 'numeric' })}</span></span>
+                    {(() => { const m = mean(e.ratings.filter(Boolean)); return <span className={'bn scr ' + (m >= 4 ? 'hi' : m >= 3 ? 'mid' : 'lo')} title="Average out of 5">{m.toFixed(1)}</span>; })()}<span className="tc">{I.chev}</span>
                   </Link>
                 ))}
               </div>
             </div>
           ))}
-        </Sect>
+        </section>
       ))}
       </div>
     </MPage>
+  );
+}
+
+/* fillers per speech as bars, oldest to newest; the latest one is highlighted */
+function FillerChart({ pts }) {
+  const max = Math.max(...pts.map((x) => x.n), 1);
+  const avg = Math.round((pts.reduce((a, x) => a + x.n, 0) / pts.length) * 10) / 10;
+  const last = pts[pts.length - 1].n, prev = pts[pts.length - 2].n;
+  const trend = last < prev ? 'Down from last time' : last > prev ? 'Up from last time' : 'Same as last time';
+  return (
+    <div className="mb-trend fc">
+      <small>Fillers per speech</small>
+      <div className="fc-top"><b>{last}</b><span>latest · {trend.toLowerCase()}</span><span className="fc-avg">Average {avg}</span></div>
+      <div className="fc-bars" role="img" aria-label={`Fillers per speech, oldest to newest: ${pts.map((x) => x.n).join(', ')}`}>
+        {pts.map((x, i) => (
+          <div key={i} className={'fc-c' + (i === pts.length - 1 ? ' now' : '')} title={`${fmtDate(x.date, { day: 'numeric', month: 'short' })}: ${x.n}`}>
+            <em>{x.n}</em><i style={{ height: `${Math.max(6, (x.n / max) * 100)}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="fc-ax"><span>{fmtDate(pts[0].date, { day: 'numeric', month: 'short' })}</span><span>{fmtDate(pts[pts.length - 1].date, { day: 'numeric', month: 'short' })}</span></div>
+    </div>
   );
 }
 
@@ -305,11 +311,11 @@ export function FuncHistory() {
   if (!F) return <MPage eyebrow="Feedback" title="Not found" back="/m"><ErrorMsg error={{ message: 'Not found' }} /></MPage>;
   if (loading) return <MSk back="/m" />;
   if (error) return <MPage eyebrow="Feedback" title={F.name} back="/m"><ErrorMsg error={error} /></MPage>;
-  const trend = key === 'ah' && data.length > 1 && [...data].reverse().map((r) => sum(r.counts)).join(' → ');
+  const pts = key === 'ah' && data.length > 1 ? [...data].reverse().map((r) => ({ n: sum(r.counts), date: r.date })) : null;
   return (
     <MPage eyebrow="Feedback" title={F.name} sub={F.lede} back="/m">
       <div className="mb-card">
-      {trend && <div className="mb-trend"><small>Fillers per speech, oldest to newest</small><b>{trend}</b></div>}
+      {pts && <FillerChart pts={pts} />}
       {!data.length && <p className="mb-empty">Nothing here yet.</p>}
       <div className="mb-list">
         {data.map((r, i) => (

@@ -813,17 +813,17 @@ async function addPlan(req, res, person) {
   await q('insert into speech_plans(club_id, person_id, project_id, title, date, venue) values ($1,$2,$3,$4,$5,$6)', [person.club_id, person.id, pid, title, date, venue]);
   res.json({ ok: true });
 }
-app.post('/api/me/plans', needPerson, wrap(async (req, res) => addPlan(req, res, req.person)));
+app.post('/api/me/plans', needPerson, needVpe, wrap(async (req, res) => addPlan(req, res, req.person)));
 app.post('/api/vpe/people/:id/plans', needPerson, needVpe, wrap(async (req, res) => {
   const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
   p ? addPlan(req, res, p) : bad(res, 'Not found', 404);
 }));
-app.delete('/api/me/plans/:id', needPerson, wrap(async (req, res) => {
+app.delete('/api/me/plans/:id', needPerson, needVpe, wrap(async (req, res) => {
   const r = await q(`delete from speech_plans where id=$1 and club_id=$2 and (person_id=$3 or $4) returning id`, [req.params.id, req.person.club_id, req.person.id, !!req.person.is_vpe]);
   r.length ? res.json({ ok: true }) : bad(res, 'Not found', 404);
 }));
 /* change a planned speech: any of date, project, title, venue. A VPE can change anyone's, a member their own. */
-app.patch('/api/me/plans/:id', needPerson, wrap(async (req, res) => {
+app.patch('/api/me/plans/:id', needPerson, needVpe, wrap(async (req, res) => {
   const [s] = await q('select * from speech_plans where id=$1 and club_id=$2 and (person_id=$3 or $4)', [req.params.id, req.person.club_id, req.person.id, !!req.person.is_vpe]);
   if (!s) return bad(res, 'Not found', 404);
   if (s.done) return bad(res, 'Undo done before changing this speech');

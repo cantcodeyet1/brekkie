@@ -57,6 +57,7 @@ const signOut = (nav) => () => { setToken(null); nav('/'); };
 function MemberArea() {
   const nav = useNavigate();
   const [acct, setAcct] = useState(false);
+  const acc = useApi('/account');
   const { data } = useSession();
   if (!data) return <Loading />;
   return (
@@ -72,7 +73,7 @@ function MemberArea() {
         <Route path="room" element={<Room />} />
         <Route path="evaluations" element={<Navigate to="/m/speeches" replace />} />
       </Routes>
-      {acct && <AccountModal onClose={() => setAcct(false)} />}
+      {acct && <AccountModal account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }
@@ -80,6 +81,7 @@ function MemberArea() {
 function VpeArea() {
   const nav = useNavigate();
   const [acct, setAcct] = useState(false);
+  const acc = useApi('/account');
   const { data } = useSession();
   if (!data) return <Loading />;
   if (data.type !== 'vpe') return <Navigate to="/m" replace />;
@@ -97,7 +99,7 @@ function VpeArea() {
         <Route path="members/:id" element={<VpePerson />} />
         <Route path="evaluations/:id" element={<EvaluationDetail vpe />} />
       </Routes>
-      {acct && <AccountModal onClose={() => setAcct(false)} />}
+      {acct && <AccountModal showPath account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }
