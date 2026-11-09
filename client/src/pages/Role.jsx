@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, longDate, mmss, secs, sum } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
-import { Btn, Chip, ErrorMsg, Foot, I, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
+import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
 
 /* ───────── helpers ───────── */
 const fill = (t, v) => t.split(/(\{\w\})/).map((p, i) => { const m = /^\{(\w)\}$/.exec(p); return m ? <em key={i}>{v[m[1]] || '…'}</em> : p; });
@@ -98,7 +98,7 @@ function RoleBody({ data, token }) {
   const key = data.role.key, meta = ROLE_META[key];
   const [view, setView] = useState('land');
   const desk0 = useDesk();
-  const [mode, setMode] = useState(desk0 ? 'notes' : 'script');
+  const [mode, setMode] = useState('script');
   const [people, setPeople] = useState(data.people);
   const [sheet, setSheet] = useState(() => initSheet(data));
   const [save, setSave] = useState('');
@@ -198,16 +198,24 @@ function RoleBody({ data, token }) {
   );
 
   return (
-    <Page title={meta.name} narrow={!desk} wide={desk} onBack={() => setView('land')} foot={<Foot><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></Foot>}>
-      <h1 className="pg sm">{meta.name}</h1>
-      <div className="meta"><span>{data.me?.name}</span><span>Meeting {data.meeting.number} · {longDate(data.meeting.date)}</span></div>
+    <Page title={desk ? 'Back' : meta.name} narrow={!desk} wide={desk} onBack={() => setView('land')} foot={desk ? undefined : <Foot><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></Foot>}>
+      <div className="rhd">
+      <div className="rhd-t"><h1 className="pg sm">{meta.name}</h1>
+      <div className="meta mchips"><span>{data.me?.name}</span><span>Meeting {data.meeting.number}</span><span>{longDate(data.meeting.date)}</span></div></div>
       {(
         <div className="modebar">
           <div className="modes" role="tablist" aria-label="View">
-            {(desk ? [['notes', 'Script and notes'], ['report', 'Report']] : [['script', 'Script'], ['notes', 'Notes'], ['report', 'Report']]).map(([k, l]) => <button type="button" role="tab" aria-selected={mode === k} key={k} className={mode === k ? 'on' : ''} onClick={() => { setMode(k); document.querySelector('.scroll')?.scrollTo({ top: 0 }); }}>{l}</button>)}
+            {[['script', 'Script'], ['notes', 'Notes'], ['report', 'Report']].map(([k, l]) => <button type="button" role="tab" aria-selected={mode === k} key={k} className={mode === k ? 'on' : ''} onClick={() => { setMode(k); document.querySelector('.scroll')?.scrollTo({ top: 0 }); }}>{l}</button>)}
           </div>
         </div>
       )}
+      {desk && key === 'grammarian' && mode === 'notes' && data.meeting.word && (
+        <button type="button" className="wod-pin" onClick={() => { setMode('script'); document.querySelector('.scroll')?.scrollTo({ top: 0 }); }} title="Open the script">
+          <small>Word of the day</small><b>{data.meeting.word}</b>{I.chev}
+        </button>
+      )}
+      {desk && <div className="rhd-go"><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></div>}
+      </div>
       <div className="swipe" onTouchStart={swipe.start} onTouchEnd={swipe.end}><Sheet {...ctx} /></div>
       {mode === 'report' && <div style={{ marginTop: 14 }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>}
       {err && <p className="err">{err}</p>}
@@ -222,7 +230,6 @@ function RoleBody({ data, token }) {
 }
 
 /* ───────── shared bits ───────── */
-function Split({ side: refCol, form, wide }) { return <div className={'split ' + (wide ? 'wide' : '')}><aside className="ref">{refCol}</aside><div className="formcol">{form}</div></div>; }
 function Script({ k, vars }) {
   const desk = useDesk();
   const [open, setOpen] = useState(null);
@@ -239,8 +246,7 @@ function Modes({ mode, script, form, report }) {
   const desk = useDesk();
   if (mode === 'report') return report;
   // on a computer the script sits beside the notes, so you can read and write at once
-  if (desk) return <Split wide side={script} form={form} />;
-  return mode === 'script' ? script : form;
+  return mode === 'script' ? <div className="solo">{script}</div> : <div className="solo">{form}</div>;
 }
 function ScriptDoc({ k, vars, before }) {
   return (
@@ -260,8 +266,8 @@ const joinNames = (a) => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') 
 const Rep = ({ title, sub, children }) => <div className="rep"><div className="rep-h"><b>{title}</b>{sub && <span>{sub}</span>}</div>{children}</div>;
 const RepLine = ({ label, kind, children }) => children ? <p className="rep-l"><span className={kind || ''}>{label}</span>{children}</p> : null;
 const RepEmpty = ({ children }) => <div className="rep-empty">{children || 'Nothing noted yet. Fill in your notes first and they will appear here.'}</div>;
-function Block({ i, n, onRemove, children, label = 'PERSON' }) {
-  return <div className="blk"><div className="blk-h"><span className="no">{label} {i + 1}</span>{n > 1 && <button type="button" className="x" onClick={onRemove} aria-label="Remove">{I.close}</button>}</div>{children}</div>;
+function Block({ i, n, onRemove, children, label = 'PERSON', id }) {
+  return <div className="blk" id={id}><div className="blk-h"><span className="no">{label} {i + 1}</span>{n > 1 && <button type="button" className="x" onClick={onRemove} aria-label="Remove">{I.close}</button>}</div>{children}</div>;
 }
 const AddRow = ({ onClick, children }) => <button type="button" className="addrow" onClick={onClick}>{I.plus} {children}</button>;
 const rowsApi = (setSheet, key = 'rows') => ({
@@ -279,10 +285,88 @@ const TA = ({ label, kind = '', value, onChange, placeholder, min }) => (
   <><label className={'fl ' + kind}>{label}</label><Grow min={min} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></>
 );
 const DlBtn = ({ href, onClick, title, sub }) => {
-  const inner = <><span className="ic">{I.dl}</span><span className="tx"><b>{title}</b>{sub && <small>{sub}</small>}</span><span className="go">{I.chev}</span></>;
+  const inner = <><span className="ic">{I.dl}</span><span className="tx"><b>{title}</b>{sub && <small>{sub}</small>}</span></>;
   return href ? <a className="dlbtn" href={href} target="_blank" rel="noreferrer">{inner}</a> : <button type="button" className="dlbtn" onClick={onClick}>{inner}</button>;
 };
 const subjectName = (people, id) => people.find((p) => p.id === id)?.name || '';
+
+
+/* ───────── find or add a person, and jump to their notes ───────── */
+const blkId = (id) => 'blk-' + id;
+function jumpTo(id) {
+  const el = document.getElementById(blkId(id));
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+/* one person, one block: picking someone already on the sheet jumps to their notes instead of adding them twice */
+function usePickPerson(sheet, setSheet, blank) {
+  return (id) => {
+    if (sheet.rows.some((r) => r.subject_id === id)) { jumpTo(id); return; }
+    setSheet((x) => {
+      const i = x.rows.findIndex((r) => !r.subject_id);
+      return i >= 0 ? { ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, subject_id: id } : r)) } : { ...x, rows: [...x.rows, { subject_id: id, ...blank }] };
+    });
+    setTimeout(() => jumpTo(id), 140);
+  };
+}
+function PersonFinder({ people, rows, onPick, onAddGuest }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const [act, setAct] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const taken = new Set(rows.map((r) => r.subject_id).filter(Boolean));
+  const term = q.trim().toLowerCase();
+  const list = [...people].filter((p) => !term || p.name.toLowerCase().includes(term))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const canAdd = !!onAddGuest && term.length >= 2 && !people.some((p) => p.name.toLowerCase() === term) && (!list.length || /\s/.test(term));
+  const total = list.length + (canAdd ? 1 : 0);
+  const close = () => { setOpen(false); setQ(''); setAct(0); setErr(''); };
+  const choose = async (i) => {
+    if (i < list.length) { onPick(list[i].id); close(); return; }
+    if (!canAdd) return;
+    setBusy(true); setErr('');
+    try { const g = await onAddGuest(q.trim()); onPick(g.id); close(); } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const key = (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setAct((a) => Math.min(total - 1, a + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setAct((a) => Math.max(0, a - 1)); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (total) choose(Math.min(act, total - 1)); }
+    else if (e.key === 'Escape') close();
+  };
+  const added = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))].map((id) => people.find((p) => p.id === id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  return (
+    <div className="pfind" data-noswipe>
+      <div className="pf-box">
+        <span className="pf-ic" aria-hidden="true">{I.search || I.plus}</span>
+        <input className="pf-in" value={q} placeholder="Find or add a person" aria-label="Find or add a person" role="combobox" aria-expanded={open} autoComplete="off"
+          onChange={(e) => { setQ(e.target.value); setOpen(true); setAct(0); setErr(''); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(close, 160)} onKeyDown={key} />
+      </div>
+      {open && (
+        <ul className="pf-list" role="listbox">
+          {list.map((p, i) => (
+            <li key={p.id} role="option" aria-selected={act === i} className={act === i ? 'on' : ''} onMouseDown={(e) => { e.preventDefault(); choose(i); }} onMouseEnter={() => setAct(i)}>
+              <Avatar name={p.name} size={28} />
+              <span className="pf-n">{p.name}{p.kind === 'guest' && <i className="pf-v" title="Visitor">V</i>}</span>
+              <em>{taken.has(p.id) ? 'Go to notes' : 'Add'}</em>
+            </li>
+          ))}
+          {canAdd && <li role="option" aria-selected={act === list.length} className={'pf-add' + (act === list.length ? ' on' : '')} onMouseDown={(e) => { e.preventDefault(); choose(list.length); }} onMouseEnter={() => setAct(list.length)}>
+            <span className="pf-plus">{I.plus}</span><span className="pf-n">{busy ? 'Adding…' : `Add “${q.trim()}” as a visitor`}</span>
+          </li>}
+          {!total && <li className="pf-none">No one found</li>}
+        </ul>
+      )}
+      {err && <p className="err">{err}</p>}
+      {added.length > 0 && (
+        <div className="pf-chips" aria-label="People on this sheet">
+          {added.map((p) => <button type="button" key={p.id} className="pf-chip" onClick={() => jumpTo(p.id)}>{p.name}</button>)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ───────── Grammarian ───────── */
 function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
@@ -292,6 +376,7 @@ function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
   const setFix = (i, k, patch) => setSheet((x) => writeFixes(x, i, fixesOf(x.rows[i]).map((f, n) => (n === k ? { ...f, ...patch } : f))));
   const addFix = (i) => setSheet((x) => writeFixes(x, i, [...fixesOf(x.rows[i]), { improper: '', suggestion: '' }]));
   const delFix = (i, k) => setSheet((x) => writeFixes(x, i, fixesOf(x.rows[i]).filter((_, n) => n !== k)));
+  const pick = usePickPerson(sheet, setSheet, { used: false, uses: 0, liked: '', improper: '', suggestion: '' });
   const bump = (i, d) => setSheet((x) => ({ ...x, rows: x.rows.map((r, j) => { if (j !== i) return r; const n = Math.max(0, (r.uses || 0) + d); return { ...r, uses: n, used: n > 0 }; }) }));
   return (
     <Modes mode={mode}
@@ -299,9 +384,10 @@ function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
       report={<GramReport m={m} rows={sheet.rows} people={people} />}
       form={<>
         <div className="lab" style={{ marginTop: 4 }}>Notes by person</div>
+        <PersonFinder people={people} rows={sheet.rows} onPick={pick} onAddGuest={addGuest} />
         {sheet.rows.map((r, i) => (
-          <Block key={i} i={i} n={sheet.rows.length} onRemove={() => del(i)}>
-            <PersonSelect value={r.subject_id} onChange={(v) => upd(i, { subject_id: v })} people={people} onAddGuest={addGuest} />
+          <Block key={i} id={r.subject_id ? blkId(r.subject_id) : undefined} i={i} n={sheet.rows.length} onRemove={() => del(i)}>
+            <PersonSelect value={r.subject_id} onChange={(v) => upd(i, { subject_id: v })} people={people} onAddGuest={addGuest} exclude={sheet.rows.map((x) => x.subject_id).filter((v) => v && v !== r.subject_id)} />
             <div className="wcount" data-noswipe>
               <span>Times they used the word of the day</span>
               <div className="stp"><button type="button" onClick={() => bump(i, -1)} aria-label="One fewer">{I.minus}</button><b>{r.uses || 0}</b><button type="button" onClick={() => bump(i, 1)} aria-label="One more">{I.plus}</button></div>
@@ -322,7 +408,6 @@ function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
             <button type="button" className="addrow" onClick={() => addFix(i)}>{I.plus} Add an improper use</button>
           </Block>
         ))}
-        <AddRow onClick={() => add({ subject_id: null, used: false, uses: 0, liked: '', improper: '', suggestion: '' })}>Add another person</AddRow>
       </>} />
   );
 }
@@ -338,6 +423,7 @@ function AhSheet({ sheet, setSheet, people, addGuest, mode }) {
     if (l) { const k = l.toLowerCase(); setSheet((s) => (s.fillers.some((f) => f.k === k) ? s : { ...s, fillers: [...s.fillers, { k, l, custom: true }] })); }
     setAdding(false); setWord('');
   };
+  const pick = usePickPerson(sheet, setSheet, { counts: {}, comment: '' });
   const inc = (i, k, d) => setSheet((s) => ({ ...s, rows: s.rows.map((r, j) => (j === i ? { ...r, counts: { ...r.counts, [k]: Math.max(0, (r.counts[k] || 0) + d) } } : r)) }));
   return (
     <Modes mode={mode}
@@ -353,9 +439,10 @@ function AhSheet({ sheet, setSheet, people, addGuest, mode }) {
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 13.5, color: 'var(--mute)' }}>Heard something that isn’t listed? Add it and it appears for everyone you’re counting.</p>
         <div className="lab">Count by person</div>
+        <PersonFinder people={people} rows={sheet.rows} onPick={pick} onAddGuest={addGuest} />
         {sheet.rows.map((r, i) => (
-          <Block key={i} i={i} n={sheet.rows.length} onRemove={() => del(i)}>
-            <PersonSelect value={r.subject_id} onChange={(v) => upd(i, { subject_id: v })} people={people} onAddGuest={addGuest} />
+          <Block key={i} id={r.subject_id ? blkId(r.subject_id) : undefined} i={i} n={sheet.rows.length} onRemove={() => del(i)}>
+            <PersonSelect value={r.subject_id} onChange={(v) => upd(i, { subject_id: v })} people={people} onAddGuest={addGuest} exclude={sheet.rows.map((x) => x.subject_id).filter((v) => v && v !== r.subject_id)} />
             <div className="cnts">
               {sheet.fillers.map(({ k, l }) => (
                 <div className={'cnt ' + (r.counts[k] ? '' : 'z')} key={k}><small>{l}</small><b>{r.counts[k] || 0}</b>
@@ -366,7 +453,6 @@ function AhSheet({ sheet, setSheet, people, addGuest, mode }) {
             <TA label="Comment" value={r.comment} onChange={(v) => upd(i, { comment: v })} placeholder={`Anything to tell ${subjectName(people, r.subject_id) || 'them'}? (optional)`} />
           </Block>
         ))}
-        <AddRow onClick={() => add({ subject_id: null, counts: {}, comment: '' })}>Add another person</AddRow>
       </>} />
   );
 }

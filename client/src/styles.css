@@ -1042,8 +1042,6 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
 .steps li.is-now{color:#fff}.steps li.is-now i{background:var(--yellow);border-color:var(--yellow);color:var(--blue)}
 .steps li.is-done{color:rgba(255,255,255,.88)}.steps li.is-done i{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
 .steps li i svg{width:15px;height:15px}
-.wiz .land-hero{padding-bottom:60px}
-.wiz .land-hero{padding-top:clamp(110px,20vh,200px)}
 .sun{display:none}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips .wk{min-width:56px;padding:10px 14px;border-radius:12px;background:#F5F5F7;font-weight:700;font-size:14.5px;text-align:center;border:1px solid transparent;transition:.15s}
@@ -1075,9 +1073,7 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
   /* the blue stays put; the white sheet rises over it and grows upward as its content does */
   .land{display:block;background:#00263d}
   .land-hero{position:sticky;top:0;z-index:0;height:100vh;height:100dvh;min-height:0}
-  .land-panel{display:block;padding:28px 22px calc(44px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;margin-top:-46vh;margin-top:-46dvh;min-height:46vh;min-height:46dvh;position:relative;z-index:3;box-shadow:0 -18px 40px -26px rgba(0,0,0,.4)}
-  .wiz .land-hero{padding-bottom:22px}
-  .wiz .land-panel{margin-top:-52dvh;min-height:52dvh}
+  .land-panel{display:block;padding:28px 22px calc(44px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;margin-top:-52vh;margin-top:-52dvh;min-height:52vh;min-height:52dvh;position:relative;z-index:3;box-shadow:0 -18px 40px -26px rgba(0,0,0,.4)}
   .steps{grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:6px}
   .steps li{flex-direction:column;align-items:flex-start;font-size:12.5px;gap:6px}
   .panel-in .two{grid-template-columns:1fr}
@@ -2704,3 +2700,116 @@ html,body{background:#F5F5F7}
 .side .me-views a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:12px;color:rgba(255,255,255,.88);font:600 14px var(--head);text-decoration:none}
 .side .me-views a:hover{background:rgba(255,255,255,.12);color:#fff}
 .side .me-views a svg{width:18px;height:18px;opacity:.8}
+
+/* switching Sign in / Sign up: the tabs sit in the same place on both pages, and the panel eases in */
+.panel-in{animation:pin .28s ease both}
+@keyframes pin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panel-in>.auth-tabs:first-child{margin:0 0 18px}
+@media (prefers-reduced-motion:reduce){.panel-in{animation:none}}
+@media (min-width:900px){.land-panel{align-items:flex-start;padding-top:clamp(96px,17vh,180px);padding-bottom:60px}}
+
+/* hero text lives in a slot so the blue side stays put when switching Sign in / Sign up */
+.hero-slot{display:contents}
+.hero-slot>*{animation:pin .3s ease both}
+.hero-slot>.notes{animation:none}
+
+/* role links on desktop: the blue fills the whole window, with lighter, easier-to-read type */
+.app:has(.rwel) .screen,.app.desk:not(.topnav-app):has(.rwel) .screen{padding:0!important}
+.app:has(.rwel){background:#00263d}
+.rwel{min-height:100%}
+.rwel h1{font-weight:700;font-size:clamp(32px,4.2vw,50px);line-height:1.12;letter-spacing:-.025em}
+.rwel h1 span{padding:0 4px}
+.rwel .sub{font-size:19px;line-height:1.55;max-width:560px}
+@media (min-width:1100px){
+  .rwel{padding:34px 8vw}
+  .rwel-in{max-width:640px}
+  .rwel .tag{align-self:flex-start;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff}
+}
+
+/* role sheet on a computer: a wide workspace. Title and view switch on one row, script left, notes right */
+.app.desk .in.wide:has(.rhd):not(.full){max-width:1320px;padding:22px 40px 40px;margin-top:10px}
+.rhd{display:block}
+.app.desk .rhd{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:6px 0 18px;border-bottom:1px solid var(--hair);margin-bottom:26px}
+.app.desk .rhd h1.pg{font-size:32px;margin:0 0 4px}
+.app.desk .rhd .meta{margin:0;font-size:14.5px}
+.app.desk .rhd .modebar{position:static;margin:0;padding:0;background:none;box-shadow:none;flex:none;width:300px}
+.app.desk .rhd .modebar .modes{max-width:none}
+.app.desk .in:has(.rhd) .split.wide{grid-template-columns:minmax(340px,440px) minmax(0,1fr);gap:48px}
+.app.desk .in:has(.rhd) .split.wide .ref{top:12px;max-height:calc(100dvh - 250px);padding:0 10px 0 0}
+.app.desk .in:has(.rhd) .formcol{max-width:760px}
+.app.desk .in:has(.rhd)>.top .ttl{color:var(--mute);font-weight:600}
+
+/* the bar at the bottom of a role sheet: slim on a computer, so the notes get the room */
+.app.desk .foot{padding:8px 44px!important;min-height:0;gap:16px;align-items:center}
+.app.desk .foot .btn{height:44px;min-height:44px;min-width:0;padding:0 26px;font-size:15.5px;border-radius:999px}
+.app.desk .foot .saving{font-size:13.5px}
+
+/* role sheet on a computer, no card: the page itself is the workspace, edge to edge */
+.app.desk:has(.rhd),.app.desk:has(.rhd) .main,.app.desk:has(.rhd) .scroll{background:#fff}
+.app.desk .in.wide:has(.rhd):not(.full){max-width:none;margin:0;padding:6px 56px 40px;border-radius:0;box-shadow:none;background:transparent}
+.app.desk:has(.rhd) .hdr-r{padding:22px 56px 0}
+.app.desk .in:has(.rhd)>.top{padding:8px 0 0}
+.app.desk .rhd{padding:4px 0 20px;margin-bottom:0}
+.app.desk .in:has(.rhd) .split.wide{grid-template-columns:minmax(360px,460px) minmax(0,1fr);gap:0;align-items:stretch}
+.app.desk .in:has(.rhd) .split.wide .ref{position:sticky;top:0;max-height:calc(100dvh - 215px);margin:0;padding:26px 36px 26px 0;border-right:1px solid var(--hair)}
+.app.desk .in:has(.rhd) .formcol{max-width:860px;padding:22px 0 0 40px}
+.app.desk:has(.rhd) .scroll{padding-left:0;padding-right:0}
+
+/* role sheet on a computer: four views, and the submit button sits at the top beside them */
+.app.desk .rhd{flex-wrap:wrap}
+.app.desk .rhd .modebar{width:440px}
+.app.desk .rhd-go{display:flex;align-items:center;gap:14px;flex:none}
+.app.desk .rhd-go .btn{width:auto;height:44px;min-height:44px;padding:0 26px;font-size:15.5px;border-radius:999px;min-width:0}
+.app.desk .rhd-go .saving{font-size:13.5px;color:var(--mute);min-width:56px;text-align:right}
+.app.desk .rhd-t{flex:1 1 auto;min-width:0}
+.app.desk .solo{max-width:820px;padding-top:22px}
+
+/* role sheet on a computer: one view at a time, in a centred column */
+.app.desk .in.wide:has(.rhd):not(.full){max-width:920px;margin:0 auto;padding:6px 24px 48px}
+.app.desk .rhd .modebar{width:340px}
+.app.desk .solo{max-width:none;margin:0 auto;padding-top:26px}
+
+/* the submit button floats at the bottom right on a computer, with the save status beside it */
+.app.desk .rhd-go{position:fixed;right:36px;bottom:26px;z-index:20;padding:8px 8px 8px 18px;border-radius:999px;background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(180%) blur(14px);backdrop-filter:saturate(180%) blur(14px);box-shadow:0 10px 30px -8px rgba(0,38,61,.35),0 0 0 1px rgba(0,0,0,.06)}
+.app.desk .rhd-go .saving{min-width:0}
+.app.desk .rhd-go .saving:empty{display:none}
+.app.desk .solo{padding-bottom:110px}
+.app.desk .rhd{justify-content:space-between}
+.app.desk .rhd .modebar{margin-left:auto}
+
+/* floating button: no white frame around it; the word of the day is pinned bottom left on the notes view */
+.app.desk .rhd-go{padding:0;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;gap:10px}
+.app.desk .rhd-go .btn{box-shadow:0 10px 26px -8px rgba(0,38,61,.55)}
+.app.desk .rhd-go .saving{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 0 0 1px rgba(0,0,0,.06);font-size:13px}
+.wod-pin{position:fixed;left:36px;bottom:26px;z-index:20;display:flex;align-items:center;gap:10px;height:44px;padding:0 14px 0 18px;border-radius:999px;background:#fff;box-shadow:0 10px 26px -10px rgba(0,38,61,.4),0 0 0 1px rgba(0,0,0,.06);color:var(--ink);cursor:pointer;transition:transform .15s}
+.wod-pin:hover{transform:translateY(-1px)}
+.wod-pin small{font:700 11px var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.wod-pin b{font:800 16px var(--head);color:var(--blue);background:linear-gradient(transparent 62%,rgba(242,223,116,.9) 62%);padding:0 2px}
+.wod-pin svg{width:16px;height:16px;color:var(--mute)}
+
+/* find or add a person: one search, no duplicates, jump to their notes */
+.pfind{position:relative;margin:2px 0 14px}
+.pf-box{display:flex;align-items:center;gap:10px;height:50px;padding:0 16px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--hair),0 1px 2px rgba(0,0,0,.04);transition:box-shadow .15s}
+.pf-box:focus-within{box-shadow:0 0 0 2px var(--blue)}
+.pf-ic{display:grid;place-items:center;color:var(--mute)}.pf-ic svg{width:18px;height:18px}
+.pf-in{flex:1;min-width:0;border:0;outline:0;background:transparent;font:500 16px var(--body);color:var(--ink)}
+.pf-list{position:absolute;z-index:30;left:0;right:0;top:56px;margin:0;padding:6px;list-style:none;max-height:320px;overflow:auto;border-radius:20px;background:#fff;box-shadow:0 18px 44px -12px rgba(0,38,61,.35),0 0 0 1px rgba(0,0,0,.06)}
+.pf-list li{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:14px;cursor:pointer}
+.pf-list li.on{background:#F1F5F8}
+.pf-n{flex:1;min-width:0;font:600 15px var(--head);display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-list em{font:600 12.5px var(--body);font-style:normal;color:var(--mute)}
+.pf-list li.on em{color:var(--blue)}
+.pf-v{font:700 10px var(--head);font-style:normal;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;background:var(--yellow,#F2DF74);color:var(--blue)}
+.pf-plus{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#E8F1F6;color:var(--blue)}.pf-plus svg{width:15px;height:15px}
+.pf-none{color:var(--mute);font-size:14.5px;cursor:default!important}
+.pf-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pf-chip{height:32px;padding:0 14px;border-radius:999px;background:#E8F1F6;color:var(--blue);font:600 13.5px var(--head);cursor:pointer;transition:background .15s}
+.pf-chip:hover{background:#D6E7F0}
+.blk{scroll-margin-top:18px}
+.blk.flash{animation:blkflash 1.2s ease}
+@keyframes blkflash{0%,60%{box-shadow:0 0 0 3px rgba(242,223,116,.95)}100%{box-shadow:0 0 0 3px rgba(242,223,116,0)}}
+
+/* the line under a role title: name, meeting and date as chips */
+.mchips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0!important}
+.mchips span{display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:999px;background:#E8F1F6;color:var(--blue);font:600 13.5px var(--head)}
+.mchips span:first-child{background:var(--blue);color:#fff}

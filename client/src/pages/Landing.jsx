@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
 import { Btn, Loading, Seg, Wordmark } from '../ui.jsx';
+import { HeroText } from './AuthFrame.jsx';
 import { VPE_WHATSAPP } from './Role.jsx';
 
 export const PW_MIN = 6;
@@ -67,11 +68,13 @@ export function Hero({ children }) {
   );
 }
 
+let LANDING_SEEN = null; // demo accounts from the first visit, so switching Sign in / Sign up does not reload
+
 export default function Landing({ force }) {
   const nav = useNavigate();
   const [tab, setTab] = useState('in');
-  const [checking, setChecking] = useState(true);
-  const [demo, setDemo] = useState(null);
+  const [checking, setChecking] = useState(!(force && LANDING_SEEN));
+  const [demo, setDemo] = useState(force && LANDING_SEEN ? LANDING_SEEN.demo : null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState({ name: '', email: '', password: '', again: '', code: '' });
@@ -91,9 +94,12 @@ export default function Landing({ force }) {
   };
 
   useEffect(() => {
+    if (force && LANDING_SEEN) return undefined;
     (async () => {
       if (!force) { try { const s = await api('/session'); nav(s.type === 'vpe' ? '/v' : '/m', { replace: true }); return; } catch { setToken(null); } }
-      try { setDemo(await api('/dev/accounts')); } catch { /* demo mode off */ }
+      let d = null;
+      try { d = await api('/dev/accounts'); setDemo(d); } catch { /* demo mode off */ }
+      LANDING_SEEN = { demo: d };
       setChecking(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,11 +115,18 @@ export default function Landing({ force }) {
   if (checking) return <Loading />;
   const ready = f.email.trim() && f.password;
   return (
-    <div className="land">
-      <Hero>
+    <>
+      <HeroText>
         <h1>Feedback is the <span>breakfast</span> of Champions.</h1>
         <p className="sub">Where good meetings turn into better speakers. Rosters, feedback and progress for your Toastmasters club.</p>
-      </Hero>
+        <div className="notes" aria-hidden="true">
+          {NOTES.map(([who, text, ch], i) => (
+            <div className="lnote" key={who + i} style={{ '--i': i }}>
+              <i>{ch}</i><div><b>{who}</b><span>{text}</span></div>
+            </div>
+          ))}
+        </div>
+      </HeroText>
       <section className="land-panel">
         <div className="panel-in">
           {choose ? (
@@ -124,8 +137,8 @@ export default function Landing({ force }) {
             </>
           ) : (
             <>
-              <h2>Welcome back.</h2>
               <Seg className="auth-tabs" value="in" onChange={(v) => v === 'up' && nav('/start/club')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />
+              <h2>Welcome back.</h2>
               <label className="fl" htmlFor="l-email">Email</label>
               <input id="l-email" className="inp" type="email" value={f.email} onChange={set('email')} autoComplete="email" placeholder="you@example.com" />
               <label className="fl" htmlFor="l-pw">Password</label>
@@ -153,6 +166,6 @@ export default function Landing({ force }) {
           )}
         </div>
       </section>
-    </div>
+    </>
   );
 }

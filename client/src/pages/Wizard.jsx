@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
 import { PwPair, pwGood } from './Landing.jsx';
+import { HeroText } from './AuthFrame.jsx';
 import RosterImport from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
 import { Btn, DatePick, I, Select, Seg, Wordmark, copyText, useToast } from '../ui.jsx';
@@ -96,14 +97,13 @@ export default function Wizard() {
 
   const link = done ? `${window.location.origin}/join/${done.join_code}` : '';
   return (
-    <div className="land wiz">
-      <section className="land-hero">
-        <Wordmark className="wm-light" />
+    <>
+      <HeroText>
         <h1>Let us get your club <span>started</span>.</h1>
         <ol className="steps" aria-label="Progress">
           {STEPS.map((s, i) => <li key={s} className={done || i < step ? 'is-done' : i === step ? 'is-now' : ''}><i>{done || i < step ? I.check : i + 1}</i>{s}</li>)}
         </ol>
-      </section>
+      </HeroText>
       <section className="land-panel">
         {done ? (
           <div className="panel-in">
@@ -118,10 +118,10 @@ export default function Wizard() {
           </div>
         ) : (
           <div className="panel-in">
+            {step === 0 && <Seg className="auth-tabs" value="up" onChange={(v) => v === 'in' && nav('/start')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />}
             <p className="kick">Step {step + 1} of {STEPS.length}</p>
             {step === 0 && (
               <>
-                <Seg className="auth-tabs" value="up" onChange={(v) => v === 'in' && nav('/start')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />
                 <h2>First, you.</h2>
                 <p className="lede">You will be the VPE. Your email and password are how you sign in.</p>
                 <label className="fl" htmlFor="w-name">Your name</label>
@@ -179,6 +179,6 @@ export default function Wizard() {
           </div>
         )}
       </section>
-    </div>
+    </>
   );
 }

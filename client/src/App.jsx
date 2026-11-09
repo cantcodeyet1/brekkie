@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, setToken, useApi } from './api.js';
+import AuthFrame from './pages/AuthFrame.jsx';
 import { I, Loading, Shell } from './ui.jsx';
 import { EvaluationDetail, Evaluations, FuncHistory, Given, MEMBER_NAV, MeetingDetail, Meetings, MemberHome, Room } from './pages/Member.jsx';
 import Feedback from './pages/Feedback.jsx';
@@ -19,9 +20,11 @@ import Admin from './pages/Admin.jsx';
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/start" element={<Landing force />} />
-      <Route path="/start/club" element={<Wizard />} />
+      <Route element={<AuthFrame />}>
+        <Route path="/" element={<Landing />} />
+        <Route path="/start" element={<Landing force />} />
+        <Route path="/start/club" element={<Wizard />} />
+      </Route>
       <Route path="/reset/:token" element={<Reset />} />
       <Route path="/s/:token" element={<Enter />} />
       <Route path="/r/:token" element={<RoleApp />} />
