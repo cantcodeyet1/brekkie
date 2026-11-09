@@ -7,7 +7,7 @@ import { EvaluationDetail, Evaluations, FuncHistory, Given, MEMBER_NAV, MeetingD
 import Feedback from './pages/Feedback.jsx';
 import RoleApp from './pages/Role.jsx';
 import Agenda from './pages/Agenda.jsx';
-import { VPE_NAV, VpeMeeting, VpePeople, VpePerson } from './pages/Vpe.jsx';
+import { ReceivedPage, SubmissionPage, VPE_NAV, VpeMeeting, VpePeople, VpePerson } from './pages/Vpe.jsx';
 import Roster from './pages/Roster.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Calendar from './pages/Calendar.jsx';
@@ -72,6 +72,7 @@ function MemberArea() {
         <Route path="role/:key" element={<FuncHistory />} />
         <Route path="meetings" element={<Meetings />} />
         <Route path="given" element={<Given />} />
+        <Route path="given/:id" element={<SubmissionPage mine />} />
         <Route path="meetings/:number" element={<MeetingDetail />} />
         <Route path="speeches" element={<Evaluations />} />
         <Route path="speeches/:id" element={<EvaluationDetail />} />
@@ -104,6 +105,8 @@ function VpeArea() {
         <Route path="people" element={<Navigate to="/v/members" replace />} />
         <Route path="members/:id" element={<VpePerson />} />
         <Route path="evaluations/:id" element={<EvaluationDetail vpe />} />
+        <Route path="sheets/:id" element={<SubmissionPage />} />
+        <Route path="members/:id/received/:kind" element={<ReceivedPage />} />
       </Routes>
       {acct && <AccountModal showPath portal admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>

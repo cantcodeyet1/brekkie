@@ -1,12 +1,11 @@
 import { JoinAsk } from './Role.jsx';
-import { Link, useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import { EvalSheet, printEval } from '../EvalSheet.jsx';
-import { SubmissionViewer } from './Vpe.jsx';
 import { api } from '../api.js';
-import { Btn, Chip, ErrorMsg, Foot, I, Page, SkPage, SkRows, useDesk, useToast } from '../ui.jsx';
+import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Page, SkPage, SkRows, useDesk, useToast } from '../ui.jsx';
 
 /* The member area is three big, plainly named places: Home, Meetings, Speeches. */
 export const MEMBER_NAV = [];   // no menu: Home is the only hub, every other page has a Back button
@@ -115,7 +114,7 @@ export function MemberHome() {
 /* ───────── what you wrote for other people ───────── */
 export function Given() {
   const { data, error, loading } = useApi('/me/given');
-  const [open, setOpen] = useState(null);
+  const nav = useNavigate();
   if (loading) return <MSk back="/m" />;
   if (error) return <MPage eyebrow="Feedback" title="Given" back="/m"><ErrorMsg error={error} /></MPage>;
   return (
@@ -123,13 +122,12 @@ export function Given() {
       <div className="mb-card">
         {!data.length && <p className="mb-empty">Nothing yet. When you submit a role sheet, it appears here.</p>}
         {data.map((g) => (
-          <button type="button" key={g.id} className="mb-row" onClick={() => setOpen(g.id)}>
+          <button type="button" key={g.id} className="mb-row" onClick={() => nav(`/m/given/${g.id}`)}>
             <span className="tt"><b>{g.label}</b><span>{shortDate(g.date)} · Meeting {g.number}</span><span>{g.summary}</span></span>
             <span className="tc">{I.chev}</span>
           </button>
         ))}
       </div>
-      {open && <SubmissionViewer mine id={open} list={data.map((g) => ({ id: g.id, label: g.label, submitted_at: g.submitted_at }))} onGo={setOpen} onClose={() => setOpen(null)} remind={() => '#'} />}
     </MPage>
   );
 }
@@ -375,19 +373,40 @@ const ratingList = (e) => (
   </div>
 );
 
+/* green when the speech finished inside its time (with 30 seconds of grace), amber when it did not */
+function timeTone(e) {
+  const m = /(\d+)\D+(\d+)/.exec(String(e.length_text || ''));
+  if (!m || e.seconds == null) return '';
+  return e.seconds >= Number(m[1]) * 60 - 30 && e.seconds <= Number(m[2]) * 60 + 30 ? 'ok' : 'warn';
+}
+
 export function EvaluationDetail({ vpe }) {
   const { id } = useParams();
   const desk = useDesk();
   const { data: e, error, loading } = useApi(vpe ? `/vpe/evaluations/${id}` : `/me/evaluations/${id}`);
   const back = vpe ? undefined : '/m/speeches';
-  if (loading) return <Page title={vpe ? 'Evaluation' : 'Speech feedback'} back={back}><SkPage plain rows={6} pill={false} /></Page>;
+  // arriving from a long page: start at the top, so the card does not open already scrolled
+  useEffect(() => { document.querySelector('.scroll')?.scrollTo({ top: 0 }); }, []);
+  // while loading, draw the same two columns the page will have, so nothing moves when the data arrives
+  if (loading) return (
+    <Page title={vpe ? 'Evaluation' : 'Speech feedback'} wide={desk} back={back}>
+      {desk
+        ? <div className="split wide"><div><SkPage plain rows={6} pill={false} /></div><div className="ref"><div className="pdfwrap"><i className="sk1" style={{ display: 'block', width: '100%', height: '100%', minHeight: 300, borderRadius: 12 }} /></div></div></div>
+        : <SkPage plain rows={6} pill={false} />}
+    </Page>
+  );
   if (error) return <Page title={vpe ? 'Evaluation' : 'Speech feedback'} back={back}><ErrorMsg error={error} /></Page>;
   const left = (
     <>
       <h1 className="pg sm">{e.form_title}</h1>
-      <div className="meta"><span>Level {e.level} · {e.path}</span></div>
-      <div className="meta"><span>“<b>{e.title}</b>”</span><span>{longDate(e.date)}</span>{e.seconds != null && <span>Time <b>{mmss(e.seconds)}</b> of {e.length_text.replace(' minutes', ' min')}</span>}</div>
-      <div className="meta"><span>Evaluator <b>{e.by}</b></span></div>
+      <ul className="ev-list">
+        <li><span className="evi">{I.doc}<span>Level {e.level} · {e.path}</span></span></li>
+        <li><span className="evi">{I.mic}<span>“<b>{e.title}</b>”</span></span><span className="evi">{I.cal}<span>{longDate(e.date)}</span></span></li>
+        <li>
+          {e.seconds != null && <span className="evi">{I.clock}<span><b className={'ev-t ' + timeTone(e)}>{mmss(e.seconds)}</b> of {String(e.length_text || '').replace(' minutes', ' min')}</span></span>}
+          <span className="evi">{I.ppl}<span>Evaluator <b>{e.by}</b></span></span>
+        </li>
+      </ul>
       <div className="lab">Ratings</div>{ratingList(e)}
       <div className="lab blue">You excelled at</div><p className="note g" style={{ margin: 0 }}>{e.excelled || 'Nothing recorded'}</p>
       <div className="lab maroon">You may want to work on</div><p className="note m" style={{ margin: 0 }}>{e.work || 'Nothing recorded'}</p>
@@ -395,9 +414,12 @@ export function EvaluationDetail({ vpe }) {
     </>
   );
   return (
-    <Page title={vpe ? 'Evaluation' : 'Speech feedback'} wide={desk} back={back} foot={<Foot col><Btn onClick={() => printEval(e)}>{I.dl} Download evaluation sheet (PDF)</Btn></Foot>}>
+    <Page title={vpe ? 'Evaluation' : 'Speech feedback'} wide={desk} back={back} foot={desk ? undefined : <Foot col><Btn onClick={() => printEval(e)}>{I.dl} Download evaluation sheet (PDF)</Btn></Foot>}>
       {desk
-        ? <div className="split wide"><div>{left}</div><div className="ref"><div className="pdfwrap"><div style={{ zoom: 0.55 }}><EvalSheet e={e} /></div></div></div></div>
+        ? <>
+            <div className="split wide"><div>{left}</div><div className="ref"><div className="pdfwrap"><div style={{ zoom: 0.55 }}><EvalSheet e={e} /></div></div></div></div>
+            <div className="eval-go"><Btn onClick={() => printEval(e)}>{I.dl} Download evaluation sheet (PDF)</Btn></div>
+          </>
         : left}
     </Page>
   );

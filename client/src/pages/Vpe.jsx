@@ -367,18 +367,67 @@ VPE, Champions Toastmasters Club`;
   );
 }
 
-/* read what a role player submitted, and step through everyone's */
-export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
+/* a submitted sheet as a full page: what they wrote on the left, the official form filled in on the right */
+const FORM_ROLES = ['grammarian', 'ah_counter', 'timer', 'topicsmaster', 'general_evaluator'];
+export function SubmissionPage({ mine }) {
+  const { id } = useParams();
+  const desk = useDesk();
   const { data: d, error, loading } = useApi(mine ? `/me/given/${id}` : `/vpe/roles/${id}/submission`);
-  const i = list.findIndex((r) => r.id === id), cur = list[i];
-  const prev = list[i - 1], next = list[i + 1];
-  const Card = ({ children }) => <div className="say">{children}</div>;
+  const [pdf, setPdf] = useState(null);
+  useEffect(() => { document.querySelector('.scroll')?.scrollTo({ top: 0 }); }, []);
+  const hasForm = !!d && FORM_ROLES.includes(d.role.key);
+  useEffect(() => {
+    if (!hasForm) return undefined;
+    let url = null, gone = false;
+    fetch(`/api/${mine ? `me/given/${id}` : `vpe/roles/${id}`}/report.pdf`, { headers: { 'x-token': getToken() } })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('no form'))))
+      .then((b) => { if (gone) return; url = URL.createObjectURL(b); setPdf(url); })
+      .catch(() => { if (!gone) setPdf(''); });
+    return () => { gone = true; if (url) URL.revokeObjectURL(url); };
+  }, [id, mine, hasForm]);
+  const back = mine ? '/m/given' : undefined;
+  const title = d ? d.role.label : 'Feedback';
+  if (error) return <Page title="Feedback" back={back}><ErrorMsg error={error} /></Page>;
+  const preview = (
+    <div className="ref"><div className="pdfwrap">
+      {pdf ? <iframe className="pdfframe" title={`${title} form`} src={`${pdf}#toolbar=0&navpanes=0&view=FitH`} />
+        : <i className="sk1" style={{ display: 'block', width: '100%', height: '100%', minHeight: 300, borderRadius: 12 }} />}
+    </div></div>
+  );
+  if (loading || !d) return (
+    <Page title="Feedback" wide={desk} back={back}>
+      {desk ? <div className="split wide"><div><SkPage plain rows={5} pill={false} /></div>{preview}</div> : <SkPage plain rows={5} pill={false} />}
+    </Page>
+  );
+  const cur = { label: d.role.label, person: d.role.person, submitted_at: d.role.submitted_at };
+  const left = (
+    <>
+      <h1 className="pg sm">{d.role.label}</h1>
+      <ul className="ev-list">
+        {!mine && d.role.person && <li><span className="evi">{I.ppl}<span><b>{d.role.person}</b></span></span></li>}
+        <li><span className="evi">{I.cal}<span>Meeting {d.role.meeting} · {longDate(d.role.date)}</span></span>
+          <span className="evi">{I.doc}<span>{d.role.submitted_at ? `Submitted ${longDate(String(d.role.submitted_at).slice(0, 10))}` : 'Not submitted yet'}</span></span></li>
+      </ul>
+      <SubmissionBody flat d={d} cur={cur} remind={() => '#'} />
+    </>
+  );
+  const download = () => { const a = document.createElement('a'); a.href = pdf; a.download = `${d.role.label.replace(/\s+/g, '-')}.pdf`; document.body.appendChild(a); a.click(); a.remove(); };
+  const dl = hasForm && pdf ? <Btn onClick={download}>{I.dl} Download the form (PDF)</Btn> : null;
   return (
-    <Modal wide title={cur ? (mine ? cur.label : `${cur.label} · ${cur.person}`) : 'Feedback'} onClose={onClose}>
-      <p style={{ margin: '0 0 12px', color: 'var(--mute)', fontSize: 14.5 }}>
-        {cur?.submitted_at ? `Submitted ${longDate(String(cur.submitted_at).slice(0, 10))}` : 'Not submitted yet'}{d?.role ? ` · Meeting ${d.role.meeting}` : ''}
-      </p>
-      <div className="viewer">
+    <Page title="Feedback" wide={desk} back={back}>
+      {desk && hasForm
+        ? <><div className="split wide"><div>{left}</div>{preview}</div>{dl && <div className="eval-go">{dl}</div>}</>
+        : <>{left}{dl && <div style={{ marginTop: 16 }}>{dl}</div>}</>}
+    </Page>
+  );
+}
+
+/* what a role player wrote, laid out by role: used in the pop-up and on the full sheet page */
+const SayCard = ({ children }) => <div className="say">{children}</div>;
+export function SubmissionBody({ d, cur, error, loading, remind, flat }) {
+  const Card = SayCard;
+  return (
+    <div className={'viewer' + (flat ? ' flat' : '')}>
         {loading && <SkRows n={4} avatar />}
         {error && <ErrorMsg error={error} />}
         {d && !cur?.submitted_at && <div className="banner"><b>Waiting on {cur.person}.</b> <a className="lnk" href={remind(cur)} target="_blank" rel="noreferrer">Send a reminder</a>{(d.rows?.length || d.evaluation) ? ' Their draft so far is shown below.' : ''}</div>}
@@ -413,6 +462,20 @@ export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
               {qs.map((q, qi) => <div className="qrow" key={q}><span>{q}</span><span className={'chip ' + (sec.a?.[qi] === 'y' ? 'ok' : sec.a?.[qi] === 'n' ? 'wait' : '')}>{sec.a?.[qi] === 'y' ? 'Yes' : sec.a?.[qi] === 'n' ? 'No' : 'Not answered'}</span></div>)}
               {sec.notes && <div className="note" style={{ marginTop: 6 }}><i>Notes</i>{sec.notes}</div>}</div>); })}</>}
       </div>
+  );
+}
+
+/* read what a role player submitted, and step through everyone's */
+export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
+  const { data: d, error, loading } = useApi(mine ? `/me/given/${id}` : `/vpe/roles/${id}/submission`);
+  const i = list.findIndex((r) => r.id === id), cur = list[i];
+  const prev = list[i - 1], next = list[i + 1];
+  return (
+    <Modal wide title={cur ? (mine ? cur.label : `${cur.label} · ${cur.person}`) : 'Feedback'} onClose={onClose}>
+      <p style={{ margin: '0 0 12px', color: 'var(--mute)', fontSize: 14.5 }}>
+        {cur?.submitted_at ? `Submitted ${longDate(String(cur.submitted_at).slice(0, 10))}` : 'Not submitted yet'}{d?.role ? ` · Meeting ${d.role.meeting}` : ''}
+      </p>
+      <SubmissionBody d={d} cur={cur} error={error} loading={loading} remind={remind} />
       <div className="row-btns" style={{ justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <Btn kind="ghost" sm disabled={!prev} onClick={() => onGo(prev.id)}>{I.back} {prev ? prev.label : 'Previous'}</Btn>
@@ -581,14 +644,43 @@ function AddPerson({ onClose, onDone, onInvite }) {
   );
 }
 
-function Rec({ title, count, children }) {
-  const [all, setAll] = useState(false);
-  const rows = Children.toArray(children), n = 3;
-  return count > 0 ? (
-    <details className="rec"><summary><span>{title}</span><span className="dim">{count}</span></summary>
-      <div className="rec-in">{all ? rows : rows.slice(0, n)}
-        {rows.length > n && <button type="button" className="fold-more" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
-      </div></details>) : null;
+/* a row that opens the full list of one kind of feedback they have received */
+function Rec({ title, count, to }) {
+  return count > 0 ? <Link className="rec-link" to={to}><span>{title}</span><span className="dim">{count}</span>{I.chev}</Link> : null;
+}
+
+/* the kinds of feedback a member receives, each with how one entry reads */
+const Pt = ({ good, tag, children }) => <p className={'pt ' + (good ? 'good' : 'bad')} title={tag}>{children}</p>;
+const dShort = (iso) => fmtDate(iso, { day: 'numeric', month: 'short' });
+const RECEIVED = {
+  gram: { title: 'Grammar notes', pick: (r) => r.gram, row: (g) => <><b>{dShort(g.date)} · {g.by}</b>{g.liked && <Pt good tag="Liked">{g.liked}</Pt>}{(g.improper || g.suggestion) && <Pt tag="To polish">{g.improper}{g.improper && g.suggestion ? ' → ' : ''}{g.suggestion}</Pt>}</> },
+  fill: { title: 'Filler words', pick: (r) => r.fill, row: (f) => <><b>{dShort(f.date)} · {f.by}</b><div className="fchips">{Object.entries(f.counts).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([w, n]) => <span className="fchip" key={w}>{cap(w)}<b>{n}</b></span>)}<span className="fchip tot">Total<b>{sum(f.counts)}</b></span></div>{f.comment && <p>{f.comment}</p>}</> },
+  time: { title: 'Timing', pick: (r) => r.time, row: (t) => { const c = cardOf(t.seconds, [t.green, t.yellow, t.red]); return <><b>{dShort(t.date)} · {t.by}</b><p><span className={'dot ' + c} /> {mmss(t.seconds)} · {CARDTXT[c]}{t.comment ? ` · ${t.comment}` : ''}</p></>; } },
+  general: { title: 'From the General Evaluator', pick: (r) => r.roleFeedback, row: (r) => <><b>{r.role} · {dShort(r.date)}</b>{r.well && <Pt good tag="Went well">{r.well}</Pt>}{r.improve && <Pt tag="To improve">{r.improve}</Pt>}</> },
+  room: { title: 'From the room', pick: (r) => r.peer, row: (r) => <><b>{r.from_name || 'Anonymous'} · {dShort(r.date)}</b>{r.well && <Pt good tag="Went well">{r.well}</Pt>}{r.improve && <Pt tag="To try">{r.improve}</Pt>}</> },
+};
+
+/* every entry of one kind, on a page of its own */
+export function ReceivedPage() {
+  const { id, kind } = useParams();
+  const desk = useDesk();
+  const { data, error, loading } = useApi(`/vpe/people/${id}/profile`);
+  useEffect(() => { document.querySelector('.scroll')?.scrollTo({ top: 0 }); }, []);
+  const K = RECEIVED[kind];
+  const back = `/v/members/${id}`;
+  if (error || !K) return <Page title="Feedback" back={back}><ErrorMsg error={error || { message: 'Not found' }} /></Page>;
+  if (loading) return <Page title="Feedback" wide={desk} back={back}><SkPage plain rows={6} pill={false} /></Page>;
+  const items = K.pick(data.received);
+  return (
+    <Page title="Feedback" wide={desk} back={back}>
+      <h1 className="pg sm">{K.title}</h1>
+      <ul className="ev-list">
+        <li><span className="evi">{I.ppl}<span><b>{data.person.name}</b></span></span><span className="evi">{I.doc}<span>{items.length} {items.length === 1 ? 'entry' : 'entries'}</span></span></li>
+      </ul>
+      {!items.length && <p className="empty tight">Nothing yet.</p>}
+      <div className="recgrid">{items.map((it, i) => <div className="rec-card" key={it.id ?? i}>{K.row(it)}</div>)}</div>
+    </Page>
+  );
 }
 
 /* ───────── one member: what they have delivered, the roles they have done, the feedback they have given ───────── */
@@ -742,6 +834,7 @@ function RemovePerson({ person, onClose }) {
 
 export function VpePerson() {
   const { id } = useParams();
+  const nav = useNavigate();
   const toast = useToast();
   const { data, error, loading, reload } = useApi(`/vpe/people/${id}/profile`);
   const [viewing, setViewing] = useState(null);
@@ -823,18 +916,14 @@ export function VpePerson() {
           <div className="lab" style={{ marginTop: 0 }}>Feedback they have given<span className="cnt2">{given.length}</span></div>
           {!given.length && <p className="empty tight">Nothing submitted yet.</p>}
           <Fold items={given} n={5} label="sheets">{(g) => (
-            <button type="button" className="prow2" key={g.id} onClick={() => setViewing(g.id)}>
+            <button type="button" className="prow2" key={g.id} onClick={() => nav(`/v/sheets/${g.id}`)}>
               <span><b>{g.label}</b><small>Meeting {g.number} · {d(g.date)} · {g.summary}</small></span>{I.chev}
             </button>
           )}</Fold>
 
           <div className="lab">Feedback they have received</div>
           {!(received.gram.length || received.fill.length || received.time.length || received.roleFeedback.length || received.peer.length) && <p className="empty tight">Nothing yet. Their evaluations are under Projects delivered.</p>}
-          <Rec title="Grammar notes" count={received.gram.length}>{received.gram.map((g, i) => <div className="rec-row" key={i}><b>{d(g.date)} · {g.by}</b>{g.liked && <p>Liked: {g.liked}</p>}{(g.improper || g.suggestion) && <p>To polish: {g.improper}{g.improper && g.suggestion ? ' → ' : ''}{g.suggestion}</p>}</div>)}</Rec>
-          <Rec title="Filler words" count={received.fill.length}>{received.fill.map((f, i) => <div className="rec-row" key={i}><b>{d(f.date)} · {f.by}</b><p>{Object.entries(f.counts).filter(([, n]) => n).map(([w, n]) => `${cap(w)} ${n}`).join(', ') || 'None'} (total {sum(f.counts)})</p>{f.comment && <p>{f.comment}</p>}</div>)}</Rec>
-          <Rec title="Timing" count={received.time.length}>{received.time.map((t, i) => { const c = cardOf(t.seconds, [t.green, t.yellow, t.red]); return <div className="rec-row" key={i}><b>{d(t.date)} · {t.by}</b><p><span className={'dot ' + c} /> {mmss(t.seconds)} · {CARDTXT[c]}{t.comment ? ` · ${t.comment}` : ''}</p></div>; })}</Rec>
-          <Rec title="From the General Evaluator" count={received.roleFeedback.length}>{received.roleFeedback.map((r, i) => <div className="rec-row" key={i}><b>{r.role} · {d(r.date)}</b>{r.well && <p>Went well: {r.well}</p>}{r.improve && <p>To improve: {r.improve}</p>}</div>)}</Rec>
-          <Rec title="From the room" count={received.peer.length}>{received.peer.map((r) => <div className="rec-row" key={r.id}><b>{r.from_name || 'Anonymous'} · {d(r.date)}</b>{r.well && <p>Went well: {r.well}</p>}{r.improve && <p>To try: {r.improve}</p>}</div>)}</Rec>
+          {Object.entries(RECEIVED).map(([k, K]) => <Rec key={k} title={K.title} count={K.pick(received).length} to={`/v/members/${id}/received/${k}`} />)}
         </div>
       </div>
       {viewing && <SubmissionViewer id={viewing} list={given.map((g) => ({ id: g.id, label: g.label, person: p.name, submitted_at: g.submitted_at }))} onGo={setViewing} onClose={() => setViewing(null)} remind={() => '#'} />}

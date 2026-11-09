@@ -2813,3 +2813,124 @@ html,body{background:#F5F5F7}
 .mchips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0!important}
 .mchips span{display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:999px;background:#E8F1F6;color:var(--blue);font:600 13.5px var(--head)}
 .mchips span:first-child{background:var(--blue);color:#fff}
+
+/* evaluation on a computer: the grey form preview runs the full height of the screen and stays in view */
+.app.desk .split.wide .ref:has(.pdfwrap){overflow:visible;max-height:none;top:12px;padding-right:0}
+.app.desk .ref .pdfwrap{height:calc(100dvh - 252px);max-height:none;min-height:420px;border-radius:20px}
+
+/* the bottom bar on a computer is only its button, floating at the bottom right: no strip across the page */
+.app.desk .foot{position:fixed;right:36px;bottom:26px;left:auto;z-index:20;width:auto;padding:0!important;background:none!important;border:0!important;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;display:flex;flex-direction:row;gap:10px;align-items:center;justify-content:flex-end}
+.app.desk .foot .btn{box-shadow:0 10px 26px -8px rgba(0,38,61,.55)}
+.app.desk .foot .saving{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 0 0 1px rgba(0,0,0,.06);font-size:13px}
+.app.desk .foot .saving:empty{display:none}
+.app.desk .main:has(.foot) .scroll{padding-bottom:110px}
+.app.desk .ref .pdfwrap{height:calc(100dvh - 236px)}
+
+/* evaluation on a computer: the white card stays put; only the ratings column and the form preview scroll inside it */
+.app.desk .scroll:has(.pdfwrap){overflow:hidden;display:flex;flex-direction:column;padding-bottom:24px!important}
+.app.desk .main:has(.foot) .scroll:has(.pdfwrap){padding-bottom:24px!important}
+.app.desk .in:has(.pdfwrap){flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding-bottom:86px!important}
+.app.desk .in:has(.pdfwrap)>.split{flex:1 1 0;min-height:0;align-items:stretch}
+.app.desk .in:has(.pdfwrap)>.split>div:first-child{overflow:auto;min-height:0;padding-right:18px;scrollbar-width:thin}
+.app.desk .in:has(.pdfwrap) .ref{position:static;height:100%;max-height:none;padding:0;overflow:visible}
+.app.desk .in:has(.pdfwrap) .ref .pdfwrap{height:100%;min-height:0}
+.app.desk .in:has(.pdfwrap)>.split{grid-template-rows:minmax(0,1fr);height:100%}
+.app.desk .in:has(.pdfwrap)>.split>*{min-height:0}
+
+/* evaluation card keeps its full width, and the download button sits inside it at the bottom right */
+.app.desk .in:has(.pdfwrap){width:100%;align-self:center;box-sizing:border-box}
+.app.desk:has(.pdfwrap) .foot{right:calc((100vw - min(1180px, 100vw - 88px)) / 2 + 36px);bottom:46px}
+.app.desk:has(.pdfwrap) .foot .btn{box-shadow:none}
+.app.desk:has(.pdfwrap) .foot{right:calc((100vw - min(1180px, 100vw - 88px)) / 2 + 28px);bottom:52px}
+
+/* evaluation: the details as chips, and the download button pinned inside the card's bottom right corner */
+.ev-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.evc{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border-radius:999px;background:#E8F1F6;color:var(--blue);font:600 13.5px var(--head)}
+.evc svg{width:16px;height:16px}
+.evc em{font:500 13px var(--body);font-style:normal;opacity:.75}
+.evc.solid{background:var(--blue);color:#fff}
+.evc.ok{background:#E3F3E8;color:#1E6B3A}
+.evc.warn{background:#FBEFD5;color:#8A5A00}
+.ev-speech{margin:16px 0 4px;padding:14px 18px;border-radius:18px;background:#F5F5F7;border-left:4px solid var(--yellow,#F2DF74)}
+.ev-speech small{display:block;font:700 11px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+.ev-speech b{font:700 20px/1.25 var(--head);color:var(--ink);letter-spacing:-.02em}
+.eval-go{display:none}
+.app.desk .in:has(.pdfwrap){position:relative}
+.app.desk .eval-go{display:block;position:absolute;right:28px;bottom:28px;z-index:5}
+.app.desk .eval-go .btn{width:auto;height:44px;min-height:44px;min-width:0;padding:0 26px;font-size:15.5px;border-radius:999px}
+
+/* evaluation header, kept light */
+.ev-sp{margin:6px 0 0;font:600 18px/1.3 var(--head);color:var(--blue);letter-spacing:-.01em}
+.ev-chips{gap:6px;margin:12px 0 0}
+.evc{height:28px;padding:0 12px;font-size:13px;gap:6px}
+.evc.solid{background:#E8F1F6;color:var(--blue)}
+
+/* evaluation header: the plain details as a tidy vertical list with small icons */
+.ev-list{list-style:none;margin:12px 0 4px;padding:0;display:grid;gap:9px}
+.ev-list li{display:flex;align-items:center;gap:12px;font-size:15.5px;color:var(--mute)}
+.ev-list li svg{flex:none;width:18px;height:18px;color:var(--blue);opacity:.75}
+.ev-list li b{color:var(--ink);font-weight:600}
+.ev-list .ev-t.ok{color:#1E6B3A}
+.ev-list .ev-t.warn{color:#8A5A00}
+.ev-list{gap:7px}
+.ev-list li{flex-wrap:wrap;gap:4px 18px}
+.evi{display:inline-flex;align-items:center;gap:8px}
+.ev-list .evi svg{flex:none;width:17px;height:17px;color:var(--blue);opacity:.75}
+
+/* VPE view of an evaluation: same card width and spacing as a member page, as tall as the sidebar */
+.app.desk:not(.topnav-app) .scroll:has(.pdfwrap),.app.desk:not(.topnav-app) .main:has(.foot) .scroll:has(.pdfwrap){padding-top:0!important;padding-bottom:0!important}
+.app.desk:not(.topnav-app) .in:has(.pdfwrap){height:100%;margin-top:0!important;margin-bottom:0!important}
+.app.desk .scroll:has(.pdfwrap){scrollbar-gutter:stable}
+
+/* a submitted sheet: the official form shown in the grey panel */
+.pdfwrap .pdfframe{display:block;width:100%;height:100%;min-height:300px;border:0;border-radius:12px;background:#fff}
+.app.desk .in:has(.pdfframe) .pdfwrap{padding:14px}
+
+/* filler word counts in a read-only sheet: tiles share one row and shrink, and only wrap when they would get too small */
+.say .cnts{min-width:0;display:flex;flex-wrap:wrap;gap:6px}
+.say .cnts .cnt{flex:1 1 54px;max-width:92px}
+.say .cnt{padding:8px 0 6px}
+.say .cnt small{font-size:10.5px}
+.say .cnt b{font-size:22px}
+
+/* the form preview: the viewer's dark edges are pushed outside the grey panel, so the page fills it */
+.pdfwrap:has(.pdfframe){overflow:hidden;position:relative;padding:0!important}
+.app.desk .in:has(.pdfframe) .pdfwrap{padding:0}
+.pdfwrap .pdfframe{width:calc(100% + 44px);max-width:none;margin-left:-22px;height:calc(100% + 0px);border-radius:0;background:#fff}
+.viewer.flat{max-height:none;overflow:visible;padding-right:0}
+.pdfwrap .pdfframe{margin-top:-10px;height:calc(100% + 32px)}
+
+/* feedback they have received: each kind is a row that opens its own page */
+.rec-link{display:flex;align-items:center;gap:12px;margin-top:8px;padding:12px 14px;background:#fff;border:1px solid #DDE3E5;border-radius:14px;color:var(--ink);font:600 15px var(--head);text-decoration:none}
+.rec-link>span:first-child{flex:1}
+.rec-link:hover{color:var(--blue);border-color:#CBD6DB}
+.rec-link .dim{background:#E3EDF3;color:var(--blue);font:700 12px var(--head);border-radius:99px;padding:2px 9px}
+.rec-link svg{width:16px;height:16px;color:var(--blue);flex:none}
+.recgrid{display:flex;flex-direction:column;margin-top:14px}
+.rec-card{padding:16px 2px;border-bottom:1px solid rgba(0,0,0,.08)}
+.rec-card:last-child{border-bottom:0}
+.rec-card b{display:block;font:700 14px var(--head);color:var(--blue);margin-bottom:6px}
+.rec-card p{margin:4px 0 0;font-size:15px;line-height:1.45}
+
+.rec-card .pt{display:flex;gap:10px;align-items:flex-start;margin:8px 0 0;padding:9px 12px;border-radius:14px}
+.rec-card .pt em{flex:none;font:700 11px var(--head);font-style:normal;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:99px;margin-top:1px}
+.rec-card .pt.good{background:#3F7D5C12}.rec-card .pt.good em{background:#3F7D5C22;color:#2F6B4C}
+.rec-card .pt.bad{background:#C0392B0F}.rec-card .pt.bad em{background:#C0392B1F;color:#B03225}
+
+.rec-card .pt{display:block;font-weight:500}
+.rec-card .pt.good{background:#3F7D5C1A;color:#1F4F37}
+.rec-card .pt.bad{background:#C0392B14;color:#8A271D}
+
+.fchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.fchip{display:inline-flex;align-items:center;gap:8px;padding:5px 6px 5px 12px;border-radius:99px;background:#F5F5F7;font:600 13px var(--head);color:var(--ink)}
+.fchip b{min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:var(--blue)}
+.fchip.tot{background:var(--blue);color:#fff;margin-left:auto}.fchip.tot b{background:rgba(255,255,255,.2);color:#fff}
+.rec-card:has(.fchips) .fchip:not(.tot){background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08)}.rec-card:has(.fchips) .fchip:not(.tot) b{background:#F5F5F7}
+.side .me-views{gap:0;margin:0 0 8px}
+.side .me-views a{height:30px;padding:0 8px;gap:8px;border-radius:10px;font:600 12.5px var(--head);color:rgba(255,255,255,.72)}
+.side .me-views a svg{width:15px;height:15px;opacity:.7}
+.side .me-views{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 10px}
+.side .me-views a{height:28px;padding:0 11px 0 9px;gap:6px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff;font:600 12px var(--head);flex:1 1 auto;justify-content:center;white-space:nowrap}
+.side .me-views a:hover{background:rgba(255,255,255,.22)}
+.side .me-views a svg{width:14px;height:14px;opacity:.9}
+.side .me-views{margin:12px 0 10px}

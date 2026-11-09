@@ -760,6 +760,24 @@ const submissionHandler = wrap(async (req, res) => {
 });
 app.get('/api/vpe/roles/:id/submission', needPerson, needVpe, submissionHandler);
 
+/* the official Toastmasters form for a submitted sheet, filled in, to sit beside what was written (VPE: any sheet in the club; member: their own) */
+const sheetReport = (own) => wrap(async (req, res) => {
+  const args = [req.params.id, req.person.club_id]; if (own) args.push(req.person.id);
+  const [r] = await q(`select r.id, r.role_key, r.label, r.sheet, r.meeting_id, p.name as person from meeting_roles r join meetings m on m.id=r.meeting_id left join people p on p.id=r.person_id
+    where r.id=$1 and m.club_id=$2${own ? ' and r.person_id=$3 and r.submitted_at is not null' : ''}`, args);
+  if (!r || !hasOfficialReport(r.role_key)) return bad(res, 'Not found', 404);
+  const [meeting] = await q(`select id, number, ${DATE('date')} as date, theme, word, meaning, example from meetings where id=$1`, [r.meeting_id]);
+  const people = await q('select id,name from people where club_id=$1', [req.person.club_id]);
+  const roles = await q('select id, role_key, label, person_id from meeting_roles where meeting_id=$1', [r.meeting_id]);
+  const projects = await q('select id, green, yellow, red from projects');
+  const [club] = await q('select name from clubs where id=$1', [req.person.club_id]);
+  const pdf = await buildRoleReport(r.role_key, { meeting, people, roles, projects, sheet: r.sheet || {}, club: club?.name || '', name: r.person || '' });
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${r.label.replace(/\s+/g, '-')}.pdf"` });
+  res.send(pdf);
+});
+app.get('/api/vpe/roles/:id/report.pdf', needPerson, needVpe, sheetReport(false));
+app.get('/api/me/given/:id/report.pdf', needPerson, sheetReport(true));
+
 app.get('/api/vpe/network', needPerson, needVpe, (_req, res) => {
   // the address phones on the same Wi-Fi can use, so the QR code works when the VPE opened the app on localhost
   const ips = Object.values(os.networkInterfaces()).flat().filter((n) => n && n.family === 'IPv4' && !n.internal && !n.address.startsWith('192.168.56.') && !n.address.startsWith('169.254.'));
