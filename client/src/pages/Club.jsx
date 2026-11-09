@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { Avatar, Btn, ErrorMsg, I, SkPage, SkRows, Modal, Page, PathPick, Select, copyText, useToast } from '../ui.jsx';
 import { PwPair, pwGood } from './Landing.jsx';
@@ -104,7 +105,7 @@ export default function Club() {
 }
 
 /* ───────── your account: email and password ───────── */
-export function AccountModal({ account: data, onClose, onSignOut, showPath = false }) {
+export function AccountModal({ account: data, onClose, onSignOut, showPath = false, admin = false }) {
   const toast = useToast();
   const cat = useApi('/pathways');
   const [f, setF] = useState({ email: '', current: '', password: '' });
@@ -140,6 +141,7 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
             <p className="ac-note">Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
           </section>}
 
+          {admin && <Link to="/admin" className="ac-admin" onClick={onClose}>{I.chart} Open the super admin page</Link>}
           {onSignOut && <button type="button" className="ac-out" onClick={onSignOut}>{I.out} Sign out</button>}
 
           {err && <p className="err">{err}</p>}

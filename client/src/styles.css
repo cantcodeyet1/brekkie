@@ -2618,3 +2618,79 @@ html,body{background:#F5F5F7}
 .sk1.s-p{width:min(480px,86%);height:18px;margin-top:10px}
 .sk1.s-btn{width:200px;height:54px;border-radius:14px;margin-top:20px}
 @media (prefers-reduced-motion:reduce){.sk1{animation:none}}
+
+/* roster import */
+.ri-drop{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;padding:30px 20px;border:2px dashed #CBD3D8;border-radius:20px;background:#FAFBFC;color:var(--ink);cursor:pointer;text-align:center;font:inherit;transition:border-color .15s,background .15s}
+.ri-drop:hover{border-color:var(--blue);background:#F3F8FB}
+.ri-drop b{font:700 17px var(--head)}
+.ri-drop small{color:#6E6E73;font-size:14px}
+.ri-ic{width:44px;height:44px;border-radius:50%;background:#E8F1F6;color:var(--blue);display:inline-grid;place-items:center;margin-bottom:4px}
+.ri-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:2px 0 8px;font-size:15px}
+.ri-note{margin:0 0 8px;padding:10px 14px;border-radius:14px;background:#FBF3DC;color:#7A5A00;font-size:14px;line-height:1.4}
+.ri-list{list-style:none;margin:0;padding:0;max-height:min(48dvh,440px);overflow-y:auto;border:1px solid #EEF0F2;border-radius:18px}
+.ri-list li{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid #EEF0F2}
+.ri-list li:first-child{border-top:0}
+.ri-list li.off{opacity:.5}
+.ri-who{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 240px;cursor:pointer}
+.ri-who input{width:18px;height:18px;accent-color:var(--blue);flex:none}
+.ri-t{display:flex;flex-direction:column;min-width:0}
+.ri-t b{font:700 15.5px var(--head);letter-spacing:-.01em}
+.ri-t small{color:#6E6E73;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdone{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px;flex:0 1 330px}
+.ri-list .pdone{flex:0 0 330px}
+@media (max-width:640px){.ri-list .pdone,.pdone{flex:1 1 100%;grid-template-columns:1fr 1fr}.ri-t small{white-space:normal}}
+
+/* super admin */
+.ad-in{max-width:1080px}
+.ad-card{padding-bottom:6px}
+.ad-h{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:24px 28px 8px}
+.ad-h h2{margin:0;font:800 20px var(--head);letter-spacing:-.025em}
+.ad-h p{margin:4px 0 0;color:#6E6E73;font-size:14.5px;max-width:640px}
+.ad-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:12px 28px 24px}
+.ad-stat{background:#F5F5F7;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ad-stat small{font:700 11px var(--head);letter-spacing:.12em;text-transform:uppercase;color:#8A8A90}
+.ad-stat b{font:800 26px/1.15 var(--head);letter-spacing:-.03em;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis}
+.ad-stat span{color:#6E6E73;font-size:13px;line-height:1.3}
+.ad-stat.bad{background:#FBEBEC}.ad-stat.bad b{color:var(--maroon)}
+.ad-pill{display:inline-flex;align-items:center;white-space:nowrap;border-radius:999px;padding:5px 12px;font:700 12.5px var(--head);background:#F2F2F5;color:#4A4A50}
+.ad-pill.ok{background:#E1F1E7;color:#2A7A4B}.ad-pill.wait{background:#FBF3DC;color:#7A5A00}.ad-pill.bad{background:#FBEBEC;color:var(--maroon)}
+.ad-errs{margin:0 28px 22px;padding:14px 16px;border-radius:16px;background:#FBF6F6;display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.ad-errs small{font:700 11px var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--maroon)}
+.ad-errs div{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.ad-errs code{font-size:12.5px;color:#4A4A50}.ad-errs em{font-style:normal;color:#8A8A90;margin-left:auto}
+.ad-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ad-two>*{min-width:0}
+.ad-bars{list-style:none;margin:0;padding:8px 28px 14px;display:flex;flex-direction:column;gap:10px}
+.ad-bars li{display:grid;grid-template-columns:130px 1fr 34px;align-items:center;gap:12px;font-size:14.5px}
+.ad-bars i{height:12px;border-radius:99px;background:#EEF0F2;overflow:hidden;display:block}
+.ad-bars u{display:block;height:100%;border-radius:99px;text-decoration:none}
+.ad-bars b{text-align:right;font:700 14px var(--head)}
+.ad-mini{display:flex;flex-wrap:wrap;gap:8px 18px;padding:4px 28px 22px;color:#6E6E73;font-size:13.5px}
+.ad-mini b{color:#1D1D1F;font-family:var(--head)}
+.ad-days{padding:12px 28px 0;height:150px}
+.ad-tools{display:flex;gap:10px;align-items:center;padding:8px 28px 12px;flex-wrap:wrap}
+.ad-tools .inp{flex:1 1 240px;margin:0}
+.ad-chip{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 16px;border-radius:999px;border:1.5px solid #DADDE1;background:#fff;color:#4A4A50;font:700 14px var(--head);cursor:pointer}
+.ad-chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.ad-chip svg{width:16px;height:16px}
+.ad-list{list-style:none;margin:0;padding:0}
+.ad-list li{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 28px;border-top:1px solid #EEF0F2}
+.ad-who{display:flex;flex-direction:column;min-width:0;flex:1 1 260px}
+.ad-who b{font:700 16px var(--head);letter-spacing:-.015em}
+.ad-who small{color:#6E6E73;font-size:13.5px;overflow-wrap:anywhere}
+.ad-club .ad-nums{display:flex;gap:6px;flex-wrap:wrap}
+.ad-nums span{display:flex;flex-direction:column;align-items:center;min-width:68px;padding:6px 8px;background:#F5F5F7;border-radius:12px}
+.ad-nums b{font:800 16px var(--head)}.ad-nums small{font-size:11px;color:#8A8A90}
+.ad-link{padding:12px 14px;border-radius:14px;background:#F5F5F7;font-size:13.5px;overflow-wrap:anywhere;user-select:text}
+.ac-admin{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;margin:4px 0 8px;border-radius:999px;background:#E8F1F6;color:var(--blue);font:700 15px var(--head);text-decoration:none}
+.ac-admin svg{width:18px;height:18px}
+@media (max-width:760px){
+  .ad-two{grid-template-columns:1fr}
+  .ad-h,.ad-list li,.ad-tools,.ad-mini{padding-left:16px;padding-right:16px}
+  .ad-stats{padding:10px 16px 20px;grid-template-columns:repeat(2,1fr)}
+  .ad-errs{margin-left:16px;margin-right:16px}
+  .ad-bars{padding-left:16px;padding-right:16px}.ad-bars li{grid-template-columns:100px 1fr 30px}
+  .ad-days{padding-left:16px;padding-right:16px}
+}
+.app:has(.ad-in) .tn-in{width:min(1090px,100% - 94px)}
+.wz-prev{margin-top:16px;padding:16px 18px;border-radius:18px}

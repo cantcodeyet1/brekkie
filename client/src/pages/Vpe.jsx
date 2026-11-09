@@ -5,6 +5,8 @@ import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import PathCard from './PathCard.jsx';
+import RosterImport, { PathDone } from './RosterImport.jsx';
+import { toMembers } from '../roster.js';
 import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
@@ -431,6 +433,7 @@ export function VpePeople() {
   const [tab, setTab] = useState('members');
   const [qy, setQy] = useState('');
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [inv, setInv] = useState(null);
   const sess = useApi('/session');
@@ -482,7 +485,7 @@ export function VpePeople() {
           <h1 className="rtitle">Members</h1>
           <p className="rsub">Open anyone to see what they have delivered and the feedback they have given.</p>
         </div>
-        <Btn onClick={() => setAdding(true)}>{I.plus} Add member</Btn>
+        <div className="rh-act"><Btn kind="ghost" onClick={() => setImporting(true)}>{I.dl} Import roster</Btn><Btn onClick={() => setAdding(true)}>{I.plus} Add member</Btn></div>
       </div>
 
       <div className="pp-card">
@@ -512,6 +515,7 @@ export function VpePeople() {
       )}
       </div>
       {inv && <InviteModal person={inv} mode="invite" club={sess.data?.club || 'our club'} onClose={() => setInv(null)} onDone={reload} />}
+      {importing && <ImportModal onClose={() => setImporting(false)} onDone={(n) => { setImporting(false); toast(n); reload(); }} />}
       {adding && <AddPerson onClose={() => setAdding(false)} onInvite={(p) => { setAdding(false); setTab('members'); setInv(p); reload(); }} onDone={(p) => { setAdding(false); toast(`${p.name} added`); setTab(p.kind === 'guest' ? 'guests' : 'members'); reload(); }} />}
       </div>
     </Page>
@@ -519,18 +523,41 @@ export function VpePeople() {
 }
 
 const WA_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.5 14.95L2 22l5.2-1.5A9.9 9.9 0 1 0 12.04 2zm0 1.8a8.1 8.1 0 1 1-4.3 14.96l-.3-.2-3 .87.9-2.9-.2-.3A8.1 8.1 0 0 1 12.04 3.8zM8.6 7.6c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4l-.5-.3-1.8-.9c-.3-.1-.5-.1-.7.1l-.8 1c-.2.2-.3.2-.6.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.3.1-.2 0-.4 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5z"/></svg>;
+/* the Club Central roster, added to a club that already exists */
+function ImportModal({ onClose, onDone }) {
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const go = async () => {
+    setBusy(true); setErr('');
+    try {
+      const r = await api('/vpe/people/import', { method: 'POST', body: { members: toMembers(rows) } });
+      onDone(`${r.added} added${r.updated ? `, ${r.updated} updated` : ''}`);
+    } catch (e) { setErr(e.message); setBusy(false); }
+  };
+  return (
+    <Modal title="Import your roster" onClose={onClose} wide>
+      <p style={{ color: 'var(--mute)', fontSize: 14.5, margin: '6px 0 12px' }}>Export your club roster from Club Central and choose the file. People already in Brekkie are matched by email or name and brought up to date, not added twice. Paths and levels come from the credentials in the file; fix any that are wrong.</p>
+      <RosterImport rows={rows} onRows={setRows} />
+      {err && <p className="err">{err}</p>}
+      <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy || !rows.some((r) => r.on)}>{busy ? 'Importing…' : `Import ${rows.filter((r) => r.on).length || ''}`.trim()}</Btn></div>
+    </Modal>
+  );
+}
+
 function AddPerson({ onClose, onDone, onInvite }) {
   const [kind, setKind] = useState('member');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [cred, setCred] = useState('TM');
+  const [pd, setPd] = useState({ path_name: '', levels_done: 0 });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true); setErr('');
     try {
-      const p = await api('/vpe/people', { method: 'POST', body: { name, email, phone, kind, credential: cred } });
+      const p = await api('/vpe/people', { method: 'POST', body: { name, email, phone, kind, credential: cred, ...(kind === 'member' ? pd : {}) } });
       kind === 'member' ? onInvite({ ...p, phone: phone.trim() }) : onDone(p);
     } catch (e) { setErr(e.message); setBusy(false); }
   };
@@ -543,6 +570,11 @@ function AddPerson({ onClose, onDone, onInvite }) {
       <label className="fl">Phone (optional)</label><input className="inp" type="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+263 7…" maxLength={30} />
       <p className="fine" style={{ margin: '2px 0 0' }}>Used to message them on WhatsApp about their role.</p>
       <label className="fl">Toastmasters title on the agenda (optional)</label><input className="inp" value={cred} onChange={(e) => setCred(e.target.value)} placeholder="TM, DTM, ACB…" maxLength={20} />
+      {kind === 'member' && <>
+        <label className="fl">Pathways path and current level (optional)</label>
+        <PathDone path={pd.path_name} done={pd.levels_done} onChange={setPd} />
+        <p className="fine" style={{ margin: '6px 0 0' }}>Every level before the one you pick is logged as finished, so you do not need the individual projects or dates.</p>
+      </>}
       {err && <p className="err">{err}</p>}
       <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy || name.trim().length < 2}>Add</Btn></div>
     </Modal>
@@ -665,12 +697,14 @@ export function BulkInvite({ people, club, onClose, onDone }) {
 /* edit a member's details from their settings menu */
 function EditPerson({ person, onClose, onSaved }) {
   const [f, setF] = useState({ name: person.name, email: person.email || '', phone: person.phone || '', credential: person.credential || '' });
+  const [pd, setPd] = useState({ path_name: person.path_name || '', levels_done: Math.max(0, (person.path_level || 1) - 1) });
+  const [pdTouched, setPdTouched] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setErr(''); };
   const save = async () => {
     setBusy(true); setErr('');
-    try { await api(`/vpe/people/${person.id}`, { method: 'PATCH', body: f }); onSaved(); } catch (e) { setErr(e.message); setBusy(false); }
+    try { await api(`/vpe/people/${person.id}`, { method: 'PATCH', body: pdTouched && person.kind !== 'guest' ? { ...f, ...pd } : f }); onSaved(); } catch (e) { setErr(e.message); setBusy(false); }
   };
   return (
     <Modal title="Edit details" onClose={onClose}>
@@ -678,6 +712,11 @@ function EditPerson({ person, onClose, onSaved }) {
       <label className="fl">Email</label><input className="inp" type="email" autoComplete="off" name="edit-email" data-bwignore="true" value={f.email} onChange={set('email')} placeholder="name@mail.com" />
       <label className="fl">Phone</label><input className="inp" type="tel" autoComplete="off" name="edit-phone" data-bwignore="true" value={f.phone} onChange={set('phone')} placeholder="+263 7…" maxLength={30} />
       <label className="fl">Toastmasters title on the agenda</label><input className="inp" value={f.credential} onChange={set('credential')} placeholder="TM, DTM, ACB…" maxLength={20} />
+      {person.kind !== 'guest' && <>
+        <label className="fl">Pathways path and current level</label>
+        <PathDone path={pd.path_name} done={pd.levels_done} onChange={(v) => { setPd(v); setPdTouched(true); }} />
+        <p className="fine" style={{ margin: '6px 0 0' }}>Levels before this one are logged as finished before Brekkie. Projects done at meetings count on their own.</p>
+      </>}
       {err && <p className="err">{err}</p>}
       <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || f.name.trim().length < 2}>{busy ? 'Saving…' : 'Save'}</Btn></div>
     </Modal>

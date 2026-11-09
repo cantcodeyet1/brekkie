@@ -259,3 +259,29 @@ alter table clubs add column if not exists tm_number text;
 create unique index if not exists clubs_tm_number_idx on clubs(tm_number) where tm_number is not null;
 alter table people add column if not exists invited_at timestamptz;
 alter table people add column if not exists last_login_at timestamptz;
+
+-- levels a member finished before they joined Brekkie: logged by level, since the individual projects and dates are not remembered
+create table if not exists member_levels (
+  person_id int not null references people(id) on delete cascade,
+  path text not null,
+  level int not null,
+  logged_at timestamptz not null default now(),
+  primary key (person_id, path, level)
+);
+
+-- what the platform owner did from the super admin page, so every reset link issued is on record
+create table if not exists admin_log (
+  id serial primary key,
+  at timestamptz not null default now(),
+  admin_id int,
+  action text not null,
+  person_id int
+);
+
+-- the platform owner. Only this flag grants the super admin page, and no route in the app sets it. It is given to
+-- Nyasha N. Mpofu in the oldest club called Champions Toastmasters Club, so someone signing up later with the same
+-- email in a new club does not get it.
+alter table people add column if not exists is_super boolean not null default false;
+update people set is_super = true
+ where lower(email) = 'nyashanmpofu@outlook.com' and kind = 'member'
+   and club_id = (select id from clubs where name = 'Champions Toastmasters Club' order by id limit 1);

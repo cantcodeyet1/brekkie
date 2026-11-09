@@ -33,8 +33,9 @@ export function forecastMember(prog, { year, today }) {
     const total = l.required_total + (l.choose || 0), done = l.required_done + Math.min(l.choose || 0, l.electives_done);
     const e = { state: null, total, done, items, unscheduled: items.filter((x) => x.state === 'open' || x.state === 'pick').length, due: items.filter((x) => x.state === 'due').length };
     if (l.complete) {
-      e.date = items.filter((x) => x.state === 'done').map((x) => x.date).sort().at(-1) || null;
-      e.state = e.date && e.date < year.start ? 'earlier' : 'done';
+      e.date = items.filter((x) => x.state === 'done' && x.date).map((x) => x.date).sort().at(-1) || null;
+      // a level finished before Brekkie has no date: it counts as earned earlier, not in this program year
+      e.state = !e.date || e.date < year.start ? 'earlier' : 'done';
     } else if (l.level >= (prog.current ?? 0)) {
       e.state = e.unscheduled ? 'open' : 'forecast';
       if (e.state === 'forecast') e.date = items.filter((x) => x.state === 'sched' || x.state === 'due').map((x) => x.date).sort().at(-1);

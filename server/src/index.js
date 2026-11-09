@@ -26,6 +26,21 @@ app.get('/api/health', (_req, res) => boot().then(() => res.json({ ok: true }), 
 app.use((_req, _res, next) => { boot().then(() => next(), next); });
 app.use(express.json({ limit: '1mb' }));
 
+/* a few plain counters for the super admin page: how the server has done since it started */
+const STARTED = Date.now();
+const traffic = { total: 0, e4: 0, e5: 0, ms: 0, slow: 0, recent: [] };
+app.use((req, res, next) => {
+  const t0 = Date.now();
+  res.on('finish', () => {
+    if (!req.path.startsWith('/api') || req.path.startsWith('/api/admin') || req.path === '/api/health') return;
+    const ms = Date.now() - t0;
+    traffic.total++; traffic.ms += ms; if (ms > 1500) traffic.slow++;
+    if (res.statusCode >= 500) { traffic.e5++; traffic.recent.unshift({ at: new Date().toISOString(), status: res.statusCode, path: req.path.replace(/[A-Za-z0-9_-]{20,}/g, ':token'), ms }); traffic.recent.length = Math.min(traffic.recent.length, 15); }
+    else if (res.statusCode >= 400) traffic.e4++;
+  });
+  next();
+});
+
 const token = () => crypto.randomBytes(15).toString('base64url');
 const EVAL_RESOURCES = JSON.parse(fs.readFileSync(new URL('../data/evaluation-resources.json', import.meta.url), 'utf8'));
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
@@ -55,6 +70,9 @@ app.use(wrap(async (req, _res, next) => {
 }));
 const needPerson = (req, res, next) => (req.person ? next() : bad(res, 'Sign in required', 401));
 const needVpe = (req, res, next) => (req.person?.is_vpe ? next() : bad(res, 'VPE only', 403));
+// the platform owner: a flag in the database that nothing in the app can set (see schema.sql), and only with a password
+const isSuper = (p) => !!p?.is_super && !!p.password_hash;
+const needSuper = (req, res, next) => (isSuper(req.person) ? next() : bad(res, 'Not found', 404));
 const needRole = (req, res, next) => (req.role ? next() : bad(res, 'This link is not valid', 401));
 const clubOf = (req) => req.person?.club_id ?? req.role?.club_id;
 const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status, email: p.email, is_vpe: p.is_vpe };
@@ -62,7 +80,7 @@ const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/api/session', wrap(async (req, res) => {
-  if (req.person) { const [c] = await q('select name from clubs where id=$1', [req.person.club_id]); return res.json({ type: req.person.is_vpe ? 'vpe' : 'member', person: pub(req.person), club: c?.name }); }
+  if (req.person) { const [c] = await q('select name from clubs where id=$1', [req.person.club_id]); return res.json({ type: req.person.is_vpe ? 'vpe' : 'member', person: pub(req.person), club: c?.name, super: isSuper(req.person) }); }
   if (req.role) return res.json({ type: 'role', role: { key: req.role.role_key, label: req.role.label }, person: pub(req.rolePerson) });
   res.status(401).json({ error: 'No valid link' });
 }));
@@ -111,10 +129,115 @@ app.post('/api/auth/reset', wrap(async (req, res) => {
   p ? res.json(sessionFor(p)) : bad(res, 'This link has expired. Ask your VPE for a new one.', 404);
 }));
 
+
+/* Adds a member to a club, or brings an existing one (same email or same name) up to date. `run` is q or a transaction's query.
+   A member can arrive with the path they are on and how many levels of it they have already finished. */
+const PATH_LEVELS = 5;
+async function setLevelsDone(run, personId, path, done) {
+  await run('delete from member_levels where person_id=$1', [personId]);
+  const n = Math.max(0, Math.min(PATH_LEVELS, Number(done) || 0));
+  for (let l = 1; l <= n; l++) await run('insert into member_levels(person_id, path, level) values ($1,$2,$3) on conflict do nothing', [personId, path, l]);
+  await run('update people set path_name=$1, path_level=$2 where id=$3', [path, Math.min(PATH_LEVELS, n + 1), personId]);
+}
+async function upsertMember(run, clubId, m) {
+  const name = String(m.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (name.length < 2) return { skipped: 'no name' };
+  const email = normEmail(m.email); if (email && !validEmail(email)) return { skipped: 'bad email', name };
+  const cred = String(m.credential || '').trim().slice(0, 20), phone = String(m.phone || '').trim().slice(0, 30) || null;
+  let [p] = email ? await run('select * from people where club_id=$1 and lower(email)=$2', [clubId, email]) : [];
+  if (!p) [p] = await run(`select * from people where club_id=$1 and lower(name)=lower($2) and kind='member' and status<>'inactive'`, [clubId, name]);
+  let made = false;
+  if (p) await run('update people set phone=coalesce($1, phone), credential=case when $2<>\'\' then $2 else credential end where id=$3', [phone, cred, p.id]);
+  else { [p] = await run(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [clubId, name, email || null, token(), cred, phone]); made = true; }
+  const path = String(m.path_name || '').trim();
+  if (path && (await run('select 1 as x from path_projects where path=$1 limit 1', [path])).length) await setLevelsDone(run, p.id, path, m.levels_done);
+  return { id: p.id, name: p.name, made };
+}
+
 const cleanNum = (v) => String(v || '').replace(/\D/g, '');
 app.get('/api/clubs/number/:n', wrap(async (req, res) => {
   const [c] = await q('select name from clubs where tm_number=$1', [cleanNum(req.params.n)]);
   res.json({ taken: !!c });
+}));
+
+
+/* ───────── super admin: the platform owner's view across every club (only people flagged is_super) ───────── */
+const n0 = (v) => Number(v) || 0;
+app.get('/api/admin/overview', needPerson, needSuper, wrap(async (_req, res) => {
+  const t0 = Date.now();
+  await q('select 1');
+  const dbMs = Date.now() - t0;
+  const [t] = await q(`select
+    (select count(*) from clubs)::int as clubs,
+    (select count(*) from clubs where created_at > now() - interval '30 days')::int as clubs_30,
+    (select count(*) from people where kind='member' and status<>'inactive')::int as members,
+    (select count(*) from people where kind='guest' and status<>'inactive')::int as guests,
+    (select count(*) from people where kind='member' and status<>'inactive' and password_hash is not null)::int as accounts,
+    (select count(*) from people where kind='member' and status<>'inactive' and password_hash is null and invited_at is not null)::int as invited,
+    (select count(*) from people where last_login_at > now() - interval '7 days')::int as login_7,
+    (select count(*) from people where last_login_at > now() - interval '30 days')::int as login_30,
+    (select count(*) from meetings where date < current_date)::int as meetings_held,
+    (select count(*) from meetings where date >= current_date)::int as meetings_ahead,
+    (select count(*) from evaluations)::int as evaluations,
+    (select count(*) from meeting_roles where submitted_at is not null)::int as sheets,
+    (select count(*) from speech_plans)::int as plans,
+    (select count(*) from member_projects)::int as projects_logged,
+    (select count(*) from member_levels)::int as levels_logged,
+    (select count(*) from people where join_requested_at is not null)::int as join_requests`);
+  const bySheet = await q(`select role_key, count(*)::int as n from meeting_roles where submitted_at is not null group by role_key order by n desc`);
+  const days = await q(`select to_char(d,'YYYY-MM-DD') as day,
+      (select count(*) from meeting_roles where submitted_at::date = d::date)::int as sheets,
+      (select count(*) from clubs where created_at::date = d::date)::int as clubs,
+      (select count(*) from people where last_login_at::date = d::date)::int as logins
+    from generate_series(current_date - 13, current_date, interval '1 day') d order by d`);
+  const log = await q(`select l.at, l.action, a.name as admin, p.name as person from admin_log l left join people a on a.id=l.admin_id left join people p on p.id=l.person_id order by l.at desc limit 8`);
+  const mem = process.memoryUsage();
+  res.json({
+    system: {
+      up_s: Math.round((Date.now() - STARTED) / 1000), started: new Date(STARTED).toISOString(), node: process.version,
+      host: process.env.VERCEL ? 'Vercel' : 'Local', region: process.env.VERCEL_REGION || '', commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7), branch: process.env.VERCEL_GIT_COMMIT_REF || '',
+      db: process.env.DATABASE_URL ? 'Postgres (Neon)' : 'Embedded (PGlite)', db_ms: dbMs, rss_mb: Math.round(mem.rss / 1048576), heap_mb: Math.round(mem.heapUsed / 1048576),
+      requests: traffic.total, errors_4xx: traffic.e4, errors_5xx: traffic.e5, slow: traffic.slow, avg_ms: traffic.total ? Math.round(traffic.ms / traffic.total) : 0, recent_errors: traffic.recent,
+    },
+    totals: Object.fromEntries(Object.entries(t).map(([k, v]) => [k, n0(v)])),
+    sheets_by_role: bySheet, days, log,
+  });
+}));
+app.get('/api/admin/clubs', needPerson, needSuper, wrap(async (_req, res) => {
+  res.json(await q(`select c.id, c.name, c.tm_number, ${DATE('c.created_at')} as created,
+      (select count(*) from people p where p.club_id=c.id and p.kind='member' and p.status<>'inactive')::int as members,
+      (select count(*) from people p where p.club_id=c.id and p.kind='guest' and p.status<>'inactive')::int as guests,
+      (select count(*) from people p where p.club_id=c.id and p.kind='member' and p.status<>'inactive' and p.password_hash is not null)::int as accounts,
+      (select count(*) from meetings m where m.club_id=c.id and m.date < current_date)::int as held,
+      (select count(*) from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=c.id)::int as speeches,
+      (select count(*) from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=c.id and r.submitted_at is not null)::int as sheets,
+      (select to_char(max(p.last_login_at),'YYYY-MM-DD') from people p where p.club_id=c.id) as last_login,
+      (select name from people p where p.club_id=c.id and p.is_vpe order by p.id limit 1) as vpe,
+      (select email from people p where p.club_id=c.id and p.is_vpe order by p.id limit 1) as vpe_email,
+      (select phone from people p where p.club_id=c.id and p.is_vpe order by p.id limit 1) as vpe_phone
+    from clubs c order by c.created_at desc`));
+}));
+/* find anyone who is stuck: by name, email, phone or club, or the people who were invited and never got in */
+app.get('/api/admin/people', needPerson, needSuper, wrap(async (req, res) => {
+  const term = `%${String(req.query.q || '').trim().toLowerCase()}%`, stuck = req.query.stuck === '1';
+  const rows = await q(`select p.id, p.name, p.email, p.phone, p.kind, p.is_vpe, c.name as club, ${DATE('p.invited_at')} as invited, ${DATE('p.last_login_at')} as last_login,
+      (p.password_hash is not null) as has_pw, (p.reset_token is not null and p.reset_expires > now()) as live_link
+    from people p join clubs c on c.id=p.club_id
+    where p.status<>'inactive' and p.kind='member'
+      and ($1='%%' or lower(p.name) like $1 or lower(coalesce(p.email,'')) like $1 or coalesce(p.phone,'') like $1 or lower(c.name) like $1)
+      and (not $2 or (p.password_hash is null and p.invited_at is not null) or (p.password_hash is not null and p.last_login_at is null))
+    order by p.invited_at desc nulls last, p.name limit 80`, [term, stuck]);
+  res.json(rows.map((p) => ({ ...p, state: p.has_pw ? (p.last_login ? 'active' : 'never') : p.invited ? 'invited' : 'none' })));
+}));
+/* a sign-in link for someone who is stuck: a reset for a member with a password, a fresh invite for one without */
+app.post('/api/admin/people/:id/reset', needPerson, needSuper, wrap(async (req, res) => {
+  const [p] = await q(`select * from people where id=$1 and kind='member' and status<>'inactive'`, [req.params.id]);
+  if (!p) return bad(res, 'Not found', 404);
+  const t = token();
+  if (p.password_hash) await q(`update people set reset_token=$1, reset_expires=now() + interval '3 days' where id=$2`, [t, p.id]);
+  else await q(`update people set reset_token=$1, reset_expires=now() + interval '7 days', invited_at=now(), token=$3 where id=$2`, [t, p.id, token()]);
+  await q('insert into admin_log(admin_id, action, person_id) values ($1,$2,$3)', [req.person.id, p.password_hash ? 'reset link' : 'invite link', p.id]);
+  res.json({ token: t, kind: p.password_hash ? 'reset' : 'invite', name: p.name, phone: p.phone, days: p.password_hash ? 3 : 7 });
 }));
 
 /* the wizard: a new club, its VPE, and its first year of meetings */
@@ -135,7 +258,12 @@ app.post('/api/clubs', wrap(async (req, res) => {
     const [club] = await t('insert into clubs(name,pattern,join_code,tm_number) values ($1,$2,$3,$4) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code, tmNum]);
     const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(req.body.password)]);
     const made = await generateMeetings(t, club, { months: 12, firstNumber: number });
-    return { ...sessionFor(vpe), join_code: club.join_code, meetings: made };
+    let added = 0;
+    for (const m of (Array.isArray(req.body.members) ? req.body.members : []).slice(0, 300)) {
+      const r = await upsertMember(t, club.id, m);
+      if (r.made) added++;
+    }
+    return { ...sessionFor(vpe), join_code: club.join_code, meetings: made, members_added: added };
   });
   res.json(out);
 }));
@@ -691,6 +819,7 @@ async function pathProgress(person) {
   const now = new Date().toISOString().slice(0, 10);
   for (const w of when.filter((x) => x.date >= now)) if (!sched.has(w.project_id)) sched.set(w.project_id, { date: w.date, venue: w.venue, plan: w.plan });
   for (const w of when.filter((x) => x.date < now).reverse()) if (!sched.has(w.project_id)) sched.set(w.project_id, { date: w.date, venue: w.venue, plan: w.plan });
+  const prior = new Set((await q('select level from member_levels where person_id=$1 and path=$2', [person.id, path])).map((x) => x.level));
   const levels = [];
   for (const r of rows) {
     let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, all: [] });
@@ -700,12 +829,15 @@ async function pathProgress(person) {
     // a level shows its required projects and only the electives the member has chosen (or already finished), not the whole list
     const req = lv.all.filter((p) => p.kind === 'required'), el = lv.all.filter((p) => p.kind === 'elective');
     const sel = el.filter((p) => p.done || picked.has(p.id));
+    lv.prior = prior.has(lv.level);
+    // a level finished before Brekkie: its required projects count as done (no dates are known) and no electives are left to pick
+    if (lv.prior) for (const p of req) if (!p.done) p.done = { date: null, source: 'prior' };
     lv.projects = [...req, ...sel];
     lv.options = el.filter((p) => !sel.includes(p)).map((p) => ({ id: p.id, name: p.name, length: p.length }));
-    lv.to_pick = Math.max(0, (lv.choose || 0) - sel.length);
+    lv.to_pick = lv.prior ? 0 : Math.max(0, (lv.choose || 0) - sel.length);
     lv.required_total = req.length; lv.required_done = req.filter((p) => p.done).length;
-    lv.electives_done = el.filter((p) => p.done).length;
-    lv.complete = lv.required_done === lv.required_total && lv.electives_done >= (lv.choose || 0);
+    lv.electives_done = lv.prior ? Math.max(el.filter((p) => p.done).length, lv.choose || 0) : el.filter((p) => p.done).length;
+    lv.complete = lv.prior || (lv.required_done === lv.required_total && lv.electives_done >= (lv.choose || 0));
     delete lv.all;
   }
   const first = levels.find((l) => !l.complete) || levels[levels.length - 1];
@@ -891,7 +1023,17 @@ app.post('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const clean = String(name || '').trim();
   if (clean.length < 2) return bad(res, 'Enter a name');
   const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [req.person.club_id, clean, email || null, token(), cred, phone]);
+  if (req.body.path_name) await upsertMember(q, req.person.club_id, { name: clean, email, path_name: req.body.path_name, levels_done: req.body.levels_done });
   res.json(pub(p));
+}));
+/* the roster, in one go: from the Toastmasters Club Central export, with each member's path and finished levels */
+app.post('/api/vpe/people/import', needPerson, needVpe, wrap(async (req, res) => {
+  let added = 0, updated = 0; const skipped = [];
+  for (const m of (Array.isArray(req.body.members) ? req.body.members : []).slice(0, 300)) {
+    const r = await upsertMember(q, req.person.club_id, m);
+    if (r.skipped) skipped.push(`${r.name || 'A row'}: ${r.skipped}`); else r.made ? added++ : updated++;
+  }
+  res.json({ added, updated, skipped });
 }));
 app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
@@ -908,6 +1050,7 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
     email = e || null;
   }
   if ('path_name' in b) await q('update people set path_name=$1, path_level=$2 where id=$3', [b.path_name || null, b.path_name ? (Number(b.path_level) || null) : null, p.id]);
+  if ('levels_done' in b && (b.path_name || p.path_name)) await setLevelsDone(q, p.id, b.path_name || p.path_name, b.levels_done);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
   await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,phone=$8,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential, phone]);

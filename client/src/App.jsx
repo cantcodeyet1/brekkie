@@ -14,6 +14,7 @@ import Landing from './pages/Landing.jsx';
 import Wizard from './pages/Wizard.jsx';
 import Reset from './pages/Reset.jsx';
 import Club, { AccountModal } from './pages/Club.jsx';
+import Admin from './pages/Admin.jsx';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/reset/:token" element={<Reset />} />
       <Route path="/s/:token" element={<Enter />} />
       <Route path="/r/:token" element={<RoleApp />} />
+      <Route path="/admin/*" element={<Admin />} />
       <Route path="/f/:code" element={<Feedback />} />
       <Route path="/m/*" element={<MemberArea />} />
       <Route path="/v/*" element={<VpeArea />} />
@@ -73,7 +75,7 @@ function MemberArea() {
         <Route path="room" element={<Room />} />
         <Route path="evaluations" element={<Navigate to="/m/speeches" replace />} />
       </Routes>
-      {acct && <AccountModal account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
+      {acct && <AccountModal admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }
@@ -99,7 +101,7 @@ function VpeArea() {
         <Route path="members/:id" element={<VpePerson />} />
         <Route path="evaluations/:id" element={<EvaluationDetail vpe />} />
       </Routes>
-      {acct && <AccountModal showPath account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
+      {acct && <AccountModal showPath admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }

@@ -16,7 +16,7 @@ export function projectOptions(d, keepId) {
     const group = `Level ${l.level}${l.title ? ` · ${l.title}` : ''}`, on = [], off = [];
     for (const p of l.projects) {
       const label = p.code ? `${p.code} ${p.name}` : p.name;
-      if (p.done) off.push({ value: p.id, label, group, disabled: true, sub: `Done ${fmtDate(p.done.date, { day: 'numeric', month: 'short' })}` });
+      if (p.done) off.push({ value: p.id, label, group, disabled: true, sub: p.done.date ? `Done ${fmtDate(p.done.date, { day: 'numeric', month: 'short' })}` : 'Done before Brekkie' });
       else if (p.sched && p.id !== keepId) off.push({ value: p.id, label, group, disabled: true, sub: `Scheduled ${fmtDate(p.sched.date, { day: 'numeric', month: 'short' })}` });
       else on.push({ value: p.id, label, group, sub: p.kind === 'required' ? 'Required' : 'Elective', req: p.kind === 'required' });
     }
@@ -175,7 +175,7 @@ function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
                   <span className="it-s" aria-hidden="true">{it.state === 'done' ? I.check : ''}</span>
                   <span className="it-t"><b>{it.code || 'Elective'}</b><span>{it.id ? it.name : 'Choose an elective'}</span></span>
                   <span className="it-d">
-                    {it.state === 'done' ? <><em>Done {short(it.date)}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
+                    {it.state === 'done' ? <><em>{it.source === 'prior' ? 'Done before Brekkie' : <>Done {short(it.date)}</>}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
                       : it.state === 'sched' || it.state === 'due' ? <><em>{it.state === 'due' ? 'Was ' : ''}{short(it.date)}{it.venue ? ` · ${it.venue}` : ''}</em><button type="button" className={it.state === 'due' ? 'go' : ''} onClick={stop(() => onDone(m, it, lv))}>{I.check} Mark done</button></>
                       : it.id ? <button type="button" onClick={stop(() => onSchedule(m, it))}>Schedule</button>
                       : <Link to={`/v/members/${m.id}?level=${lv}`} onClick={(ev) => ev.stopPropagation()}>Choose</Link>}

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
 import { PwPair, pwGood } from './Landing.jsx';
+import RosterImport from './RosterImport.jsx';
+import { toMembers } from '../roster.js';
 import { Btn, DatePick, I, Select, Seg, Wordmark, copyText, useToast } from '../ui.jsx';
 
 /* ───────── the meeting pattern: when a club meets ───────── */
@@ -56,7 +58,7 @@ export function PatternFields({ value: p, onChange }) {
 export const newPattern = () => ({ day: 5, mode: 'monthly', weeks: [2, 4], time: '18:00', place: '', start: firstOn(5) });
 
 /* ───────── the wizard ───────── */
-const STEPS = ['You', 'Your club', 'When you meet', 'First meeting'];
+const STEPS = ['You', 'Your club', 'When you meet', 'First meeting', 'Your members'];
 
 export default function Wizard() {
   const nav = useNavigate();
@@ -71,6 +73,7 @@ export default function Wizard() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
+  const [roster, setRoster] = useState([]);
 
   const preview = useMemo(() => datesFor(pat, pat.start, 6), [pat]);
   const startOk = !!pat.start && datesFor(pat, pat.start, 1)[0] === pat.start;
@@ -80,12 +83,13 @@ export default function Wizard() {
     club.trim().length > 1 && tmNum.length >= 3 && !numTaken,
     pat.day != null && (pat.mode !== 'monthly' || pat.weeks.length > 0),
     startOk && num >= 1,
+    true,
   ];
   const next = () => { setErr(''); if (!can[step]) return; if (step === 2) setPat((p) => ({ ...p, start: firstMatch(p) })); setStep(step + 1); };
   const create = async () => {
     setBusy(true); setErr('');
     try {
-      const r = await api('/clubs', { method: 'POST', body: { name: me.name, email: me.email, password: me.password, club: { name: club, number: tmNum, pattern: pat, firstNumber: num } } });
+      const r = await api('/clubs', { method: 'POST', body: { name: me.name, email: me.email, password: me.password, club: { name: club, number: tmNum, pattern: pat, firstNumber: num }, members: toMembers(roster) } });
       setToken(r.token); setDone(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -105,9 +109,9 @@ export default function Wizard() {
           <div className="panel-in">
             <div className="tick">{I.check}</div>
             <h2>{club} is ready.</h2>
-            <p className="lede">We created your next {done.meetings} meetings. Next, add your members and send each of them an invite on WhatsApp.</p>
+            <p className="lede">We created your next {done.meetings} meetings{done.members_added ? ` and added ${done.members_added} ${done.members_added === 1 ? 'member' : 'members'}` : ''}. Next, {done.members_added ? 'send each of them an invite on WhatsApp' : 'add your members and send each of them an invite on WhatsApp'}.</p>
             <div className="row2">
-              <Btn onClick={() => nav('/v/members', { replace: true })}>Add my members</Btn>
+              <Btn onClick={() => nav('/v/members', { replace: true })}>{done.members_added ? 'Invite my members' : 'Add my members'}</Btn>
               <Btn kind="ghost" onClick={() => nav('/v', { replace: true })}>Open Brekkie</Btn>
             </div>
             <p className="fine">Members tap their invite, choose a password and land in your club. No codes to share.</p>
@@ -156,8 +160,15 @@ export default function Wizard() {
                 </div>
                 {!startOk && pat.start && <p className="err">That date does not fit your pattern. Pick a {DAYS[pat.day]}{pat.mode === 'monthly' ? ' in one of your chosen weeks' : ''}.</p>}
                 {startOk && (
-                  <div className="prev"><small>Your first meetings</small><div>{preview.map((d, i) => <span key={d}>{i === 0 ? `No. ${num}  ` : ''}{fmtDate(d)}</span>)}</div></div>
+                  <div className="cl-prev wz-prev"><small>Your first meetings</small><div>{preview.map((d, i) => <span key={d}>{i === 0 ? `No. ${num} · ` : ''}{fmtDate(d)}</span>)}</div></div>
                 )}
+              </>
+            )}
+            {step === 4 && (
+              <>
+                <h2>Your members.</h2>
+                <p className="lede">Add your whole roster in one go. In Club Central, open your club roster and export it, then choose that file here. You can skip this and add members later.</p>
+                <RosterImport rows={roster} onRows={setRoster} />
               </>
             )}
             {err && <p className="err">{err}</p>}
