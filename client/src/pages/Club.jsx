@@ -15,8 +15,8 @@ export default function Club() {
   const [err, setErr] = useState('');
   const [num, setNum] = useState(1);
   useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setGd(data.club.guest_days || 30); } }, [data]);
-  if (loading || !pat) return <Page title="Club" root wide><Loading /></Page>;
-  if (error) return <Page title="Club" root wide><ErrorMsg error={error} /></Page>;
+  if (loading || !pat) return <Page title="Club" root wide full><Loading /></Page>;
+  if (error) return <Page title="Club" root wide full><ErrorMsg error={error} /></Page>;
 
   const code = data.club.join_code;
   const link = `${window.location.origin}/join/${code}`;
@@ -32,66 +32,65 @@ export default function Club() {
   };
   const wa = `https://wa.me/?text=${encodeURIComponent(`Join ${data.club.name} on Brekkie: ${link}`)}`;
   const sm = sum.data;
-  const stat = (n, l, sub) => <div><small>{l}</small><b>{n ?? '-'}</b><span>{sub}</span></div>;
+  const stat = (n, l, sub) => <div className="cl-st"><small>{l}</small><b>{n ?? '-'}</b><span>{sub}</span></div>;
   return (
-    <Page title="Club" root wide>
-      <div className="phead">
-        <div>
-          <p className="reyebrow">Your club</p>
-          <h1 className="rtitle">{data.club.name}</h1>
-          <p className="rsub">{data.club.pattern_text ? `${data.club.pattern_text}. ` : ''}Invite people, set your meeting pattern and choose how long visitors keep access.</p>
-        </div>
-      </div>
-
-      <div className="pstats three cstats">
-        {stat(sm?.members, 'Members', 'In the club')}
-        {stat(sm?.guests, 'Visitors', 'With access now')}
-        {stat(sm?.ahead, 'Meetings', 'Still to come')}
-        {stat(sm?.speeches, 'Speeches', 'Evaluated so far')}
-      </div>
-
-      <div className="cgrid">
-        <section className="ccard">
-          <h3>Invite people</h3>
-          <p className="lede">New members join with this code. Send the link and they only need an email and a password.</p>
-          <div className="code" aria-label="Club code">{code}</div>
-          <div className="row2">
-            <Btn kind="ghost" onClick={async () => toast((await copyText(link)) ? 'Invite link copied' : link)}>{I.copy} Copy link</Btn>
-            <Btn kind="ghost" onClick={async () => toast((await copyText(code)) ? 'Code copied' : code)}>Copy code</Btn>
-            <a className="btn ghost" href={wa} target="_blank" rel="noreferrer">Share on WhatsApp</a>
+    <Page title="Club" root wide full>
+      <div className="rpage">
+        <div className="rhead">
+          <div>
+            <p className="reyebrow">Your club</p>
+            <h1 className="rtitle">{data.club.name}</h1>
+            <p className="rsub">{data.club.pattern_text ? `${data.club.pattern_text}. ` : ''}Invite people, set your meeting pattern and choose how long visitors keep access.</p>
           </div>
-        </section>
+        </div>
 
-        <section className="ccard">
-          <h3>Visitors</h3>
-          <p className="lede">Visitors get a personal link when they are put in a role. They keep access for this long, and you can extend it from the Members page.</p>
-          <label className="fl" htmlFor="c-gd">Visitor access</label>
-          <Select value={gd} onChange={(v) => setGd(Number(v))} options={[[7, '1 week'], [14, '2 weeks'], [30, '30 days'], [60, '60 days'], [90, '90 days']].map(([value, label]) => ({ value, label }))} />
-          <div className="row2" style={{ marginTop: 16 }}><Btn onClick={save} disabled={busy === 'save'}>{busy === 'save' ? 'Saving…' : 'Save settings'}</Btn></div>
-        </section>
+        <div className="cl-card">
+          <div className="cl-stats">
+            {stat(sm?.members, 'Members', 'In the club')}
+            {stat(sm?.guests, 'Visitors', 'With access now')}
+            {stat(sm?.ahead, 'Meetings', 'Still to come')}
+            {stat(sm?.speeches, 'Speeches', 'Evaluated so far')}
+          </div>
 
-        <section className="ccard wide2">
-          <h3>When you meet</h3>
-          <div className="cmeet">
-            <div>
+          <section className="cl-sec">
+            <div className="cl-l"><h2>Invite people</h2><p>New members join with this code. Send the link and they only need an email and a password.</p></div>
+            <div className="cl-r">
+              <div className="cl-code" aria-label="Club code">{code}</div>
+              <div className="cl-btns">
+                <Btn kind="ghost" onClick={async () => toast((await copyText(link)) ? 'Invite link copied' : link)}>{I.copy} Copy link</Btn>
+                <Btn kind="ghost" onClick={async () => toast((await copyText(code)) ? 'Code copied' : code)}>Copy code</Btn>
+                <a className="btn ghost" href={wa} target="_blank" rel="noreferrer">Share on WhatsApp</a>
+              </div>
+            </div>
+          </section>
+
+          <section className="cl-sec">
+            <div className="cl-l"><h2>Visitors</h2><p>Visitors get a personal link when they are put in a role. They keep access for this long, and you can extend it from the Members page.</p></div>
+            <div className="cl-r">
+              <label className="fl" htmlFor="c-gd">Visitor access</label>
+              <div className="cl-gd"><Select value={gd} onChange={(v) => setGd(Number(v))} options={[[7, '1 week'], [14, '2 weeks'], [30, '30 days'], [60, '60 days'], [90, '90 days']].map(([value, label]) => ({ value, label }))} /></div>
+              <div className="cl-btns"><Btn onClick={save} disabled={busy === 'save'}>{busy === 'save' ? 'Saving…' : 'Save settings'}</Btn></div>
+            </div>
+          </section>
+
+          <section className="cl-sec">
+            <div className="cl-l"><h2>When you meet</h2><p>Your pattern decides which meeting dates Brekkie creates. Existing meetings are never changed.</p></div>
+            <div className="cl-r">
               <label className="fl" htmlFor="c-name">Club name</label>
               <input id="c-name" className="inp" value={name} onChange={(e) => setName(e.target.value)} />
               <PatternFields value={pat} onChange={setPat} />
+              <div className="cl-prev"><small>Next meetings</small><div>{datesFor(pat, new Date().toISOString().slice(0, 10) > pat.start ? new Date().toISOString().slice(0, 10) : pat.start, 6).map((d) => <span key={d}>{fmtDate(d)}</span>)}</div></div>
+              {sm?.next && <p className="fine">Next up: meeting {sm.next.number}, {fmtDate(sm.next.date)}.</p>}
+              <label className="fl" htmlFor="c-num">Number of your first meeting <i>(only used if you have none yet)</i></label>
+              <input id="c-num" className="inp cl-num" type="number" min="1" value={num} onChange={(e) => setNum(Math.max(1, parseInt(e.target.value, 10) || 1))} />
+              {err && <p className="err">{err}</p>}
+              <div className="cl-btns">
+                <Btn kind="ghost" onClick={save} disabled={busy === 'save'}>{busy === 'save' ? 'Saving…' : 'Save pattern'}</Btn>
+                <Btn onClick={make} disabled={busy === 'make'}>{busy === 'make' ? 'Creating…' : 'Create the next 12 months of meetings'}</Btn>
+              </div>
             </div>
-            <div>
-              <div className="prev"><small>Next meetings</small><div>{datesFor(pat, new Date().toISOString().slice(0, 10) > pat.start ? new Date().toISOString().slice(0, 10) : pat.start, 6).map((d) => <span key={d}>{fmtDate(d)}</span>)}</div></div>
-              {sm?.next && <p className="fine" style={{ marginTop: 12 }}>Next up: meeting {sm.next.number}, {fmtDate(sm.next.date)}.</p>}
-              <label className="fl" htmlFor="c-num">Number of your first meeting (only used if you have none yet)</label>
-              <input id="c-num" className="inp" type="number" min="1" value={num} onChange={(e) => setNum(Math.max(1, parseInt(e.target.value, 10) || 1))} style={{ maxWidth: 140 }} />
-              <p className="fine">Creating meetings adds any dates that do not exist yet, numbered after your latest meeting. It never changes meetings you already have.</p>
-            </div>
-          </div>
-          {err && <p className="err">{err}</p>}
-          <div className="row2" style={{ marginTop: 16 }}>
-            <Btn kind="ghost" onClick={save} disabled={busy === 'save'}>{busy === 'save' ? 'Saving…' : 'Save pattern'}</Btn>
-            <Btn onClick={make} disabled={busy === 'make'}>{busy === 'make' ? 'Creating…' : 'Create the next 12 months of meetings'}</Btn>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </Page>
   );

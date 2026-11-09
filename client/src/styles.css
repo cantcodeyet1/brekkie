@@ -2245,3 +2245,32 @@ html,body{background:#F5F5F7}
 .cal-who .selbtn{box-shadow:0 0 0 1px #D5DBDF,0 1px 3px rgba(0,30,50,.08)}
 .cal-who .selbtn:hover{box-shadow:0 0 0 1px #B9C4C8,0 4px 12px rgba(0,30,50,.1)}
 .cal-nav{box-shadow:0 0 0 1px #D5DBDF,0 1px 3px rgba(0,30,50,.08)}
+
+/* club page: one card, settings in rows */
+.cl-card{background:#fff;border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 18px 44px -24px rgba(0,0,0,.18);overflow:clip}
+.cl-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid #EEF0F2}
+.cl-st{padding:22px 26px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #F0F2F3}
+.cl-st:last-child{border-right:0}
+.cl-st small{font:700 11px var(--head);letter-spacing:.1em;text-transform:uppercase;color:#8A979C}
+.cl-st b{font:700 34px/1.1 var(--head);letter-spacing:-.03em;color:#1D1D1F;margin-top:6px;font-variant-numeric:tabular-nums}
+.cl-st span{font-size:13px;color:#6E6E73}
+.cl-sec{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:20px 48px;padding:28px 26px;border-bottom:1px solid #EEF0F2}
+.cl-sec:last-child{border-bottom:0}
+.cl-l h2{font:700 17px var(--head);letter-spacing:-.01em;margin:0 0 6px;color:#1D1D1F}
+.cl-l p{margin:0;font-size:14px;line-height:1.5;color:#6E6E73}
+.cl-r{display:flex;flex-direction:column;gap:10px;min-width:0;max-width:560px}
+.cl-r .fl{margin:6px 0 0;font-size:13px;color:#6E6E73}
+.cl-r .fl i{font-style:normal;color:#8E8E93;font-weight:400}
+.cl-r .fine{margin:0;font-size:13px;color:#6E6E73}
+.cl-code{align-self:flex-start;font:800 26px var(--head);letter-spacing:.14em;color:var(--blue);background:#F0F3F5;border-radius:16px;padding:14px 22px}
+.cl-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.cl-btns .btn{flex:none;width:auto;min-width:0}
+.cl-gd{max-width:260px}
+.cl-num{max-width:140px}
+.cl-prev{background:#F5F6F7;border-radius:14px;padding:12px 14px;margin-top:6px}
+.cl-prev small{font:700 11px var(--head);letter-spacing:.1em;text-transform:uppercase;color:#8A979C}
+.cl-prev div{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.cl-prev span{font:600 12.5px var(--head);color:#5E6B70;background:#fff;border-radius:99px;padding:4px 11px;box-shadow:0 0 0 1px #E3E7E9}
+@media (max-width:899px){.cl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cl-st:nth-child(2){border-right:0}.cl-st:nth-child(-n+2){border-bottom:1px solid #F0F2F3}.cl-sec{grid-template-columns:1fr;gap:14px;padding:22px 20px}}
+@media (max-width:560px){.cl-st{padding:16px 18px}.cl-st b{font-size:28px}}
+.cl-btns .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 18px;border-radius:99px;font-size:14px;text-decoration:none;white-space:nowrap}
