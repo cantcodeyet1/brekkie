@@ -53,7 +53,7 @@ export function ToastProvider({ children }) {
 const ShellCtx = createContext({ nav: [], who: '', onSignOut: null });
 export const Wordmark = ({ className = '' }) => <Link to="/start" className={'wm ' + className} aria-label="Brekkie home">Brekkie<i /></Link>;
 
-export function Shell({ nav, who, sub, tag, onSignOut, onAccount, noSide, bare, topNav, children }) {
+export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide, bare, topNav, children }) {
   const desk = useDesk();
   return (
     <ShellCtx.Provider value={{ nav, who, sub, onSignOut, onAccount, bare }}>
@@ -78,6 +78,7 @@ export function Shell({ nav, who, sub, tag, onSignOut, onAccount, noSide, bare, 
                 : <NavLink key={it.to} to={it.to} end={it.end} className={({ isActive }) => (isActive ? 'on' : '')} style={{ textDecoration: 'none' }}>{it.icon}{it.label}</NavLink>)}
               <div className="me">
                 <div className="me-id"><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b></span>{tag && <em className="role-tag">{tag}</em>}</div>
+                {views?.length > 0 && <div className="me-views">{views.map((v) => <Link key={v.to} to={v.to}>{v.icon}{v.label}</Link>)}</div>}
                 {sub && <div className="clubpill" title={sub}>{sub}</div>}
                 <div className="me-act">
                   {onAccount && <button type="button" onClick={onAccount}>Account</button>}

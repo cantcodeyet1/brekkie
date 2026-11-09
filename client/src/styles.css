@@ -1072,8 +1072,12 @@ html,body,#root,.app,.main{overflow-x:hidden;max-width:100%}
   .note:nth-child(even){left:30px}
   .note span{font-size:14px}
   @keyframes rise{0%{transform:translateY(120px);opacity:0}8%{opacity:1}24%{transform:translateY(44px);opacity:1}36%{transform:translateY(0);opacity:1}44%{transform:translateY(-30px);opacity:0}100%{transform:translateY(-30px);opacity:0}}
-  .land-panel{padding:28px 22px 44px;border-radius:26px 26px 0 0;margin-top:-6px;position:relative;z-index:3;box-shadow:0 -18px 40px -26px rgba(0,0,0,.4)}
+  /* the blue stays put; the white sheet rises over it and grows upward as its content does */
+  .land{display:block;background:#00263d}
+  .land-hero{position:sticky;top:0;z-index:0;height:100vh;height:100dvh;min-height:0}
+  .land-panel{display:block;padding:28px 22px calc(44px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;margin-top:-46vh;margin-top:-46dvh;min-height:46vh;min-height:46dvh;position:relative;z-index:3;box-shadow:0 -18px 40px -26px rgba(0,0,0,.4)}
   .wiz .land-hero{padding-bottom:22px}
+  .wiz .land-panel{margin-top:-52dvh;min-height:52dvh}
   .steps{grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:6px}
   .steps li{flex-direction:column;align-items:flex-start;font-size:12.5px;gap:6px}
   .panel-in .two{grid-template-columns:1fr}
@@ -2694,3 +2698,9 @@ html,body{background:#F5F5F7}
 }
 .app:has(.ad-in) .tn-in{width:min(1090px,100% - 94px)}
 .wz-prev{margin-top:16px;padding:16px 18px;border-radius:18px}
+
+/* sidebar: jump between the VPE view, the member page and the super admin page */
+.side .me-views{display:grid;gap:2px;margin:0 0 6px}
+.side .me-views a{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:12px;color:rgba(255,255,255,.88);font:600 14px var(--head);text-decoration:none}
+.side .me-views a:hover{background:rgba(255,255,255,.12);color:#fff}
+.side .me-views a svg{width:18px;height:18px;opacity:.8}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { api, getToken, setToken, useApi } from './api.js';
-import { Loading, Shell } from './ui.jsx';
+import { I, Loading, Shell } from './ui.jsx';
 import { EvaluationDetail, Evaluations, FuncHistory, Given, MEMBER_NAV, MeetingDetail, Meetings, MemberHome, Room } from './pages/Member.jsx';
 import Feedback from './pages/Feedback.jsx';
 import RoleApp from './pages/Role.jsx';
@@ -63,7 +63,7 @@ function MemberArea() {
   const { data } = useSession();
   if (!data) return <Loading />;
   return (
-    <Shell topNav nav={MEMBER_NAV} who={data.person.name} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
+    <Shell topNav nav={data.type === 'vpe' ? [...MEMBER_NAV, { to: '/v', label: 'VPE view', icon: I.back }] : MEMBER_NAV} who={data.person.name} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
       <Routes>
         <Route index element={<MemberHome />} />
         <Route path="role/:key" element={<FuncHistory />} />
@@ -75,7 +75,7 @@ function MemberArea() {
         <Route path="room" element={<Room />} />
         <Route path="evaluations" element={<Navigate to="/m/speeches" replace />} />
       </Routes>
-      {acct && <AccountModal admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
+      {acct && <AccountModal admin={!!data.super} vpe={data.type === 'vpe'} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }
@@ -88,7 +88,8 @@ function VpeArea() {
   if (!data) return <Loading />;
   if (data.type !== 'vpe') return <Navigate to="/m" replace />;
   return (
-    <Shell nav={VPE_NAV} who={data.person.name} tag="VPE" sub={data.club || 'Your club'} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
+    <Shell nav={VPE_NAV} who={data.person.name} tag="VPE" sub={data.club || 'Your club'}
+      views={[...(data.super ? [{ to: '/admin', label: 'Super admin', icon: I.chart }] : []), { to: '/m', label: 'My member page', icon: I.home }]} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
       <Routes>
         <Route index element={<Dashboard />} />
         <Route path="calendar" element={<Calendar />} />
@@ -101,7 +102,7 @@ function VpeArea() {
         <Route path="members/:id" element={<VpePerson />} />
         <Route path="evaluations/:id" element={<EvaluationDetail vpe />} />
       </Routes>
-      {acct && <AccountModal showPath admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
+      {acct && <AccountModal showPath portal admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }

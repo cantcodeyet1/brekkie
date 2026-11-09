@@ -105,7 +105,7 @@ export default function Club() {
 }
 
 /* ───────── your account: email and password ───────── */
-export function AccountModal({ account: data, onClose, onSignOut, showPath = false, admin = false }) {
+export function AccountModal({ account: data, onClose, onSignOut, showPath = false, admin = false, portal = false, vpe = false }) {
   const toast = useToast();
   const cat = useApi('/pathways');
   const [f, setF] = useState({ email: '', current: '', password: '' });
@@ -141,6 +141,8 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
             <p className="ac-note">Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
           </section>}
 
+          {portal && <Link to="/m" className="ac-admin" onClick={onClose}>{I.home} My member page</Link>}
+          {vpe && <Link to="/v" className="ac-admin" onClick={onClose}>{I.back} Back to the VPE view</Link>}
           {admin && <Link to="/admin" className="ac-admin" onClick={onClose}>{I.chart} Open the super admin page</Link>}
           {onSignOut && <button type="button" className="ac-out" onClick={onSignOut}>{I.out} Sign out</button>}
 
