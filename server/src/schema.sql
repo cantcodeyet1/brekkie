@@ -253,3 +253,9 @@ alter table member_projects add column if not exists venue text not null default
 
 -- a planned speech that has been marked done stays on the calendar, shown as done
 alter table speech_plans add column if not exists done boolean not null default false;
+alter table people add column if not exists reset_token text;
+alter table people add column if not exists reset_expires timestamptz;
+alter table clubs add column if not exists tm_number text;
+create unique index if not exists clubs_tm_number_idx on clubs(tm_number) where tm_number is not null;
+alter table people add column if not exists invited_at timestamptz;
+alter table people add column if not exists last_login_at timestamptz;

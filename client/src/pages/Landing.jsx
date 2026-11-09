@@ -1,7 +1,45 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
 import { Btn, Loading, Seg, Wordmark } from '../ui.jsx';
+import { VPE_WHATSAPP } from './Role.jsx';
+
+export const PW_MIN = 6;
+export const pwGood = (pw, again) => pw.length >= PW_MIN && pw === again;
+
+/* a new password, typed twice, with a live check */
+export function PwPair({ id, value, again, onChange, onAgain, onEnter, autoFocus }) {
+  const long = value.length >= PW_MIN, same = !!again && value === again;
+  return (
+    <>
+      <label className="fl" htmlFor={id}>Password</label>
+      <PwInput id={id} value={value} onChange={onChange} autoComplete="new-password" placeholder={`At least ${PW_MIN} characters`} />
+      <label className="fl" htmlFor={id + '2'}>Confirm password</label>
+      <PwInput id={id + '2'} value={again} onChange={onAgain} autoComplete="new-password" placeholder="Type it again" onKeyDown={(e) => e.key === 'Enter' && onEnter && onEnter()} />
+      {(value || again) && (
+        <ul className="pwcheck">
+          <li className={long ? 'ok' : ''}><i>{long ? '✓' : ''}</i>At least {PW_MIN} characters</li>
+          <li className={same ? 'ok' : again ? 'bad' : ''}><i>{same ? '✓' : again ? '!' : ''}</i>{again && !same ? 'Passwords do not match' : 'Passwords match'}</li>
+        </ul>
+      )}
+    </>
+  );
+}
+
+/* a password box with a show and hide switch */
+export function PwInput({ id, value, onChange, onKeyDown, placeholder, autoComplete }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="pwbox">
+      <input id={id} className="inp" type={show ? 'text' : 'password'} value={value} onChange={onChange} onKeyDown={onKeyDown} autoComplete={autoComplete} placeholder={placeholder} />
+      <button type="button" className="pwtog" onClick={() => setShow(!show)} aria-pressed={show} aria-label={show ? 'Hide password' : 'Show password'} title={show ? 'Hide password' : 'Show password'}>
+        {show
+          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18" /><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6a14 14 0 0 1-2.6 3.3M6.6 7.6A14.5 14.5 0 0 0 2.5 12c1 2 4.5 6 9.5 6 1.5 0 2.8-.3 4-.9" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 12C3.5 10 7 6 12 6s8.5 4 9.5 6c-1 2-4.5 6-9.5 6s-8.5-4-9.5-6z" /><circle cx="12" cy="12" r="3" /></svg>}
+      </button>
+    </div>
+  );
+}
 
 /* feedback drifting up the hero: sample lines only, never real members' notes */
 const NOTES = [
@@ -13,7 +51,7 @@ const NOTES = [
   ['General Evaluator', 'Try a bigger gesture on your key point.', 'G'],
 ];
 
-function Hero({ children }) {
+export function Hero({ children }) {
   return (
     <section className="land-hero">
       <Wordmark className="wm-light" />
@@ -31,16 +69,14 @@ function Hero({ children }) {
 
 export default function Landing({ force }) {
   const nav = useNavigate();
-  const { code: urlCode } = useParams();
-  const [tab, setTab] = useState(urlCode ? 'join' : 'in');
+  const [tab, setTab] = useState('in');
   const [checking, setChecking] = useState(true);
   const [demo, setDemo] = useState(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [f, setF] = useState({ name: '', email: '', password: '', code: (urlCode || '').toUpperCase() });
-  const [club, setClub] = useState(null);       // the club a join code belongs to
+  const [f, setF] = useState({ name: '', email: '', password: '', again: '', code: '' });
   const [choose, setChoose] = useState(null);   // the same email and password in more than one club
-  const [paste, setPaste] = useState('');
+    const [forgot, setForgot] = useState(false);
   const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setErr(''); };
 
   const finish = (s) => { setToken(s.token); nav(s.type === 'vpe' ? '/v' : '/m', { replace: true }); };
@@ -62,26 +98,16 @@ export default function Landing({ force }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {
-    const c = f.code.trim();
-    if (tab !== 'join' || c.length < 6) { setClub(null); return undefined; }
-    let live = true;
-    api(`/clubs/lookup?code=${encodeURIComponent(c)}`).then((r) => live && setClub(r.name), () => live && setClub(false));
-    return () => { live = false; };
-  }, [f.code, tab]);
-
   const submit = async () => {
     setBusy(true); setErr('');
     try {
-      const r = tab === 'in'
-        ? await api('/auth/signin', { method: 'POST', body: { email: f.email, password: f.password } })
-        : await api('/auth/join', { method: 'POST', body: { code: f.code, name: f.name, email: f.email, password: f.password } });
+      const r = await api('/auth/signin', { method: 'POST', body: { email: f.email, password: f.password } });
       if (r.choose) setChoose(r.choose); else finish(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
   if (checking) return <Loading />;
-  const ready = tab === 'in' ? f.email.trim() && f.password : f.code.trim().length >= 6 && club && f.name.trim().length > 1 && f.email.trim() && f.password.length >= 8;
+  const ready = f.email.trim() && f.password;
   return (
     <div className="land">
       <Hero>
@@ -98,37 +124,24 @@ export default function Landing({ force }) {
             </>
           ) : (
             <>
-              <h2>{tab === 'in' ? 'Welcome back.' : 'Join your club.'}</h2>
-              <Seg className="auth-tabs" value={tab} onChange={(v) => { setTab(v); setErr(''); }} options={[['in', 'Sign in'], ['join', 'Join a club']]} />
-              {tab === 'join' && (
-                <>
-                  <label className="fl" htmlFor="l-code">Club code</label>
-                  <input id="l-code" className="inp code-in" value={f.code} onChange={(e) => { setF({ ...f, code: e.target.value.toUpperCase() }); setErr(''); }} placeholder="From your VPE" autoCapitalize="characters" spellCheck="false" maxLength={12} />
-                  {club && <p className="okline">{club}</p>}
-                  {club === false && <p className="err">We could not find that club.</p>}
-                  <label className="fl" htmlFor="l-name">Your name</label>
-                  <input id="l-name" className="inp" value={f.name} onChange={set('name')} autoComplete="name" placeholder="Your full name" />
-                </>
-              )}
+              <h2>Welcome back.</h2>
+              <Seg className="auth-tabs" value="in" onChange={(v) => v === 'up' && nav('/start/club')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />
               <label className="fl" htmlFor="l-email">Email</label>
               <input id="l-email" className="inp" type="email" value={f.email} onChange={set('email')} autoComplete="email" placeholder="you@example.com" />
               <label className="fl" htmlFor="l-pw">Password</label>
-              <input id="l-pw" className="inp" type="password" value={f.password} onChange={set('password')} autoComplete={tab === 'in' ? 'current-password' : 'new-password'} placeholder={tab === 'in' ? 'Your password' : 'At least 8 characters'} onKeyDown={(e) => e.key === 'Enter' && ready && submit()} />
+              <PwInput id="l-pw" value={f.password} onChange={set('password')} autoComplete="current-password" placeholder="Your password" onKeyDown={(e) => e.key === 'Enter' && ready && submit()} />
+              <button type="button" className="forgot" onClick={() => setForgot(!forgot)} aria-expanded={forgot}>Forgot your password?</button>
+              {forgot && (
+                <div className="forgot-box">
+                  <p>Ask your VPE for a reset link. They send it to you on WhatsApp, and it lets you choose a new password.</p>
+                  <a className="btn ghost sm" href={`https://wa.me/${VPE_WHATSAPP}?text=${encodeURIComponent('Hi, I forgot my Brekkie password. Could you send me a reset link?')}`} target="_blank" rel="noreferrer">Message the VPE on WhatsApp</a>
+                </div>
+              )}
               {err && <p className="err">{err}</p>}
-              <div style={{ marginTop: 18 }}><Btn onClick={submit} disabled={!ready || busy}>{busy ? 'One moment…' : tab === 'in' ? 'Sign in' : 'Join and sign in'}</Btn></div>
+              <div style={{ marginTop: 18 }}><Btn onClick={submit} disabled={!ready || busy}>{busy ? 'One moment…' : 'Sign in'}</Btn></div>
+              <p className="fine" style={{ marginTop: 14 }}>New to Brekkie? Your VPE sends you an invite on WhatsApp. Tap it to choose your password.</p>
             </>
           )}
-
-          <div className="alt">
-            <Link to="/start/club" className="alt-card"><b>Starting a club?</b><span>Set it up in a few minutes</span>{`→`}</Link>
-            <details className="linkbox">
-              <summary>Have a personal link?</summary>
-              <div className="paste">
-                <input className="inp" value={paste} onChange={(e) => { setPaste(e.target.value); setErr(''); }} onKeyDown={(e) => e.key === 'Enter' && enterLink(paste)} placeholder="Paste your link" aria-label="Your sign-in link" autoCapitalize="off" autoCorrect="off" spellCheck="false" />
-                <Btn kind="ghost" onClick={() => enterLink(paste)} disabled={!paste.trim()}>Open</Btn>
-              </div>
-            </details>
-          </div>
 
           {demo && (
             <div className="demo">

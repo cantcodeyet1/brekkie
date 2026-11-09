@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Calendar from './pages/Calendar.jsx';
 import Landing from './pages/Landing.jsx';
 import Wizard from './pages/Wizard.jsx';
+import Reset from './pages/Reset.jsx';
 import Club, { AccountModal } from './pages/Club.jsx';
 
 export default function App() {
@@ -20,7 +21,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/start" element={<Landing force />} />
       <Route path="/start/club" element={<Wizard />} />
-      <Route path="/join/:code" element={<Landing force />} />
+      <Route path="/reset/:token" element={<Reset />} />
       <Route path="/s/:token" element={<Enter />} />
       <Route path="/r/:token" element={<RoleApp />} />
       <Route path="/f/:code" element={<Feedback />} />

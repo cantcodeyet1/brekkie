@@ -65,7 +65,7 @@ export default function RoleApp() {
 }
 
 /* shown to visitors: one tap tells the VPE, and opens a ready-written WhatsApp message to them */
-const VPE_WHATSAPP = '263719373950';
+export const VPE_WHATSAPP = '263719373950';
 export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) {
   const [asked, setAsked] = useState(!!data.me?.join_requested);
   const [err, setErr] = useState('');

@@ -2404,3 +2404,63 @@ html,body{background:#F5F5F7}
 .pp-card>.plist.g{padding-top:6px}
 @media (max-width:640px){.pp-card .ptools{padding:14px 16px}.pp-card .plist{padding:0 8px}}
 .rhead>.btn{width:auto;padding:0 24px;flex:none}
+
+/* sign in extras */
+.pwbox{position:relative}
+.pwbox .inp{padding-right:64px}
+.pwtog{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--blue);font:600 13px var(--head);padding:8px 10px;border-radius:999px;cursor:pointer}
+.pwtog:hover{background:#E9EEF1}
+.forgot{display:block;margin:10px 2px 0;border:0;background:none;padding:0;color:var(--blue);font:600 13.5px var(--head);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.forgot-box{margin-top:10px;padding:14px 16px;background:#F5F5F7;border-radius:16px}
+.forgot-box p{margin:0 0 10px;color:#4A4A50;font-size:14.5px;line-height:1.45}
+.forgot-box .btn{display:inline-flex;width:auto;padding:0 18px;text-decoration:none}
+.rs-btns{display:flex;gap:10px;margin-top:14px}
+.rs-btns .btn{flex:1 1 0;width:auto;min-width:0;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+.pwcheck{list-style:none;margin:10px 2px 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:#6E6E73}
+.pwcheck li{display:flex;align-items:center;gap:8px}
+.pwcheck i{width:16px;height:16px;border-radius:50%;background:#E5E7EA;color:#fff;font:700 10px/16px var(--head);text-align:center;font-style:normal;flex:none}
+.pwcheck .ok{color:#2F7D4F}.pwcheck .ok i{background:#3E9B63}
+.pwcheck .bad{color:#B3261E}.pwcheck .bad i{background:#B3261E}
+.pwtog{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;right:6px;color:#6E6E73}
+.pwtog:hover{color:var(--blue)}
+.pwbox .inp{padding-right:50px}
+
+/* invites and member status */
+.iv-msg{background:#F5F5F7;border-radius:14px;padding:14px 16px;font-size:14.5px;line-height:1.5;color:#3A3A3F;white-space:pre-wrap;word-break:break-word}
+.iv-list{display:flex;flex-direction:column;max-height:52vh;overflow:auto;margin:0 -4px}
+.iv-row{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:14px}
+.iv-row+.iv-row{border-top:1px solid #F1F2F4}
+.iv-row.now{background:#F5F8FA}
+.iv-row>span:nth-child(2){flex:1;min-width:0}
+.iv-row b{display:block;font:600 15px var(--head)}
+.iv-row small{display:block;color:#6E6E73;font-size:13px;margin-top:2px}
+.iv-row .btn{width:auto;padding:0 20px;display:inline-flex;align-items:center;text-decoration:none}
+.iv-ok{display:inline-flex;align-items:center;gap:6px;color:#2F7D4F;font:600 13.5px var(--head)}
+.iv-row.sent{opacity:.7}
+.pacct{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.rh-act{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rh-act .btn{width:auto;padding:0 22px}
+.pp-card .prow.m .acct{min-width:0}
+.pact{position:relative}
+.rmenu{position:absolute;right:30px;top:100%;z-index:20;background:#fff;border-radius:14px;box-shadow:0 12px 36px -8px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.05);padding:6px;min-width:176px;display:flex;flex-direction:column}
+.rmenu>*{display:block;text-align:left;border:0;background:none;padding:10px 12px;border-radius:9px;font:600 14px var(--head);color:#1D1D1F;cursor:pointer;text-decoration:none}
+.rmenu>*:hover{background:#F2F4F6}
+
+.wa-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:10px;height:48px;border:0;border-radius:999px;background:#25D366;color:#fff;font:700 15px var(--head);cursor:pointer;transition:filter .15s}
+.wa-btn:hover:not(:disabled){filter:brightness(.94)}
+.wa-btn:disabled{opacity:.5;cursor:default}
+.rs-btns .btn.wa{background:#25D366;border-color:#25D366;color:#fff}
+.rs-btns .btn.wa:hover{filter:brightness(.94)}
+.rs-btns .btn.wa{background:#25D366;border-color:#25D366;color:#fff}
+.rs-btns .btn.wa:hover{filter:brightness(.94)}
+
+/* member settings, top right of the profile */
+.phero{position:relative}
+.pset{position:absolute;top:0;right:0;display:flex;align-items:center;gap:10px}
+.pset-m{right:0;top:44px}
+.rmenu .danger{color:#B3261E}
+.pset-b{width:38px;height:38px;border-radius:50%;background:#F2F2F5;display:inline-flex;align-items:center;justify-content:center;border:0;color:#3A3A3F;cursor:pointer}
+.pset-b:hover{background:#E8E8EC}
+@media (max-width:640px){.pset{top:-4px}}
+.pset-b,.pset .ibtn{opacity:1!important;transform:none}

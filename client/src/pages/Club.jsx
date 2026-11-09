@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, useApi } from '../api.js';
 import { Avatar, Btn, ErrorMsg, I, SkPage, SkRows, Modal, Page, PathPick, Select, copyText, useToast } from '../ui.jsx';
+import { PwPair, pwGood } from './Landing.jsx';
+import { BulkInvite } from './Vpe.jsx';
 import { PatternFields, datesFor, fmtDate, newPattern } from './Wizard.jsx';
 
 /* ───────── the VPE's club page: at a glance, invite, meeting pattern, visitor access ───────── */
@@ -14,12 +16,13 @@ export default function Club() {
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [num, setNum] = useState(1);
+  const ppl = useApi('/vpe/people');
+  const sess = useApi('/session');
+  const [bulk, setBulk] = useState(false);
   useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setGd(data.club.guest_days || 30); } }, [data]);
   if (loading || !pat) return <Page title="Club" root wide full><SkPage stats={3} rows={4} pill={false} /></Page>;
   if (error) return <Page title="Club" root wide full><ErrorMsg error={error} /></Page>;
 
-  const code = data.club.join_code;
-  const link = `${window.location.origin}/join/${code}`;
   const body = () => ({ name, pattern: pat, guest_days: gd });
   const save = async () => {
     setBusy('save'); setErr('');
@@ -30,7 +33,6 @@ export default function Club() {
     try { await api('/vpe/club', { method: 'PUT', body: body() }); const r = await api('/vpe/club/meetings', { method: 'POST', body: { firstNumber: num } }); toast(r.made ? `Created ${r.made} meetings` : 'You already have meetings for the next year'); reload(); sum.reload && sum.reload(); }
     catch (e) { setErr(e.message); } finally { setBusy(''); }
   };
-  const wa = `https://wa.me/?text=${encodeURIComponent(`Join ${data.club.name} on Brekkie: ${link}`)}`;
   const sm = sum.data;
   const stat = (n, l, sub) => <div className="cl-st"><small>{l}</small><b>{n ?? '-'}</b><span>{sub}</span></div>;
   return (
@@ -40,7 +42,7 @@ export default function Club() {
           <div>
             <p className="reyebrow">Your club</p>
             <h1 className="rtitle">{data.club.name}</h1>
-            <p className="rsub">{data.club.pattern_text ? `${data.club.pattern_text}. ` : ''}Invite people, set your meeting pattern and choose how long visitors keep access.</p>
+            <p className="rsub">{data.club.pattern_text ? `${data.club.pattern_text}. ` : ''}Invite members, set your meeting pattern and choose how long visitors keep access.</p>
           </div>
         </div>
 
@@ -53,14 +55,19 @@ export default function Club() {
           </div>
 
           <section className="cl-sec">
-            <div className="cl-l"><h2>Invite people</h2><p>New members join with this code. Send the link and they only need an email and a password.</p></div>
+            <div className="cl-l"><h2>Invite members</h2><p>Members join by invite, sent on WhatsApp. Each invite lets one person choose a password and sign in. You can also invite one person from their profile.</p></div>
             <div className="cl-r">
-              <div className="cl-code" aria-label="Club code">{code}</div>
-              <div className="cl-btns">
-                <Btn kind="ghost" onClick={async () => toast((await copyText(link)) ? 'Invite link copied' : link)}>{I.copy} Copy link</Btn>
-                <Btn kind="ghost" onClick={async () => toast((await copyText(code)) ? 'Code copied' : code)}>Copy code</Btn>
-                <a className="btn ghost" href={wa} target="_blank" rel="noreferrer">Share on WhatsApp</a>
-              </div>
+              {(() => {
+                const todo = (ppl.data || []).filter((p) => p.kind === 'member' && p.status !== 'inactive' && p.acct !== 'active' && p.id !== sess.data?.person?.id);
+                const active = (ppl.data || []).filter((p) => p.kind === 'member' && p.acct === 'active').length;
+                return (
+                  <>
+                    <p className="fine" style={{ margin: '0 0 12px' }}>{ppl.data ? `${active} signed in, ${todo.filter((p) => p.acct === 'invited').length} invited, ${todo.filter((p) => p.acct !== 'invited').length} not invited yet.` : 'Loading…'}</p>
+                    <div className="cl-btns"><Btn onClick={() => setBulk(true)} disabled={!todo.length}>{todo.length ? `Send invites (${todo.length})` : 'Everyone is invited'}</Btn></div>
+                    {bulk && <BulkInvite people={todo} club={data.club.name} onClose={() => setBulk(false)} onDone={ppl.reload} />}
+                  </>
+                );
+              })()}
             </div>
           </section>
 
@@ -123,8 +130,8 @@ export function AccountModal({ onClose }) {
             <label className="fl" htmlFor="a-email">Email</label>
             <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" />
             {data.has_password && <><label className="fl" htmlFor="a-cur">Current password <i>(only to change it)</i></label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} autoComplete="current-password" /></>}
-            <label className="fl" htmlFor="a-pw">{data.has_password ? 'New password' : 'Password'} {data.has_password && <i>(optional)</i>}</label>
-            <input id="a-pw" className="inp" type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="new-password" placeholder="At least 8 characters" />
+            {data.has_password ? <p className="fl" style={{ marginBottom: 0 }}>New password <i>(optional)</i></p> : null}
+            <PwPair id="a-pw" value={f.password} again={f.again || ''} onChange={(e) => setF({ ...f, password: e.target.value })} onAgain={(e) => setF({ ...f, again: e.target.value })} />
             <p className="ac-note">{data.has_password ? 'Your personal link keeps working if you change these.' : 'Add a password so you can sign in with your email, not just your link.'}</p>
           </section>
 
@@ -135,7 +142,7 @@ export function AccountModal({ onClose }) {
           </section>
 
           {err && <p className="err">{err}</p>}
-          <div className="row2"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && f.password.length < 8)}>{busy ? 'Saving…' : 'Save'}</Btn></div>
+          <div className="row2"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && !pwGood(f.password, f.again || '')) || (data.has_password && !!f.password && !pwGood(f.password, f.again || ''))}>{busy ? 'Saving…' : 'Save'}</Btn></div>
         </div>
       )}
     </Modal>

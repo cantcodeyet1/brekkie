@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
+import { PwPair, pwGood } from './Landing.jsx';
 import { Btn, DatePick, I, Select, Seg, Wordmark, copyText, useToast } from '../ui.jsx';
 
 /* ───────── the meeting pattern: when a club meets ───────── */
@@ -61,8 +62,10 @@ export default function Wizard() {
   const nav = useNavigate();
   const toast = useToast();
   const [step, setStep] = useState(0);
-  const [me, setMe] = useState({ name: '', email: '', password: '' });
+  const [me, setMe] = useState({ name: '', email: '', password: '', again: '' });
   const [club, setClub] = useState('');
+  const [tmNum, setTmNum] = useState('');
+  const [numTaken, setNumTaken] = useState(false);
   const [pat, setPat] = useState(newPattern);
   const [num, setNum] = useState(1);
   const [err, setErr] = useState('');
@@ -73,8 +76,8 @@ export default function Wizard() {
   const startOk = !!pat.start && datesFor(pat, pat.start, 1)[0] === pat.start;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(me.email.trim());
   const can = [
-    me.name.trim().length > 1 && emailOk && me.password.length >= 8,
-    club.trim().length > 1,
+    me.name.trim().length > 1 && emailOk && pwGood(me.password, me.again),
+    club.trim().length > 1 && tmNum.length >= 3 && !numTaken,
     pat.day != null && (pat.mode !== 'monthly' || pat.weeks.length > 0),
     startOk && num >= 1,
   ];
@@ -82,7 +85,7 @@ export default function Wizard() {
   const create = async () => {
     setBusy(true); setErr('');
     try {
-      const r = await api('/clubs', { method: 'POST', body: { name: me.name, email: me.email, password: me.password, club: { name: club, pattern: pat, firstNumber: num } } });
+      const r = await api('/clubs', { method: 'POST', body: { name: me.name, email: me.email, password: me.password, club: { name: club, number: tmNum, pattern: pat, firstNumber: num } } });
       setToken(r.token); setDone(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -102,33 +105,36 @@ export default function Wizard() {
           <div className="panel-in">
             <div className="tick">{I.check}</div>
             <h2>{club} is ready.</h2>
-            <p className="lede">We created your next {done.meetings} meetings. Share this code so members can join.</p>
-            <div className="code" aria-label="Club code">{done.join_code}</div>
+            <p className="lede">We created your next {done.meetings} meetings. Next, add your members and send each of them an invite on WhatsApp.</p>
             <div className="row2">
-              <Btn kind="ghost" onClick={async () => toast((await copyText(link)) ? 'Invite link copied' : link)}>{I.copy} Copy invite link</Btn>
-              <Btn onClick={() => nav('/v', { replace: true })}>Open Brekkie</Btn>
+              <Btn onClick={() => nav('/v/members', { replace: true })}>Add my members</Btn>
+              <Btn kind="ghost" onClick={() => nav('/v', { replace: true })}>Open Brekkie</Btn>
             </div>
-            <p className="fine">Members tap the invite link, make an account in seconds, and land in your club. You can find this code again under Club.</p>
+            <p className="fine">Members tap their invite, choose a password and land in your club. No codes to share.</p>
           </div>
         ) : (
           <div className="panel-in">
             <p className="kick">Step {step + 1} of {STEPS.length}</p>
             {step === 0 && (
               <>
+                <Seg className="auth-tabs" value="up" onChange={(v) => v === 'in' && nav('/start')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />
                 <h2>First, you.</h2>
                 <p className="lede">You will be the VPE. Your email and password are how you sign in.</p>
                 <label className="fl" htmlFor="w-name">Your name</label>
                 <input id="w-name" className="inp" value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" placeholder="Your full name" />
                 <label className="fl" htmlFor="w-email">Email</label>
                 <input id="w-email" className="inp" type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" />
-                <label className="fl" htmlFor="w-pw">Password</label>
-                <input id="w-pw" className="inp" type="password" value={me.password} onChange={(e) => setMe({ ...me, password: e.target.value })} autoComplete="new-password" placeholder="At least 8 characters" onKeyDown={(e) => e.key === 'Enter' && next()} />
+                <PwPair id="w-pw" value={me.password} again={me.again} onChange={(e) => setMe({ ...me, password: e.target.value })} onAgain={(e) => setMe({ ...me, again: e.target.value })} onEnter={next} />
               </>
             )}
             {step === 1 && (
               <>
                 <h2>Name your club.</h2>
-                <p className="lede">This is what members see when they join.</p>
+                <p className="lede">Your club number keeps a club from being set up twice. The name is what members see when they join.</p>
+                <label className="fl" htmlFor="w-num">Toastmasters club number</label>
+                <input id="w-num" className="inp" inputMode="numeric" value={tmNum} maxLength={10} placeholder="e.g. 1234567" onChange={(e) => { setTmNum(e.target.value.replace(/\D/g, '')); setNumTaken(false); }}
+                  onBlur={() => tmNum.length >= 3 && api(`/clubs/number/${tmNum}`).then((r) => setNumTaken(r.taken)).catch(() => {})} />
+                {numTaken && <p className="err">A club with that number is already on Brekkie. Ask its VPE for the join link.</p>}
                 <label className="fl" htmlFor="w-club">Club name</label>
                 <input id="w-club" className="inp" value={club} onChange={(e) => setClub(e.target.value)} placeholder="e.g. Champions Toastmasters Club" onKeyDown={(e) => e.key === 'Enter' && next()} />
               </>
@@ -156,7 +162,7 @@ export default function Wizard() {
             )}
             {err && <p className="err">{err}</p>}
             <div className="row2 wnav">
-              {step > 0 ? <Btn kind="ghost" onClick={() => { setErr(''); setStep(step - 1); }}>Back</Btn> : <Link className="lnk" to="/start">Already have an account?</Link>}
+              {step > 0 ? <Btn kind="ghost" onClick={() => { setErr(''); setStep(step - 1); }}>Back</Btn> : <span />}
               {step < STEPS.length - 1 ? <Btn onClick={next} disabled={!can[step]}>Continue</Btn> : <Btn onClick={create} disabled={!can[step] || busy}>{busy ? 'Creating…' : 'Create my club'}</Btn>}
             </div>
           </div>

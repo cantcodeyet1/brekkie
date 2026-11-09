@@ -87,4 +87,4 @@ export function checkPw(pw, stored) {
   const a = Buffer.from(hash, 'hex'), b = crypto.scryptSync(String(pw), salt, 32);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-export const pwProblem = (pw) => (typeof pw !== 'string' || pw.length < 8 ? 'Use at least 8 characters for your password' : pw.length > 100 ? 'That password is too long' : '');
+export const pwProblem = (pw) => (typeof pw !== 'string' || pw.length < 6 ? 'Use at least 6 characters for your password' : pw.length > 100 ? 'That password is too long' : '');

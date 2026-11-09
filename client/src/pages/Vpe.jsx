@@ -432,6 +432,8 @@ export function VpePeople() {
   const [qy, setQy] = useState('');
   const [adding, setAdding] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [inv, setInv] = useState(null);
+  const sess = useApi('/session');
   if (loading) return <Page root wide full><SkPage avatar rows={8} /></Page>;
   if (error) return <Page root wide full><div className="rpage"><ErrorMsg error={error} /></div></Page>;
 
@@ -448,7 +450,7 @@ export function VpePeople() {
       <span className="who"><Avatar name={p.name} /><span><b>{p.name}{p.is_vpe && <Chip style={{ marginLeft: 8 }}>VPE</Chip>}</b><small>{desk ? p.email : `${p.path_name ? `${p.path_name}, L${p.path_level || 1} · ` : ''}${p.speeches} ${p.speeches === 1 ? 'speech' : 'speeches'} · ${p.roles_done} ${p.roles_done === 1 ? 'role' : 'roles'} · ${p.feedback_given} feedback given`}</small></span></span>
       {desk && <span className="pth">{p.path_name ? <><b>{p.path_name}</b><span className="lvs" aria-label={`Level ${p.path_level || 1} of 5`}>{[1, 2, 3, 4, 5].map((k) => <i key={k} className={k < (p.path_level || 1) ? 'dn' : k === (p.path_level || 1) ? 'now' : ''} />)}<small>Level {p.path_level || 1}</small></span></> : <small className="dim">No path set</small>}</span>}
       {desk && <><span className="num cnt0">{p.speeches}</span><span className="num cnt0">{p.roles_done}</span><span className="num cnt0">{p.feedback_given}</span></>}
-      <span className="pact"><button type="button" className="ibtn" onClick={(e) => copyLink(e, p)} aria-label={`Copy ${p.name}'s access link`} title="Copy access link">{I.copy}</button>{I.chev}</span>
+      <span className="pact">{I.chev}</span>
     </Link>
   );
 
@@ -509,13 +511,15 @@ export function VpePeople() {
         </>
       )}
       </div>
-      {adding && <AddPerson onClose={() => setAdding(false)} onDone={(p) => { setAdding(false); toast(`${p.name} added`); setTab(p.kind === 'guest' ? 'guests' : 'members'); reload(); }} />}
+      {inv && <InviteModal person={inv} mode="invite" club={sess.data?.club || 'our club'} onClose={() => setInv(null)} onDone={reload} />}
+      {adding && <AddPerson onClose={() => setAdding(false)} onInvite={(p) => { setAdding(false); setTab('members'); setInv(p); reload(); }} onDone={(p) => { setAdding(false); toast(`${p.name} added`); setTab(p.kind === 'guest' ? 'guests' : 'members'); reload(); }} />}
       </div>
     </Page>
   );
 }
 
-function AddPerson({ onClose, onDone }) {
+const WA_ICON = <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.5 14.95L2 22l5.2-1.5A9.9 9.9 0 1 0 12.04 2zm0 1.8a8.1 8.1 0 1 1-4.3 14.96l-.3-.2-3 .87.9-2.9-.2-.3A8.1 8.1 0 0 1 12.04 3.8zM8.6 7.6c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.2 5 4.4 2.5 1 3 .8 3.5.7.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4l-.5-.3-1.8-.9c-.3-.1-.5-.1-.7.1l-.8 1c-.2.2-.3.2-.6.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.3.1-.2 0-.4 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5z"/></svg>;
+function AddPerson({ onClose, onDone, onInvite }) {
   const [kind, setKind] = useState('member');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -525,19 +529,22 @@ function AddPerson({ onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true); setErr('');
-    try { onDone(await api('/vpe/people', { method: 'POST', body: { name, email, phone, kind, credential: cred } })); } catch (e) { setErr(e.message); setBusy(false); }
+    try {
+      const p = await api('/vpe/people', { method: 'POST', body: { name, email, phone, kind, credential: cred } });
+      kind === 'member' ? onInvite({ ...p, phone: phone.trim() }) : onDone(p);
+    } catch (e) { setErr(e.message); setBusy(false); }
   };
   return (
     <Modal title="Add a member or visitor" onClose={onClose}>
       <Seg style={{ margin: '12px 0 4px' }} value={kind} onChange={setKind} options={[['member', 'Club member'], ['guest', 'Visitor (temporary)']]} />
-      <p style={{ color: 'var(--mute)', fontSize: 14, margin: '6px 0 0' }}>{kind === 'guest' ? 'For someone outside the club taking a role. They get a temporary link, and their data is kept with Champions.' : 'A full member with their own access link and history.'}</p>
-      <label className="fl">Full name</label><input className="inp" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name as it should appear" />
+      <p style={{ color: 'var(--mute)', fontSize: 14, margin: '6px 0 0' }}>{kind === 'guest' ? 'For someone outside the club taking a role. They get a temporary link, and their data is kept with Champions.' : 'A full member with their own sign in and history. Next you can send them an invite on WhatsApp.'}</p>
+      <label className="fl">Full name</label><input className="inp" autoFocus autoComplete="off" name="person-name" data-bwignore="true" data-lpignore="true" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name as it should appear" />
       <label className="fl">Email (optional)</label><input className="inp" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@mail.com" />
       <label className="fl">Phone (optional)</label><input className="inp" type="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+263 7…" maxLength={30} />
       <p className="fine" style={{ margin: '2px 0 0' }}>Used to message them on WhatsApp about their role.</p>
       <label className="fl">Toastmasters title on the agenda (optional)</label><input className="inp" value={cred} onChange={(e) => setCred(e.target.value)} placeholder="TM, DTM, ACB…" maxLength={20} />
       {err && <p className="err">{err}</p>}
-      <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy}>Add</Btn></div>
+      <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy || name.trim().length < 2}>Add</Btn></div>
     </Modal>
   );
 }
@@ -584,11 +591,127 @@ function Fold({ items, n = 5, label = 'items', children }) {
   );
 }
 
+/* WhatsApp wants the number with its country code, so a local number starting with 0 opens the contact chooser instead */
+const waTo = (phone, msg) => {
+  const raw = (phone || '').trim(), digits = raw.replace(/[^\d]/g, '');
+  return `https://wa.me/${digits.length >= 10 && !raw.startsWith('0') ? digits : ''}?text=${encodeURIComponent(msg)}`;
+};
+const inviteText = (name, club, link) => `Hi ${name.split(' ')[0]}, I have set up Brekkie for ${club}, where you will find your roles, feedback and progress. Tap to choose your password and you are in: ${link}`;
+const resetText = (name, link) => `Hi ${name.split(' ')[0]}, here is your Brekkie password reset link. It works for 24 hours: ${link}`;
+
+/* the VPE sends one invite, or a password reset, on WhatsApp */
+function InviteModal({ person, mode, club, onClose, onDone }) {
+  const toast = useToast();
+  const base = useBaseUrl();
+  const [link, setLink] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    const go = mode === 'invite' ? api('/vpe/invites', { method: 'POST', body: { ids: [person.id] } }).then((r) => { if (!r[0]) throw new Error('This member already has an account'); return r[0].token; }) : api(`/vpe/people/${person.id}/reset`, { method: 'POST' }).then((r) => r.token);
+    go.then((t) => setLink(`${base}/reset/${t}`), (e) => setErr(e.message));
+  }, [person.id, base, mode]);
+  const msg = link && (mode === 'invite' ? inviteText(person.name, club, link) : resetText(person.name, link));
+  const first = person.name.split(' ')[0];
+  return (
+    <Modal title={mode === 'invite' ? `Invite ${first}` : 'Reset password'} onClose={onClose}>
+      {err && <p className="err">{err}</p>}
+      {!err && !link && <SkRows n={2} pill={false} />}
+      {link && (
+        <>
+          <p style={{ color: 'var(--mute)', margin: '4px 0 12px' }}>{mode === 'invite' ? `Send ${first} this message. They tap the link, choose a password and they are in. It works for a week.` : `Send ${first} this link. It works for 24 hours and lets them choose a new password.`}</p>
+          <div className="iv-msg">{msg}</div>
+          <div className="rs-btns">
+            <a className="btn wa" href={waTo(person.phone, msg)} target="_blank" rel="noreferrer" onClick={() => onDone && onDone()}>Send on WhatsApp</a>
+            <Btn kind="ghost" onClick={async () => toast((await copyText(msg)) ? 'Message copied' : 'Copy failed')}>Copy message</Btn>
+          </div>
+          {!person.phone && <p className="fine" style={{ marginTop: 10 }}>No phone number saved, so WhatsApp will ask you to choose the contact.</p>}
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/* invite everyone who has not signed up yet: one draft per member, opened one tap at a time */
+export function BulkInvite({ people, club, onClose, onDone }) {
+  const base = useBaseUrl();
+  const [links, setLinks] = useState(null);
+  const [sent, setSent] = useState({});
+  const [err, setErr] = useState('');
+  useEffect(() => { api('/vpe/invites', { method: 'POST', body: { ids: people.map((p) => p.id) } }).then((r) => setLinks(Object.fromEntries(r.map((x) => [x.id, `${base}/reset/${x.token}`]))), (e) => setErr(e.message)); }, []); // eslint-disable-line
+  const next = people.find((p) => !sent[p.id]);
+  const left = people.filter((p) => !sent[p.id]).length;
+  return (
+    <Modal title="Send invites" onClose={() => { onDone(); onClose(); }} wide>
+      <p style={{ color: 'var(--mute)', margin: '4px 0 12px' }}>WhatsApp opens one chat at a time. Tap Send on each row: the message is already written, you just press send in WhatsApp. {left ? `${left} to go.` : 'All done.'}</p>
+      {err && <p className="err">{err}</p>}
+      {!err && !links && <SkRows n={4} pill />}
+      {links && (
+        <div className="iv-list">
+          {people.filter((p) => links[p.id]).map((p) => (
+            <div key={p.id} className={'iv-row' + (next?.id === p.id ? ' now' : '') + (sent[p.id] ? ' sent' : '')}>
+              <Avatar name={p.name} />
+              <span><b>{p.name}</b><small>{p.phone || 'No phone saved'}{p.acct === 'invited' && !sent[p.id] ? ' · invited before' : ''}</small></span>
+              {sent[p.id]
+                ? <span className="iv-ok">{I.check} Sent</span>
+                : <a className={'btn sm' + (next?.id === p.id ? '' : ' ghost')} href={waTo(p.phone, inviteText(p.name, club, links[p.id]))} target="_blank" rel="noreferrer" onClick={() => setSent((x) => ({ ...x, [p.id]: true }))}>Send</a>}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="rs-btns"><Btn onClick={() => { onDone(); onClose(); }}>{left ? 'Finish later' : 'Done'}</Btn></div>
+    </Modal>
+  );
+}
+
+/* edit a member's details from their settings menu */
+function EditPerson({ person, onClose, onSaved }) {
+  const [f, setF] = useState({ name: person.name, email: person.email || '', phone: person.phone || '', credential: person.credential || '' });
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setErr(''); };
+  const save = async () => {
+    setBusy(true); setErr('');
+    try { await api(`/vpe/people/${person.id}`, { method: 'PATCH', body: f }); onSaved(); } catch (e) { setErr(e.message); setBusy(false); }
+  };
+  return (
+    <Modal title="Edit details" onClose={onClose}>
+      <label className="fl">Full name</label><input className="inp" autoComplete="off" name="edit-name" data-bwignore="true" value={f.name} onChange={set('name')} />
+      <label className="fl">Email</label><input className="inp" type="email" autoComplete="off" name="edit-email" data-bwignore="true" value={f.email} onChange={set('email')} placeholder="name@mail.com" />
+      <label className="fl">Phone</label><input className="inp" type="tel" autoComplete="off" name="edit-phone" data-bwignore="true" value={f.phone} onChange={set('phone')} placeholder="+263 7…" maxLength={30} />
+      <label className="fl">Toastmasters title on the agenda</label><input className="inp" value={f.credential} onChange={set('credential')} placeholder="TM, DTM, ACB…" maxLength={20} />
+      {err && <p className="err">{err}</p>}
+      <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || f.name.trim().length < 2}>{busy ? 'Saving…' : 'Save'}</Btn></div>
+    </Modal>
+  );
+}
+
+/* removing keeps everything they delivered and received; they just lose access and leave the lists */
+function RemovePerson({ person, onClose }) {
+  const nav = useNavigate();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    setBusy(true);
+    try { await api(`/vpe/people/${person.id}`, { method: 'PATCH', body: { status: 'inactive' } }); toast(`${person.name} removed`); nav(person.kind === 'guest' ? '/v/members' : '/v/members', { replace: true }); } catch (e) { toast(e.message); setBusy(false); }
+  };
+  return (
+    <Modal title={`Remove ${person.name}?`} onClose={onClose}>
+      <p style={{ color: 'var(--mute)', margin: '6px 0 0' }}>They lose access and disappear from your lists. Their evaluations and past roles stay in the club's records.</p>
+      <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy} style={{ background: '#B3261E', borderColor: '#B3261E' }}>{busy ? 'Removing…' : 'Remove'}</Btn></div>
+    </Modal>
+  );
+}
+
 export function VpePerson() {
   const { id } = useParams();
   const toast = useToast();
   const { data, error, loading, reload } = useApi(`/vpe/people/${id}/profile`);
   const [viewing, setViewing] = useState(null);
+  const [resetting, setResetting] = useState(null);
+  const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  useEffect(() => { if (!menu) return undefined; const f = () => setMenu(false); window.addEventListener('click', f); return () => window.removeEventListener('click', f); }, [menu]);
+  const sess = useApi('/session');
   if (loading) return <Page title="Members" wide back="/v/members"><SkPage plain rows={6} stats={3} pill={false} /></Page>;
   if (error) return <Page title="Members" wide back="/v/members"><ErrorMsg error={error} /></Page>;
   const { person: p, projects, roles, given, received } = data;
@@ -606,12 +729,25 @@ export function VpePerson() {
           <p className="reyebrow" style={{ margin: 0 }}>{visitor ? 'Visitor, temporary access' : p.is_vpe ? 'VPE' : 'Member'}</p>
           <h1 className="rtitle" style={{ fontSize: 40, margin: '2px 0 6px' }}>{p.name}</h1>
           <div className="pmeta">
-            <label>Email <input className="inp wide" type="email" autoComplete="off" name="member-email" defaultValue={p.email || ''} placeholder="name@example.com" onBlur={save('email', p.email)} aria-label="Email" /></label>
-            <label>Phone <input className="inp wide" type="tel" autoComplete="off" name="member-phone" defaultValue={p.phone || ''} placeholder="+263 7…" maxLength={30} onBlur={save('phone', p.phone)} aria-label="Phone" /></label>
-            <label>Agenda title <input className="inp" defaultValue={p.credential || ''} placeholder="TM" maxLength={20} onBlur={(e) => e.target.value !== (p.credential || '') && api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { credential: e.target.value } }).then(() => toast('Saved'))} aria-label="Agenda title" /></label>
+            <span>{p.email || 'No email'}</span>
+            <span>{p.phone || 'No phone'}</span>
+            <span>Agenda title: {p.credential || 'none'}</span>
           </div>
         </div>
+        <div className="pset">
+          {!visitor && <Status kind={p.has_pw ? 'ok' : p.invited_at ? 'up' : 'fin'}>{p.has_pw ? 'Signed in' : p.invited_at ? 'Invited' : 'Not invited yet'}</Status>}
+          <button type="button" className="ibtn pset-b" onClick={(e) => { e.stopPropagation(); setMenu(!menu); }} aria-label="Settings" aria-expanded={menu}>{I.more}</button>
+          {menu && (
+            <div className="rmenu pset-m" role="menu" onClick={(e) => e.stopPropagation()}>
+              <button type="button" role="menuitem" onClick={() => { setMenu(false); setEditing(true); }}>Edit details</button>
+              {!visitor && <button type="button" role="menuitem" onClick={() => { setMenu(false); setResetting(p.has_pw ? 'reset' : 'invite'); }} disabled={!p.has_pw && false}>{p.has_pw ? 'Send reset link' : p.invited_at ? 'Resend invite' : 'Send invite'}</button>}
+              <button type="button" role="menuitem" className="danger" onClick={() => { setMenu(false); setRemoving(true); }}>Remove {visitor ? 'visitor' : 'member'}</button>
+            </div>)}
+        </div>
       </div>
+      {editing && <EditPerson person={p} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); toast('Saved'); reload(); }} />}
+      {removing && <RemovePerson person={p} onClose={() => setRemoving(false)} />}
+      {resetting && <InviteModal person={p} mode={resetting} club={sess.data?.club || 'our club'} onClose={() => setResetting(null)} onDone={reload} />}
       {visitor && (
         <div className="banner"><b>Temporary status.</b> {p.temp_until ? `Access runs until ${longDate(p.temp_until)}. ` : ''}Everything they record is already stored under Champions.
           <div style={{ marginTop: 10 }}><Btn sm onClick={async () => { await api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }); toast(`${p.name} is now a member`); reload(); }}>Make a member</Btn></div></div>)}

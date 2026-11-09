@@ -7,6 +7,7 @@ const Ic = ({ d, w = 20, s = 1.8, children }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={s} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children || <path d={d} />}</svg>
 );
 export const I = {
+  more: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" /></svg>,
   back: <Ic w={22} s={2} d="M15 5l-7 7 7 7" />, chev: <Ic w={18} s={2} d="M9 5l7 7-7 7" />, down: <Ic w={16} s={2} d="M6 9l6 6 6-6" />,
   plus: <Ic w={18} s={2} d="M12 5v14M5 12h14" />, minus: <Ic w={16} s={2.2} d="M5 12h14" />, close: <Ic w={14} s={2} d="M6 6l12 12M18 6L6 18" />,
   check: <Ic w={17} s={2.4} d="M5 12.5l4.5 4.5L19 7.5" />,

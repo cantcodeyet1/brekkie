@@ -72,11 +72,6 @@ const tries = new Map();   // slows down password guessing: 10 tries per email p
 const tooMany = (key) => { const now = Date.now(), hits = (tries.get(key) || []).filter((t) => now - t < 900000); hits.push(now); tries.set(key, hits); return hits.length > 10; };
 const sessionFor = (p) => ({ token: p.token, type: p.is_vpe ? 'vpe' : 'member' });
 
-app.get('/api/clubs/lookup', wrap(async (req, res) => {
-  const [c] = await q('select name from clubs where join_code=$1', [String(req.query.code || '').trim().toUpperCase()]);
-  c ? res.json({ name: c.name }) : bad(res, 'We could not find a club with that code', 404);
-}));
-
 app.post('/api/auth/signin', wrap(async (req, res) => {
   const email = normEmail(req.body.email), pw = String(req.body.password || '');
   if (!email || !pw) return bad(res, 'Enter your email and password');
@@ -84,21 +79,42 @@ app.post('/api/auth/signin', wrap(async (req, res) => {
   const rows = await q(`select p.*, c.name as club_name from people p join clubs c on c.id=p.club_id where lower(p.email)=$1 and p.password_hash is not null and p.status<>'inactive'`, [email]);
   const ok = rows.filter((r) => checkPw(pw, r.password_hash));
   if (!ok.length) return bad(res, 'That email and password do not match', 401);
+  await q('update people set last_login_at=now() where id = any($1)', [ok.map((r) => r.id)]);
   if (ok.length === 1) return res.json(sessionFor(ok[0]));
   res.json({ choose: ok.map((r) => ({ club: r.club_name, ...sessionFor(r) })) });
 }));
 
-app.post('/api/auth/join', wrap(async (req, res) => {
-  const [club] = await q('select id, name from clubs where join_code=$1', [String(req.body.code || '').trim().toUpperCase()]);
-  if (!club) return bad(res, 'We could not find a club with that code', 404);
-  const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = normEmail(req.body.email);
-  if (name.length < 2 || name.length > 80) return bad(res, 'Enter your name');
-  if (!validEmail(email)) return bad(res, 'Enter a valid email address');
+/* invites and password resets: there is no email, so the VPE sends a link on WhatsApp.
+   An invite lasts a week and retires the member's old personal link at once; a reset lasts a day. */
+app.post('/api/vpe/people/:id/reset', needPerson, needVpe, wrap(async (req, res) => {
+  const t = token();
+  const r = await q(`update people set reset_token=$1, reset_expires=now() + interval '1 day' where id=$2 and club_id=$3 and kind='member' and status<>'inactive' returning id`, [t, req.params.id, req.person.club_id]);
+  r.length ? res.json({ token: t }) : bad(res, 'Not found', 404);
+}));
+app.post('/api/vpe/invites', needPerson, needVpe, wrap(async (req, res) => {
+  const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(Number).filter(Number.isInteger).slice(0, 200);
+  const out = [];
+  for (const id of ids) {
+    const t = token();
+    const [p] = await q(`update people set reset_token=$1, reset_expires=now() + interval '7 days', invited_at=now(), token=case when password_hash is null then $4 else token end where id=$2 and club_id=$3 and kind='member' and status<>'inactive' and password_hash is null and id<>$5 returning id`, [t, id, req.person.club_id, token(), req.person.id]);
+    if (p) out.push({ id: p.id, token: t });
+  }
+  res.json(out);
+}));
+app.get('/api/auth/reset/:token', wrap(async (req, res) => {
+  const [p] = await q(`select p.name, p.email, (p.password_hash is null) as invited, c.name as club from people p join clubs c on c.id=p.club_id where p.reset_token=$1 and p.reset_expires > now() and p.status<>'inactive'`, [req.params.token]);
+  p ? res.json(p) : bad(res, 'This link has expired. Ask your VPE for a new one.', 404);
+}));
+app.post('/api/auth/reset', wrap(async (req, res) => {
   const bp = pwProblem(req.body.password); if (bp) return bad(res, bp);
-  const [dup] = await q('select 1 as x from people where club_id=$1 and lower(email)=$2', [club.id, email]);
-  if (dup) return bad(res, 'That email already has an account in this club. Sign in, or ask your VPE for your link.', 409);
-  const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',$4,'join','',$5) returning *`, [club.id, name, email, token(), hashPw(req.body.password)]);
-  res.json(sessionFor(p));
+  const [p] = await q(`update people set password_hash=$1, reset_token=null, reset_expires=null, token=$3, last_login_at=now() where reset_token=$2 and reset_expires > now() and status<>'inactive' returning *`, [hashPw(req.body.password), String(req.body.token || ''), token()]);
+  p ? res.json(sessionFor(p)) : bad(res, 'This link has expired. Ask your VPE for a new one.', 404);
+}));
+
+const cleanNum = (v) => String(v || '').replace(/\D/g, '');
+app.get('/api/clubs/number/:n', wrap(async (req, res) => {
+  const [c] = await q('select name from clubs where tm_number=$1', [cleanNum(req.params.n)]);
+  res.json({ taken: !!c });
 }));
 
 /* the wizard: a new club, its VPE, and its first year of meetings */
@@ -109,11 +125,14 @@ app.post('/api/clubs', wrap(async (req, res) => {
   if (!validEmail(email)) return bad(res, 'Enter a valid email address');
   const bp = pwProblem(req.body.password); if (bp) return bad(res, bp);
   if (clubName.length < 2) return bad(res, 'Enter your club name');
+  const tmNum = cleanNum(req.body.club?.number);
+  if (tmNum.length < 3 || tmNum.length > 10) return bad(res, 'Enter your Toastmasters club number');
+  if ((await q('select 1 as x from clubs where tm_number=$1', [tmNum])).length) return bad(res, 'A club with that number is already on Brekkie. Ask its VPE for the join link.', 409);
   const pc = cleanPattern(req.body.club?.pattern); if (pc.error) return bad(res, pc.error);
   const number = Math.max(1, Math.min(9999, parseInt(req.body.club?.firstNumber, 10) || 1));
   const out = await tx(async (t) => {
     let code; for (let i = 0; i < 8; i++) { code = joinCode(); if (!(await t('select 1 as x from clubs where join_code=$1', [code])).length) break; }
-    const [club] = await t('insert into clubs(name,pattern,join_code) values ($1,$2,$3) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code]);
+    const [club] = await t('insert into clubs(name,pattern,join_code,tm_number) values ($1,$2,$3,$4) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code, tmNum]);
     const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(req.body.password)]);
     const made = await generateMeetings(t, club, { months: 12, firstNumber: number });
     return { ...sessionFor(vpe), join_code: club.join_code, meetings: made };
@@ -855,14 +874,14 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
 
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const people = await q(`select id,name,email,credential,path_name,path_level,join_requested_at,kind,status,is_vpe,token,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
+  const people = await q(`select id,name,email,credential,path_name,path_level,join_requested_at,kind,status,is_vpe,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
   // plain counts that can be checked by hand
   const counts = async (sql) => Object.fromEntries((await q(sql, [club])).map((r) => [r.pid, r.n]));
   const speeches = await counts(`select e.speaker_id as pid, count(*)::int as n from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=$1 group by e.speaker_id`);
   const assigned = await counts(`select r.person_id as pid, count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id is not null group by r.person_id`);
   const done = await counts(`select r.person_id as pid, count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id is not null and m.date < current_date group by r.person_id`);
   const given = await counts(`select r.person_id as pid, count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id is not null and r.submitted_at is not null group by r.person_id`);
-  res.json(people.map((p) => ({ ...p, roles_played: assigned[p.id] || 0, speeches: speeches[p.id] || 0, roles_done: done[p.id] || 0, feedback_given: given[p.id] || 0 })));
+  res.json(people.map((p) => ({ ...p, acct: p.has_pw ? 'active' : p.invited_at ? 'invited' : 'none', roles_played: assigned[p.id] || 0, speeches: speeches[p.id] || 0, roles_done: done[p.id] || 0, feedback_given: given[p.id] || 0 })));
 }));
 app.post('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const { name, email, kind } = req.body, cred = String(req.body.credential || '').trim().slice(0, 20), phone = String(req.body.phone || '').trim().slice(0, 30) || null;
@@ -923,7 +942,7 @@ async function givenFor(pid) {
 /* one member: what they have delivered, the roles they have done, the feedback they have given and received */
 app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const [p] = await q(`select id,name,email,phone,credential,path_name,path_level,kind,status,is_vpe,token,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
+  const [p] = await q(`select id,name,email,phone,credential,path_name,path_level,kind,status,is_vpe,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
   if (!p) return bad(res, 'Not found', 404);
   const hist = await loadHist(club);
   const projects = hist.evals.filter((e) => e.pid === p.id).reverse().map((e) => ({ id: e.id, title: e.title, project: e.project, path: e.path, level: e.level, date: e.date, number: e.number, by: e.by, work: e.work }));
