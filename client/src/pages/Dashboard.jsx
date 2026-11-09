@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
+import { printEval } from '../EvalSheet.jsx';
 import { Btn, DatePick, ErrorMsg, I, Loading, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
 
 /* Plan a speech: at this club or another. The VPE picks the member; a member plans their own. */
@@ -15,6 +16,8 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
   const [title, setTitle] = useState('');
   const [opts, setOpts] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [projects, setProjects] = useState([]);
+  useEffect(() => { api('/projects').then(setProjects).catch(() => {}); }, []);
   useEffect(() => {
     setOpts([]);
     if (!preset?.project) setProject('');
@@ -37,16 +40,46 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
       toast('Speech added'); onSaved();
     } catch (e) { toast(e.message); setBusy(false); }
   };
+  const pj = projects.find((x) => x.id === Number(project));
+  const mm = (n) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+  const memberName = (people || []).find((p) => p.id === who)?.name || preset?.name || '';
+  const form = () => printEval({
+    form_title: pj.form_title, project: pj.name, member: memberName, date: date || '', by: '', length_text: pj.length_text, title,
+    purpose: pj.purpose || [], notes: pj.notes || pj.overview || '', about: pj.about || [], ratings: [], comments: [], excelled: '', work: '', challenge: '',
+  });
   return (
-    <Modal title={preset?.label ? `Schedule ${preset.label}` : 'Plan a speech'} onClose={onClose}>
+    <Modal title="Schedule a speech" onClose={onClose}>
       <div className="pm">
         {people && !preset?.person && <label className="pmf"><span className="fl">Who is speaking</span><Select value={who} onChange={setWho} placeholder="Choose a member" searchable options={people.map((p) => ({ value: p.id, label: p.name }))} /></label>}
-        <label className="pmf"><span className="fl">Date</span><DatePick value={date} onChange={setDate} /></label>
-        <div className="pmf"><span className="fl">Where</span><Seg value={where} onChange={setWhere} options={[['here', 'This club'], ['there', 'Another club']]} /></div>
-        {where === 'there' && <label className="pmf"><span className="fl">Club name</span><input className="inp" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="For example, Sunrise Toastmasters" maxLength={80} /></label>}
         {!preset?.project && <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={setProject} placeholder={who ? (opts.length ? 'Choose the project' : 'No path set, so no project') : 'Choose who is speaking first'} disabled={!who} searchable options={opts} /></label>}
+        {pj && (
+          <div className="pj">
+            <div className="pj-h">
+              {preset?.label && <span className="pj-c">{preset.label}</span>}
+              <b>{pj.name}</b>
+            </div>
+            <div className="pj-k">
+              {!preset?.label && <span>Level {pj.level}</span>}
+              {pj.path && <span className="p">{pj.path}</span>}
+              {pj.length_text && <span>{I.clock} {pj.length_text}</span>}
+            </div>
+            {pj.green != null && (
+              <div className="pj-t" aria-label="Timing">
+                <span><i className="g" />Green <b>{mm(pj.green)}</b></span>
+                <span><i className="y" />Yellow <b>{mm(pj.yellow)}</b></span>
+                <span><i className="r" />Red <b>{mm(pj.red)}</b></span>
+              </div>
+            )}
+            <button type="button" className="pj-dl" onClick={form}>{I.dl} Download evaluation form</button>
+          </div>
+        )}
+        <div className="pm-row">
+          <label className="pmf"><span className="fl">Date</span><DatePick value={date} onChange={setDate} /></label>
+          <div className="pmf"><span className="fl">Where</span><Seg value={where} onChange={setWhere} options={[['here', 'This club'], ['there', 'Another club']]} /></div>
+        </div>
+        {where === 'there' && <label className="pmf"><span className="fl">Club name</span><input className="inp" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="For example, Sunrise Toastmasters" maxLength={80} /></label>}
         <label className="pmf"><span className="fl">Speech title <i>(optional)</i></span><input className="inp" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} /></label>
-        <div className="pm-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy}>{preset?.project ? 'Schedule' : 'Add speech'}</Btn></div>
+        <div className="pm-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy}>Schedule</Btn></div>
       </div>
     </Modal>
   );
@@ -84,34 +117,57 @@ const at = (iso, y) => Math.min(1, Math.max(0, (new Date(iso) - new Date(y.start
 /* one member at one level: a tight row that opens to every project in it, with its date or a button to schedule it */
 function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
   const [open, setOpen] = useState(false);
+  const nav = useNavigate();
+  const [pick, setPick] = useState(null);   // the project whose details are showing
   const when = e.state === 'done' ? `Earned ${short(e.date)}` : e.state === 'forecast' ? `Completes ${short(e.date)}${e.date > d.year.end ? ' (next year)' : ''}` : e.due ? `${e.due} to confirm` : `${e.unscheduled} to schedule`;
   const can = e.items.length > 0;   // finished levels open too, to look back at what was done and when
   return (
-    <li className={'lvrow lv-' + e.state + (open ? ' is-open' : '')}>
-      <button type="button" className="lvr-h" aria-expanded={can ? open : undefined} disabled={!can} onClick={() => setOpen(!open)}>
-        <span className={'lvr-rk' + (rank ? ' on' : '')} title={rank ? `Number ${rank} to finish towards the goal` : 'Not needed for the goal yet'}>{rank || ''}</span>
-        <span className="lvr-n"><b>{m.name}</b>{lv > 3 && <small>{lv === 5 ? 'Level 5 · Path completion' : `Level ${lv}`}</small>}</span>
-        <span className="lvr-seg" aria-label={`${e.done} of ${e.total} projects done`}>
+    <li className={'dv-row lv-' + e.state + (open ? ' is-open' : '')}>
+      <div role="button" tabIndex={can ? 0 : -1} className="dv-h" aria-expanded={can ? open : undefined} aria-disabled={!can} onClick={() => can && setOpen(!open)}
+        onKeyDown={(e) => { if (can && (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); setOpen(!open); } }}>
+        <span className="dv-rk" title={rank ? `Number ${rank} to finish towards the goal` : undefined}>{rank || ''}</span>
+        <span className="dv-n"><Link className="dv-nl" to={`/v/members/${m.id}`} onClick={(e) => e.stopPropagation()} title={`Open ${m.name}`}><b>{m.name}</b></Link>{lv > 3 && <small title={lv === 5 ? 'Path completion' : undefined}>{`Level ${lv}`}</small>}</span>
+        <span className="dv-seg" aria-label={`${e.done} of ${e.total} projects done`}>
           {Array.from({ length: e.total }, (_, i) => <i key={i} className={i < e.done ? 'on' : ''} />)}
           <small>{e.done} of {e.total}</small>
         </span>
-        <span className={'lvr-when w-' + (e.due ? 'due' : e.state)}>{when}</span>
-        <span className={'lvr-car' + (open ? ' up' : '')}>{can && I.chev}</span>
-      </button>
+        <span className={'dv-when w-' + (e.due ? 'due' : e.state)}>{when}</span>
+        <span className={'dv-car' + (open ? ' up' : '')}>{can && I.chev}</span>
+      </div>
       {can && open && (
         <ul className="lvr-items">
-          {e.items.map((it, i) => (
-            <li key={i} className={'it it-' + it.state}>
-              <span className="it-s" aria-hidden="true">{it.state === 'done' ? I.check : ''}</span>
-              <span className="it-t"><b>{it.code || 'Elective'}</b><span>{it.id ? it.name : 'Choose an elective'}</span></span>
-              <span className="it-d">
-                {it.state === 'done' ? <><em>Done {short(it.date)}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={() => onUndo(m, it)}>Undo</button>}</>
-                  : it.state === 'sched' || it.state === 'due' ? <><em>{it.state === 'due' ? 'Was ' : ''}{short(it.date)}{it.venue ? ` · ${it.venue}` : ''}</em><button type="button" className={it.state === 'due' ? 'go' : ''} onClick={() => onDone(m, it, lv)}>{I.check} Mark done</button></>
-                  : it.id ? <button type="button" onClick={() => onSchedule(m, it)}>Schedule</button>
-                  : <Link to={`/v/members/${m.id}`}>Choose</Link>}
-              </span>
-            </li>
-          ))}
+          {e.items.map((it, i) => {
+            const stop = (fn) => (ev) => { ev.stopPropagation(); fn(); };
+            const shown = pick === i;
+            const status = it.state === 'done' ? 'Done' : it.state === 'sched' ? 'Scheduled' : it.state === 'due' ? 'Date has passed, not marked done yet' : it.id ? 'Not scheduled yet' : 'Elective not chosen yet';
+            const where = it.state === 'done' ? (it.source === 'evaluation' ? `This club, meeting ${it.meeting}` : it.venue || 'This club') : (it.state === 'sched' || it.state === 'due') ? (it.venue || 'This club') : '';
+            return (
+              <li key={i} className="it-wrap">
+                <div role="button" tabIndex={0} aria-expanded={it.id ? shown : undefined} className={'it it-' + it.state + (shown ? ' it-on' : '')} onClick={() => (it.id ? setPick(shown ? null : i) : nav(`/v/members/${m.id}?level=${lv}`))}
+                  onKeyDown={(ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === ev.currentTarget) { ev.preventDefault(); it.id ? setPick(shown ? null : i) : nav(`/v/members/${m.id}?level=${lv}`); } }}>
+                  <span className="it-s" aria-hidden="true">{it.state === 'done' ? I.check : ''}</span>
+                  <span className="it-t"><b>{it.code || 'Elective'}</b><span>{it.id ? it.name : 'Choose an elective'}</span></span>
+                  <span className="it-d">
+                    {it.state === 'done' ? <><em>Done {short(it.date)}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
+                      : it.state === 'sched' || it.state === 'due' ? <><em>{it.state === 'due' ? 'Was ' : ''}{short(it.date)}{it.venue ? ` · ${it.venue}` : ''}</em><button type="button" className={it.state === 'due' ? 'go' : ''} onClick={stop(() => onDone(m, it, lv))}>{I.check} Mark done</button></>
+                      : it.id ? <button type="button" onClick={stop(() => onSchedule(m, it))}>Schedule</button>
+                      : <Link to={`/v/members/${m.id}?level=${lv}`} onClick={(ev) => ev.stopPropagation()}>Choose</Link>}
+                  </span>
+                </div>
+                {shown && (
+                  <dl className="it-more">
+                    <div><dt>Project</dt><dd>{it.code ? `${it.code} · ` : ''}{it.name}</dd></div>
+                    <div><dt>Status</dt><dd>{status}</dd></div>
+                    {it.date && <div><dt>Date</dt><dd>{longDate(it.date)}</dd></div>}
+                    {where && <div><dt>Where</dt><dd>{where}</dd></div>}
+                    {it.length && <div><dt>Length</dt><dd>{it.length}</dd></div>}
+                    {it.kind && <div><dt>Type</dt><dd>{it.kind === 'required' ? 'Required' : 'Elective'}</dd></div>}
+                    <Link className="it-go" to={`/v/members/${m.id}`}>Open {m.name.split(' ')[0]}'s page {I.chev}</Link>
+                  </dl>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </li>
@@ -156,39 +212,30 @@ export default function Dashboard() {
       <div className="rpage">
       <div className="rhead">
         <div>
-          <p className="reyebrow">Distinguished Club Program {d.year.label} · {d.year.days_left} days left</p>
+          <p className="reyebrow">Distinguished Club Program {d.year.label}</p>
           <h1 className="rtitle">Dashboard</h1>
           <p className="rsub">Pick a level to see who is working on it and which projects are scheduled.</p>
         </div>
       </div>
 
-      <div className="lvtiles" role="tablist" aria-label="Levels">
-        {groups.map((g) => (
-          <button type="button" key={g.key} role="tab" aria-selected={g.key === sel.key} className={'lvtile st-' + g.status + (g.key === sel.key ? ' sel' : '')} onClick={() => { setPick(g.key); setAll(false); }}>
-            <small>{g.goals.length > 1 ? `Goals ${g.goals.join(' and ')}` : `Goal ${g.goals[0]}`}</small>
-            <strong>{g.title}</strong>
-            <b className="lvt-n">{g.have}<em> of {g.need}</em></b>
-            <span className={'lvt-fc st-' + g.status}>
-              {g.status === 'done' ? <><label>Status</label><b>Met</b></>
-                : g.status === 'short' ? <><label>Forecast</label><b className="lvt-nt">Not enough scheduled yet</b></>
-                : <><label>On track for</label><b>{longDate(g.date)}</b>{g.status === 'late' && <small>After 30 June</small>}</>}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <section className="lvpanel">
-        <div className="ph2">
-          <div>
-            <h2>Who is working on {sel.title.replace(' awards', '')}</h2>
-            <p>{sel.gs.map((g) => `Goal ${g.n}: ${g.label}`).join('. ')}. Earliest first. Numbers show the order they finish towards the goal.</p>
-          </div>
-
+      <div className="dv-card">
+        <div className="dv-tabs" role="tablist" aria-label="Levels">
+          {groups.map((g) => (
+            <button type="button" key={g.key} role="tab" aria-selected={g.key === sel.key} className={'dv-tab st-' + g.status + (g.key === sel.key ? ' sel' : '')} onClick={() => { setPick(g.key); setAll(false); }}>
+              <span className="dv-tl">{g.title.replace(' awards', '')}</span>
+              <span className="dv-tn">{g.have}<em> of {g.need}</em></span>
+              <span className="dv-tf">{g.status === 'done' ? 'Goal met' : g.status === 'short' ? 'Not enough scheduled yet' : <>On track for <b>{longDate(g.date)}</b>{g.status === 'late' ? ' (after 30 June)' : ''}</>}</span>
+            </button>
+          ))}
         </div>
-        {!sel.rows.length && <p className="dt-empty">Nobody is working on this level yet. Set a path for more members and they show up here.</p>}
-        <ul className="lvrows">{rows.map((r) => <Row key={r.m.id + '-' + r.lv} {...r} d={d} onSchedule={(m, it) => setPlan({ person: m.id, project: it.id, label: it.code || it.name })} onDone={markDone} onUndo={undo} />)}</ul>
-        {sel.rows.length > 8 && <button type="button" className="lnk" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${sel.rows.length}`}</button>}
-      </section>
+        <div className="dv-bar">
+          <div className="dv-goals">{sel.gs.map((g) => <span key={g.n} className="dv-g"><i>Goal {g.n}</i>{g.label}</span>)}</div>
+          <span>Numbers show the order they finish</span>
+        </div>
+        {!sel.rows.length && <p className="dt-empty dv-empty">Nobody is working on this level yet. Set a path for more members and they show up here.</p>}
+        <ul className="dv-rows">{rows.map((r) => <Row key={r.m.id + '-' + r.lv} {...r} d={d} onSchedule={(m, it) => setPlan({ person: m.id, name: m.name, project: it.id, label: it.code })} onDone={markDone} onUndo={undo} />)}</ul>
+        {sel.rows.length > 8 && <button type="button" className="dv-more" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${sel.rows.length}`}</button>}
+      </div>
 
       {SHOW_UPCOMING && (
       <section className="panel">

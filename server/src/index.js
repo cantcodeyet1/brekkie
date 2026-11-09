@@ -735,7 +735,11 @@ async function planRows(club, where = '', args = []) {
 }
 app.get('/api/vpe/dashboard', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id, today = new Date().toISOString().slice(0, 10);
-  const year = programYear(today);
+  const cur = programYear(today), curStart = Number(cur.start.slice(0, 4));
+  const ys = Number(req.query.year) >= 2000 && Number(req.query.year) <= 2100 ? Number(req.query.year) : curStart;
+  const year = { ...programYear(`${ys}-07-01`), current: ys === curStart, days_left: ys === curStart ? cur.days_left : 0 };
+  year.elapsed = ys === curStart ? Math.min(1, Math.max(0, 1 - cur.days_left / 365)) : ys < curStart ? 1 : 0;
+  const years = [curStart + 1, curStart, curStart - 1].map((y) => ({ value: y, label: `${y}-${String(y + 1).slice(2)}` }));
   const people = await q(`select * from people where club_id=$1 and kind='member' and status='active' order by name`, [club]);
   const roles = await q(`select r.person_id, r.speech_title, ${DATE('m.date')} as date, m.number, pr.name as project from meeting_roles r join meetings m on m.id=r.meeting_id
     left join projects pr on pr.id=r.project_id where m.club_id=$1 and r.role_key='speaker' and r.person_id is not null and m.date >= current_date order by m.date`, [club]);
@@ -748,7 +752,7 @@ app.get('/api/vpe/dashboard', needPerson, needVpe, wrap(async (req, res) => {
     ...plans.map((s) => ({ kind: 'plan', id: s.id, person_id: s.person_id, person: s.person, project: s.project, title: s.title, date: s.date, venue: s.venue })),
   ].filter((u) => u.person).sort((a, b) => a.date.localeCompare(b.date));
   const past = await planRows(club, 'and s.date < current_date and not s.done');
-  res.json({ today, year, goals, members, upcoming, past });
+  res.json({ today, year, years, goals, members, upcoming, past });
 }));
 /* everything dated in a range: meetings, speaker slots on them, and speeches planned here or at other clubs */
 app.get('/api/vpe/calendar', needPerson, needVpe, wrap(async (req, res) => {

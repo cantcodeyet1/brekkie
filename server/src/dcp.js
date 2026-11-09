@@ -26,9 +26,9 @@ export function forecastMember(prog, { year, today }) {
   const out = {};
   for (const l of prog.levels || []) {
     const items = l.projects.map((p) => (p.done
-      ? { id: p.id, name: p.name, code: p.code, state: 'done', date: p.done.date, source: p.done.source, meeting: p.done.meeting, venue: p.done.venue || '' }
-      : p.sched ? { id: p.id, name: p.name, code: p.code, state: p.sched.date < today ? 'due' : 'sched', date: p.sched.date, venue: p.sched.venue || '', plan: p.sched.plan || null }
-      : { id: p.id, name: p.name, code: p.code, state: 'open' }));
+      ? { id: p.id, name: p.name, code: p.code, length: p.length, kind: p.kind, state: 'done', date: p.done.date, source: p.done.source, meeting: p.done.meeting, venue: p.done.venue || '' }
+      : p.sched ? { id: p.id, name: p.name, code: p.code, length: p.length, kind: p.kind, state: p.sched.date < today ? 'due' : 'sched', date: p.sched.date, venue: p.sched.venue || '', plan: p.sched.plan || null }
+      : { id: p.id, name: p.name, code: p.code, length: p.length, kind: p.kind, state: 'open' }));
     for (let i = 0; i < (l.to_pick || 0); i++) items.push({ id: null, name: 'Choose an elective', code: '', state: 'pick' });
     const total = l.required_total + (l.choose || 0), done = l.required_done + Math.min(l.choose || 0, l.electives_done);
     const e = { state: null, total, done, items, unscheduled: items.filter((x) => x.state === 'open' || x.state === 'pick').length, due: items.filter((x) => x.state === 'due').length };

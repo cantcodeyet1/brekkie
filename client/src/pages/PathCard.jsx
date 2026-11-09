@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { fmtDate } from '../data.js';
 import { Btn, I, Loading, PathPick, Select, useToast } from '../ui.jsx';
@@ -21,16 +22,20 @@ export default function PathCard({ person, mine = false, initial = null }) {
   const cat = { data: catalog };
   const loadCatalog = () => { if (!catalog) api('/pathways').then(setCatalog).catch(() => {}); };
   const [pl, setPl] = useState({ path_name: person.path_name || null, path_level: person.path_level ?? null });
-  const [view, setView] = useState(null);
+  const [qs] = useSearchParams();
+  const want = Number(qs.get('level')) || null;   // a link can ask for one level to be open, such as electives still to choose
+  const card = useRef(null);
+  const [view, setView] = useState(want);
   const [busy, setBusy] = useState(null);
   const [plan, setPlan] = useState(null);
   const unplan = (id) => call(id, () => api(`/me/plans/${id}`, { method: 'DELETE' }), 'Unscheduled');
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!want);
   const [edit, setEditRaw] = useState(false);
   const setEdit = setEditRaw;
   useEffect(() => { if (edit || (data && !data.path)) loadCatalog(); }, [edit, data]); // eslint-disable-line
 
   const d = prog.data;
+  useEffect(() => { if (want && d) card.current?.scrollIntoView({ block: 'center' }); }, [!!d]); // eslint-disable-line
   useEffect(() => { if (d) setView((v) => (d.levels.some((l) => l.level === v) ? v : d.current)); }, [d]);
 
   const savePath = async (n) => {
@@ -71,7 +76,7 @@ export default function PathCard({ person, mine = false, initial = null }) {
           {p.done
             ? <><small>{p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}{p.done.venue ? ` at ${p.done.venue}` : ''}</small>{!mine && p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
             : <>
-                {!p.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, project: p.id, label: p.code || p.name })}>Schedule</button>}
+                {!p.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code })}>Schedule</button>}
                 {p.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(p.sched.plan)}>Unschedule</button>}
               {!mine && <>
                 {p.kind === 'elective' && <button type="button" className="lnk" onClick={() => elective(p.id, false)} disabled={busy === p.id}>Remove</button>}
@@ -84,7 +89,7 @@ export default function PathCard({ person, mine = false, initial = null }) {
   };
 
   return (
-    <section className="pcard2">
+    <section className="pcard2" ref={card}>
       {head}
 
       <ol className="pc-steps" aria-label="Levels">
