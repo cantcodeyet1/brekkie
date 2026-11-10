@@ -65,8 +65,11 @@ export async function backfillPaths() {
 }
 
 export async function ensurePathways() {
-  const [r] = await q('select count(*)::int as n from path_projects');
-  if (!r.n && fs.existsSync(FILE)) { const c = await importPathways(); console.log(`Loaded the Pathways catalog: ${c.projects} projects in ${c.paths} paths.`); }
+  if (!fs.existsSync(FILE)) return;
+  // load on first start, and again whenever the catalog file gains a project the database does not have yet
+  const names = Object.keys(JSON.parse(fs.readFileSync(FILE, 'utf8')).projects);
+  const [r] = await q('select count(*)::int as n, (select count(*)::int from projects where name = any($1)) as have from path_projects', [names]);
+  if (!r.n || r.have < names.length) { const c = await importPathways(); console.log(`Loaded the Pathways catalog: ${c.projects} projects in ${c.paths} paths.`); }
 }
 
 if (process.argv[1] && process.argv[1].endsWith('pathways.js')) {

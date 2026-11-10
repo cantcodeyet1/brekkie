@@ -75,7 +75,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Lead in Any Situation"
+      "Lead in Any Situation",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -161,7 +162,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Deliver Your Message with Humor"
+      "Deliver Your Message with Humor",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -248,7 +250,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Team Building"
+      "Team Building",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -335,7 +338,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "High Performance Leadership"
+      "High Performance Leadership",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -420,7 +424,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Prepare to Speak Professionally"
+      "Prepare to Speak Professionally",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -507,7 +512,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Develop Your Vision"
+      "Develop Your Vision",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -595,7 +601,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "High Performance Leadership"
+      "High Performance Leadership",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -680,7 +687,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "High Performance Leadership"
+      "High Performance Leadership",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -767,7 +775,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Manage Successful Events"
+      "Manage Successful Events",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -853,7 +862,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Leading in Your Volunteer Organization"
+      "Leading in Your Volunteer Organization",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -939,7 +949,8 @@
      "level": 5,
      "title": "Demonstrating Expertise",
      "required": [
-      "Lead in Any Situation"
+      "Lead in Any Situation",
+      "Reflect on Your Path"
      ],
      "electives": [
       "Lessons Learned",
@@ -1723,18 +1734,16 @@
    "page": 66
   },
   "Reflect on Your Path": {
-   "description": "This project is designed to give you an opportunity to share your experience at the end of your path.",
-   "purpose": "The purpose of this project is to reflect on your growth during the completion of an entire path.",
-   "overview": "At a club meeting, present a 10- to 12-minute speech to share your experience completing your path. Use this as an opportunity to reflect on how far you have come, summarize the skills you have learned and developed, and to celebrate your achievements. Your speech can be humorous, informational, or any style that that appeals to you and supports your speech content.",
+   "description": "This project closes your path. You look back on what you learned, how you grew as a communicator and leader, and where you want to go next.",
+   "purpose": "The purpose of this project is to reflect on your experience in your path and the progress you have made.",
+   "overview": "Reflect on your time in this path: the skills you built, the projects that mattered most and what you will do next. Share your reflection with your club and, when you are done, submit your Project Completion Form to the vice president education.",
    "includes": [
-    "The Your Toastmasters Journey resource",
-    "A 10- to 12-minute speech"
+    "A speech of 10 to 12 minutes about your growth in the path"
    ],
    "speech": {
     "min": 10,
     "max": 12
-   },
-   "page": 67
+   }
   },
   "Researching and Presenting": {
    "description": "This project addresses topic selection strategies, suggestions for research and methods for producing a well- organized speech.",
