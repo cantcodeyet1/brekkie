@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
-import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
+import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFormUrl, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import PathCard from './PathCard.jsx';
 import RosterImport, { PathDone } from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
@@ -252,6 +252,10 @@ VPE, Champions Toastmasters Club`;
   };
   const copy = async (text) => { toast((await copyText(text)) ? 'Copied' : 'Copy failed'); };
   const all = fb.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
+  const resetFb = async () => {
+    if (!window.confirm(`Clear everything submitted for meeting ${m.number}? Every role sheet goes back to blank and the notes, counts, timings and evaluations built from them are removed. Room comments stay. This cannot be undone.`)) return;
+    try { const r = await api(`/vpe/meetings/${id}/reset-feedback`, { method: 'POST' }); toast(`Cleared ${r.sheets} ${r.sheets === 1 ? 'sheet' : 'sheets'}`); reload(); } catch (e) { toast(e.message); }
+  };
   const upcoming = m.status !== 'Done';
   const pending = fb.filter((r) => r.person && !r.submitted_at).length;
 
@@ -263,19 +267,19 @@ VPE, Champions Toastmasters Club`;
         ? <div style={{ fontSize: 16, fontWeight: 600 }}>{r.person || 'None'}{personChip(r)}</div>
         : <PersonSelect value={r.person_id} placeholder="Unassigned" allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(r, { person_id: v })} />}
       {r.role_key === 'speaker' && (locked
-        ? <div style={{ color: 'var(--mute)', fontSize: 14, marginTop: 4 }}>{projOf(r.project_id) ? `${r.path_name || projOf(r.project_id).path}, Level ${r.path_level ?? projOf(r.project_id).level}: ${projOf(r.project_id).name}` : 'No project set'}{r.speech_title ? ` · “${r.speech_title}”` : ''}</div>
+        ? <div style={{ color: 'var(--mute)', fontSize: 14, marginTop: 4 }}>{projOf(r.project_id) ? `${r.path_name || projOf(r.project_id).path}, Level ${r.path_level ?? projOf(r.project_id).level}: ${projOf(r.project_id).name}${projOf(r.project_id).parts?.length > 1 ? ` (Part ${r.part})` : ''}` : 'No project set'}{r.speech_title ? ` · “${r.speech_title}”` : ''}</div>
         : <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-          <ProjectPicker catalog={catalog} value={r.project_id} pathName={r.path_name} level={r.path_level} onChange={(body) => setRole(r, body)} />
+          <ProjectPicker catalog={catalog} value={r.project_id} part={r.part} pathName={r.path_name} level={r.path_level} onChange={(body) => setRole(r, body)} />
           <input className={'inp' + (r.speech_title ? '' : ' todo')} defaultValue={r.speech_title} placeholder="Speech title" onBlur={(e) => e.target.value !== r.speech_title && setRole(r, { speech_title: e.target.value })} />
         </div>)}
       {r.role_key === 'evaluator' && (locked
         ? r.target_role_id && <div style={{ color: 'var(--mute)', fontSize: 14, marginTop: 4 }}>Evaluated {speakers.find((s) => s.id === r.target_role_id)?.label}</div>
         : <div style={{ marginTop: 8 }}>
           <Select value={r.target_role_id} placeholder="Evaluates which speaker?" options={speakers.map((s) => ({ value: s.id, label: s.label, sub: s.person || 'unassigned' }))} onChange={(v) => setRole(r, { target_role_id: v })} />
-          {(() => { const sp = speakers.find((s) => s.id === r.target_role_id), pj = sp && projOf(sp.project_id); return pj ? <p className="evnote">Will see {sp.path_name || pj.path}, Level {sp.path_level ?? pj.level}: {pj.name}</p> : null; })()}
+          {(() => { const sp = speakers.find((s) => s.id === r.target_role_id), pj = sp && projOf(sp.project_id); return pj ? <p className="evnote">Will see {sp.path_name || pj.path}, Level {sp.path_level ?? pj.level}: {pj.name}{pj.parts?.length > 1 ? `, ${pj.parts[(sp.part || 1) - 1]?.label}` : ''}</p> : null; })()}
         </div>)}
       {r.role_key === 'evaluator' && (() => {
-        const sp = speakers.find((s) => s.id === r.target_role_id), pj = sp && projOf(sp.project_id), res = pj && resQ.data?.[pj.name], url = res?.pdf || res?.page;
+        const sp = speakers.find((s) => s.id === r.target_role_id), pj = sp && projOf(sp.project_id), res = pj && resQ.data?.[pj.name], url = evalFormUrl(res, sp?.part);
         return (url || r.submitted_at) ? (
           <div className="dlrow">
             {url && <a className="btn ghost sm" href={url} target="_blank" rel="noreferrer">{I.dl} Official form</a>}
@@ -348,7 +352,8 @@ VPE, Champions Toastmasters Club`;
           </div>
         </Panel>
 
-        <Panel k="recv" title="Feedback received" hint={upcoming ? 'Opens up after the meeting. Open anyone to read what they submitted.' : `${pending ? `${pending} still to come. ` : 'Everyone has submitted. '}Open anyone to read what they submitted.`}>
+        <Panel k="recv" title="Feedback received" hint={upcoming ? 'Opens up after the meeting. Open anyone to read what they submitted.' : `${pending ? `${pending} still to come. ` : 'Everyone has submitted. '}Open anyone to read what they submitted.`}
+          right={fb.some((r) => r.submitted_at) ? <Btn sm kind="ghost" onClick={resetFb}>Reset submitted feedback</Btn> : null}>
           <div className="list">
             {fb.filter((r) => r.person).map((r) => (
               <div className="linkrow rowbtn" key={r.id}>

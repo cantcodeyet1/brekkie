@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate, longDate } from '../data.js';
-import { Btn, DatePick, ErrorMsg, I, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, Modal, Page, PartSelect, Select, Seg, useToast } from '../ui.jsx';
 import { PlanModal, projectOptions } from './Dashboard.jsx';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -41,6 +41,7 @@ function EditModal({ s, onClose, onSaved }) {
   const [where, setWhere] = useState(s.venue ? 'there' : 'here');
   const [venue, setVenue] = useState(s.venue || '');
   const [project, setProject] = useState(s.project_id || '');
+  const [part, setPart] = useState(s.part || 1);
   const [title, setTitle] = useState(s.title || '');
   const [opts, setOpts] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -54,8 +55,8 @@ function EditModal({ s, onClose, onSaved }) {
     if (where === 'there' && !venue.trim()) return toast('Enter the club name');
     setBusy(true);
     try {
-      if (club) await api(`/vpe/roles/${s.id}`, { method: 'PATCH', body: { project_id: project || null, speech_title: title } });
-      else await api(`/me/plans/${s.id}`, { method: 'PATCH', body: { date, project_id: project || null, title, venue: where === 'there' ? venue : '' } });
+      if (club) await api(`/vpe/roles/${s.id}`, { method: 'PATCH', body: { project_id: project || null, part, speech_title: title } });
+      else await api(`/me/plans/${s.id}`, { method: 'PATCH', body: { date, project_id: project || null, part, title, venue: where === 'there' ? venue : '' } });
       toast('Speech updated'); onSaved();
     } catch (e) { toast(e.message); setBusy(false); }
   };
@@ -69,7 +70,8 @@ function EditModal({ s, onClose, onSaved }) {
               <div className="pmf"><span className="fl">Where</span><Seg value={where} onChange={setWhere} options={[['here', 'This club'], ['there', 'Another club']]} /></div>
             </>}
         {!club && where === 'there' && <label className="pmf"><span className="fl">Club name</span><input className="inp" value={venue} onChange={(e) => setVenue(e.target.value)} maxLength={80} /></label>}
-        <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={setProject} placeholder="Choose the project" searchable options={project && !opts.some((o) => o.value === project) ? [{ value: project, label: s.project || 'Current project', sub: 'Current choice' }, ...opts] : opts} /></label>
+        <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={(v) => { setProject(v); setPart(opts.find((o) => o.value === v)?.next_part || 1); }} placeholder="Choose the project" searchable options={project && !opts.some((o) => o.value === project) ? [{ value: project, label: s.project || 'Current project', sub: 'Current choice' }, ...opts] : opts} /></label>
+        <PartSelect sm={false} parts={opts.find((o) => o.value === project)?.parts} value={part} onChange={setPart} />
         <label className="pmf"><span className="fl">Speech title <i>(optional)</i></span><input className="inp" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} /></label>
         <div className="pm-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy}>Save</Btn></div>
       </div>
@@ -95,7 +97,7 @@ function SpeechModal({ s, today, onClose, onChanged, onEdit }) {
             </span>
           )}
         </div>
-        {row('Project', s.project ? `${s.code ? `${s.code} · ` : ''}${s.project}` : 'No project chosen')}
+        {row('Project', s.project ? `${s.code ? `${s.code} · ` : ''}${s.project}${s.nparts > 1 ? ` · Part ${s.part}${s.part_label ? `, ${s.part_label}` : ''}` : ''}` : 'No project chosen')}
         {row('Level', s.level ? `Level ${s.level}${s.path ? ` · ${s.path}` : ''}` : s.path)}
         {row('Speech title', s.title)}
         {row('Date', longDate(s.date))}

@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
-import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, longDate, mmss, secs, sum } from '../data.js';
+import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, evalFormUrl, partOf, longDate, mmss, secs, sum } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
 import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
 
 /* ───────── helpers ───────── */
+const Paras = ({ t, v }) => t.split('\n\n').map((x, i) => <p key={i}>{fill(x, v || {})}</p>);
 const fill = (t, v) => t.split(/(\{\w\})/).map((p, i) => { const m = /^\{(\w)\}$/.exec(p); return m ? <em key={i}>{v[m[1]] || '…'}</em> : p; });
-const sheetProjectThr = (projects, id) => { const p = projects.find((x) => x.id === id); return p ? [p.green, p.yellow, p.red] : TIMER.Speaker; };
-const rowThr = (r, projects) => r.kind === 'Speaker' ? sheetProjectThr(projects, r.project_id) : r.kind === 'Other' ? (() => { const mn = secs(r.min) || 60, mx = secs(r.max) || 120; return [mn, Math.round((mn + mx) / 2), mx]; })() : TIMER[r.kind] || TIMER.Evaluator;
+const sheetProjectThr = (projects, id, part) => { const p = partOf(projects.find((x) => x.id === id), part); return p ? [p.green, p.yellow, p.red] : TIMER.Speaker; };
+const rowThr = (r, projects) => r.kind === 'Speaker' ? sheetProjectThr(projects, r.project_id, r.part) : r.kind === 'Other' ? (() => { const mn = secs(r.min) || 60, mx = secs(r.max) || 120; return [mn, Math.round((mn + mx) / 2), mx]; })() : TIMER[r.kind] || TIMER.Evaluator;
 
 function initSheet(data) {
   const key = data.role.key, saved = data.sheet || {};
@@ -18,7 +19,7 @@ function initSheet(data) {
   if (key === 'ah_counter') return { fillers: saved.fillers || DEFAULT_FILLERS.map(([k, l]) => ({ k, l, custom: false })), rows: saved.rows?.length ? saved.rows : subjectRows({ counts: {}, comment: '' }) };
   if (key === 'timer') {
     const agenda = data.roles.filter((r) => r.person_id && (r.role_key === 'speaker' || r.role_key === 'evaluator' || r.role_key === 'general_evaluator'))
-      .map((r) => ({ subject_id: r.person_id, label: r.label, kind: r.role_key === 'speaker' ? 'Speaker' : 'Evaluator', project_id: r.project_id, fixed: true }));
+      .map((r) => ({ subject_id: r.person_id, label: r.label, kind: r.role_key === 'speaker' ? 'Speaker' : 'Evaluator', project_id: r.project_id, part: r.part, fixed: true }));
     const old = saved.rows || [];
     const rows = agenda.map((a) => { const o = old.find((x) => x.fixed && x.subject_id === a.subject_id && x.label === a.label); return { ...a, seconds: o?.seconds ?? null, comment: o?.comment || '' }; });
     return { rows: [...rows, ...old.filter((x) => !x.fixed)] };
@@ -34,7 +35,7 @@ function initSheet(data) {
 
 /* the evaluation resource: blank for the evaluator to take along, completed once they have filled it in */
 function evalDoc(data, sheet, people, blank) {
-  const target = data.roles.find((x) => x.id === data.role.target_role_id), proj = target && data.projects.find((p) => p.id === target.project_id);
+  const target = data.roles.find((x) => x.id === data.role.target_role_id), proj = target && partOf(data.projects.find((p) => p.id === target.project_id), target.part);
   if (!target?.person_id || !proj) return null;
   return {
     form_title: proj.form_title, project: proj.name, member: people.find((p) => p.id === target.person_id)?.name || '', date: data.meeting.date, by: data.me?.name || '',
@@ -237,7 +238,7 @@ function Script({ k, vars }) {
   return (
     <div className={'script' + (o ? ' open' : '')}>
       <button type="button" onClick={() => setOpen(!o)} aria-expanded={o}>Your script{I.chev}</button>
-      <div className="sb">{SCRIPTS[k].map(([h, t]) => <div key={h}><h5>{h}</h5><p>{fill(t, vars || {})}</p></div>)}</div>
+      <div className="sb">{SCRIPTS[k].map(([h, t]) => <div key={h}><h5>{h}</h5><Paras t={t} v={vars} /></div>)}</div>
     </div>
   );
 }
@@ -248,11 +249,11 @@ function Modes({ mode, script, form, report }) {
   // on a computer the script sits beside the notes, so you can read and write at once
   return mode === 'script' ? <div className="solo">{script}</div> : <div className="solo">{form}</div>;
 }
-function ScriptDoc({ k, vars, before }) {
+function ScriptDoc({ k, vars, before, body }) {
   return (
     <div className="sv">
       {before}
-      {SCRIPTS[k].map(([h, t]) => <section key={h}><h5>{h}</h5><p>{fill(t, vars || {})}</p></section>)}
+      {body || SCRIPTS[k].map(([h, t]) => <section key={h}><h5>{h}</h5><Paras t={t} v={vars} /></section>)}
     </div>
   );
 }
@@ -380,7 +381,7 @@ function GramSheet({ data, sheet, setSheet, people, addGuest, mode }) {
   const bump = (i, d) => setSheet((x) => ({ ...x, rows: x.rows.map((r, j) => { if (j !== i) return r; const n = Math.max(0, (r.uses || 0) + d); return { ...r, uses: n, used: n > 0 }; }) }));
   return (
     <Modes mode={mode}
-      script={<ScriptDoc k="grammarian" vars={{ w: m.word, m: m.meaning, x: m.example }} before={<Wcard m={m} />} />}
+      script={<ScriptDoc k="grammarian" vars={{ w: m.word, m: (m.meaning || '').replace(/[.]+$/, ''), x: (m.example || '').replace(/[.]+$/, '') }} before={<Wcard m={m} />} />}
       report={<GramReport m={m} rows={sheet.rows} people={people} />}
       form={<>
         <div className="lab" style={{ marginTop: 4 }}>Notes by person</div>
@@ -609,7 +610,7 @@ function TTSheet({ data, sheet, setSheet, people, addGuest, mode }) {
 /* ───────── Speech Evaluator ───────── */
 function EvalForm({ data, sheet, setSheet, people, mode }) {
   const target = data.roles.find((r) => r.id === data.role.target_role_id);
-  const proj = target && data.projects.find((p) => p.id === target.project_id);
+  const proj = target && partOf(data.projects.find((p) => p.id === target.project_id), target.part);
   if (!target?.person_id || !proj) return <div className="banner"><b>Waiting for the VPE.</b> You can fill this in once you have been matched with a speaker and their project.</div>;
   const who = subjectName(people, target.person_id);
   const set = (patch) => setSheet((s) => ({ ...s, ...patch }));
@@ -618,13 +619,12 @@ function EvalForm({ data, sheet, setSheet, people, mode }) {
   const open = (i) => set({ open: sheet.open.map((x, j) => (j === i ? true : x)) });
   return (
     <Modes mode={mode}
-      script={<ScriptDoc k="evaluator" vars={{ s: who.split(' ')[0], t: target.speech_title }} before={<>
-        {(() => { const r = data.evalResources?.[proj.name], url = r?.pdf || r?.page; return url ? <DlBtn href={url} title="Evaluation form" sub="The official resource, to take along" /> : null; })()}
+      script={<ScriptDoc k="evaluator" body={<section><h5>When introduced by the Toastmaster</h5><p>{(proj.purpose || []).join(' ')}</p></section>} before={<>
+        {(() => { const r = data.evalResources?.[proj.name], url = evalFormUrl(r, target.part); return url ? <DlBtn href={url} title="Evaluation form" sub={proj.part_label ? `${proj.part_label}, to take along` : 'The official form, to take along'} /> : null; })()}
         <div className="obj"><small>Evaluating</small><p style={{ margin: '6px 0 2px', font: '700 20px var(--head)' }}>{who}</p>
-          <p style={{ margin: 0 }}>“{target.speech_title || 'Untitled'}” · {target.path_name || proj.path}, Level {target.path_level ?? proj.level}</p></div>
+          <p style={{ margin: 0 }}>“{target.speech_title || 'Untitled'}” · {target.path_name || proj.path}, Level {target.path_level ?? proj.level}{proj.part_label ? ` · Part ${proj.part_n}, ${proj.part_label}` : ''}</p></div>
         <div className="obj"><small>{proj.form_title} · {proj.length_text}</small>
-          <h6 style={{ marginTop: 8 }}>Purpose</h6><ul>{proj.purpose.map((o) => <li key={o}>{I.check}<span>{o}</span></li>)}</ul>
-          <h6>{proj.overview ? 'Overview' : 'Notes for the evaluator'}</h6><p style={{ marginTop: 4 }}>{proj.overview || proj.notes}</p>
+          <h6 style={{ marginTop: 8 }}>{proj.overview ? 'Overview' : 'Notes for the evaluator'}</h6><p style={{ marginTop: 4 }}>{proj.overview || proj.notes}</p>
           <h6>{proj.overview ? 'This project includes' : 'About this speech'}</h6><ul>{proj.about.map((o) => <li key={o}>{I.check}<span>{o}</span></li>)}</ul></div></>} />}
       report={<EvalReport who={who} target={target} sheet={sheet} />}
       form={<>

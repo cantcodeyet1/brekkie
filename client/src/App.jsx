@@ -66,7 +66,7 @@ function MemberArea() {
   const { data } = useSession();
   if (!data) return <Loading />;
   return (
-    <Shell topNav nav={data.type === 'vpe' ? [...MEMBER_NAV, { to: '/v', label: 'VPE view', icon: I.back }] : MEMBER_NAV} who={data.person.name} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
+    <Shell topNav nav={data.type === 'vpe' ? [...MEMBER_NAV, { to: '/v', label: 'VPE view', icon: I.back }] : MEMBER_NAV} who={data.person.name} onSignOut={data.person.kind === 'guest' ? undefined : signOut(nav)} onAccount={data.person.kind === 'guest' ? undefined : () => setAcct(true)}>
       <Routes>
         <Route index element={<MemberHome />} />
         <Route path="role/:key" element={<FuncHistory />} />
@@ -79,7 +79,7 @@ function MemberArea() {
         <Route path="room" element={<Room />} />
         <Route path="evaluations" element={<Navigate to="/m/speeches" replace />} />
       </Routes>
-      {acct && <AccountModal admin={!!data.super} vpe={data.type === 'vpe'} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
+      {acct && data.person.kind !== 'guest' && <AccountModal admin={!!data.super} vpe={data.type === 'vpe'} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>
   );
 }

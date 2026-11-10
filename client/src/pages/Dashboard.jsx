@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, useApi } from '../api.js';
-import { fmtDate, longDate } from '../data.js';
+import { fmtDate, longDate, partOf } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
-import { Btn, DatePick, ErrorMsg, I, SkPage, Modal, Page, Select, Seg, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, SkPage, Modal, Page, PartSelect, Select, Seg, useToast } from '../ui.jsx';
 
 /* Plan a speech: at this club or another. The VPE picks the member; a member plans their own. */
 /* every project on a member's path for the project picker: their next one first, then the rest of the level they are on and above,
@@ -18,7 +18,7 @@ export function projectOptions(d, keepId) {
       const label = p.code ? `${p.code} ${p.name}` : p.name;
       if (p.done) off.push({ value: p.id, label, group, disabled: true, sub: p.done.date ? `Done ${fmtDate(p.done.date, { day: 'numeric', month: 'short' })}` : 'Done before Brekkie' });
       else if (p.sched && p.id !== keepId) off.push({ value: p.id, label, group, disabled: true, sub: `Scheduled ${fmtDate(p.sched.date, { day: 'numeric', month: 'short' })}` });
-      else on.push({ value: p.id, label, group, sub: p.kind === 'required' ? 'Required' : 'Elective', req: p.kind === 'required' });
+      else on.push({ value: p.id, label, group, sub: p.kind === 'required' ? 'Required' : 'Elective', req: p.kind === 'required', parts: p.parts, next_part: p.next_part });
     }
     // electives not picked yet can be scheduled too while the level has room; scheduling one adds it to their electives
     if (l.to_pick > 0) for (const p of l.options || []) on.push({ value: p.id, label: p.name, group, sub: `Elective · ${p.length}` });
@@ -39,6 +39,7 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
   const [where, setWhere] = useState('here');
   const [venue, setVenue] = useState('');
   const [project, setProject] = useState(preset?.project || '');
+  const [part, setPart] = useState(preset?.part || 1);
   const [title, setTitle] = useState('');
   const [opts, setOpts] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -52,7 +53,7 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
       const list = projectOptions(d);
       setOpts(list);
       const nx = list.find((o) => o.tag && !o.disabled);   // the roster fills in the next project, so start there
-      if (nx) setProject(nx.value);
+      if (nx) { setProject(nx.value); setPart(nx.next_part || 1); }
     }).catch(() => {});
   }, [who, meId, preset]);
   const save = async () => {
@@ -62,12 +63,12 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
     if (!preset?.project && opts.some((o) => !o.disabled) && !project) return toast('Choose the project, so it counts towards their level');
     setBusy(true);
     try {
-      const body = { date, project_id: project || null, title, venue: where === 'there' ? venue : '' };
+      const body = { date, project_id: project || null, part, title, venue: where === 'there' ? venue : '' };
       await api(who === meId ? '/me/plans' : `/vpe/people/${who}/plans`, { method: 'POST', body });
       toast('Speech added'); onSaved();
     } catch (e) { toast(e.message); setBusy(false); }
   };
-  const pj = projects.find((x) => x.id === Number(project));
+  const pj = partOf(projects.find((x) => x.id === Number(project)), part);
   const mm = (n) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
   const memberName = (people || []).find((p) => p.id === who)?.name || preset?.name || '';
   const form = () => printEval({
@@ -78,12 +79,13 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
     <Modal title="Schedule a speech" onClose={onClose}>
       <div className="pm">
         {people && !preset?.person && <label className="pmf"><span className="fl">Who is speaking</span><Select value={who} onChange={setWho} placeholder="Choose a member" searchable options={people.map((p) => ({ value: p.id, label: p.name }))} /></label>}
-        {!preset?.project && <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={setProject} placeholder={who ? (opts.length ? 'Choose the project' : 'No path set, so no project') : 'Choose who is speaking first'} disabled={!who} searchable options={opts} /></label>}
+        {!preset?.project && <label className="pmf"><span className="fl">Project</span><Select value={project} onChange={(v) => { setProject(v); setPart(opts.find((o) => o.value === v)?.next_part || 1); }} placeholder={who ? (opts.length ? 'Choose the project' : 'No path set, so no project') : 'Choose who is speaking first'} disabled={!who} searchable options={opts} /></label>}
+        {!preset?.project && <PartSelect sm={false} parts={opts.find((o) => o.value === project)?.parts} value={part} onChange={setPart} />}
         {pj && (
           <div className="pj">
             <div className="pj-h">
               {preset?.label && <span className="pj-c">{preset.label}</span>}
-              <b>{pj.name}</b>
+              <b>{pj.name}</b>{pj.part_label && <span className="pj-c">Part {pj.part_n} · {pj.part_label}</span>}
             </div>
             <div className="pj-k">
               {!preset?.label && <span>Level {pj.level}</span>}

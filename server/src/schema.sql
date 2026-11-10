@@ -285,3 +285,18 @@ alter table people add column if not exists is_super boolean not null default fa
 update people set is_super = true
  where lower(email) = 'nyashanmpofu@outlook.com' and kind = 'member'
    and club_id = (select id from clubs where name = 'Champions Toastmasters Club' order by id limit 1);
+
+-- projects made of several parts (two speeches, or two speeches and an evaluation): each part has its own purpose, length and form.
+-- A speaker slot, speech plan, evaluation or finished mark says which part it is for; part 1 is the default.
+alter table projects add column if not exists parts jsonb not null default '[]';
+alter table meeting_roles add column if not exists part int not null default 1;
+alter table evaluations add column if not exists part int not null default 1;
+alter table speech_plans add column if not exists part int not null default 1;
+alter table member_projects add column if not exists part int not null default 1;
+do $$ begin
+  if not exists (select 1 from pg_index i join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+                 where i.indrelid = 'member_projects'::regclass and i.indisprimary and a.attname = 'part') then
+    alter table member_projects drop constraint member_projects_pkey;
+    alter table member_projects add primary key (person_id, project_id, part);
+  end if;
+end $$;

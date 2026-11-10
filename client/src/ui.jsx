@@ -366,15 +366,27 @@ export function useDebouncedSave(fn, deps, ms = 800, skipFirst = true) {
 
 export const copyText = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
+/* Which part of a project: shown only for a project made of several (two speeches, or two speeches and an evaluation).
+   Parts already done or scheduled are greyed out, except the one being edited. */
+export function PartSelect({ parts, value, onChange, sm = true }) {
+  if (!parts || parts.length < 2) return null;
+  return (
+    <Select sm={sm} value={value || ''} placeholder="Which part" searchable={false}
+      options={parts.map((x) => ({ value: x.n, label: `Part ${x.n} · ${x.label}`, sub: x.done ? 'Done' : x.sched && x.n !== value ? 'Scheduled' : x.length, disabled: !!(x.done || (x.sched && x.n !== value)) }))}
+      onChange={onChange} />
+  );
+}
+
 /* Path, then level, then project, from the Pathways catalog. Each choice narrows the next, and a half-finished
    choice is remembered. onChange receives { project_id, path_name, path_level }. */
-export function ProjectPicker({ catalog, value, pathName, level, onChange }) {
+export function ProjectPicker({ catalog, value, part, pathName, level, onChange }) {
   const [path, setPath] = useState(pathName || '');
   const [lv, setLv] = useState(level ?? '');
   useEffect(() => { setPath(pathName || ''); setLv(level ?? ''); }, [pathName, level]);
   const P = catalog.find((p) => p.name === path);
   const L = P?.levels.find((l) => l.level === lv);
   const req = L?.projects.filter((p) => p.kind === 'required') || [], opt = L?.projects.filter((p) => p.kind === 'elective') || [];
+  const chosen = L?.projects.find((p) => p.id === value);
   return (
     <div className="ppick">
       <Select sm value={path} placeholder="Path" searchable={false} options={catalog.map((p) => ({ value: p.name, label: p.name }))}
@@ -384,8 +396,9 @@ export function ProjectPicker({ catalog, value, pathName, level, onChange }) {
           onChange={(v) => { setLv(v); onChange({ project_id: null, path_name: path, path_level: v }); }} />
         <Select sm value={value} placeholder="Project" disabled={!L} searchable={(L?.projects.length || 0) > 8}
           options={[...req.map((p) => ({ value: p.id, label: `${p.code} ${p.name}`, sub: 'Required' })), ...opt.map((p) => ({ value: p.id, label: p.name, sub: L.choose ? `Elective, choose ${L.choose}` : 'Elective' }))]}
-          onChange={(v) => onChange({ project_id: v, path_name: path, path_level: lv })} />
+          onChange={(v) => onChange({ project_id: v, part: 1, path_name: path, path_level: lv })} />
       </div>
+      <PartSelect parts={chosen?.parts} value={part || 1} onChange={(n) => onChange({ project_id: value, part: n, path_name: path, path_level: lv })} />
     </div>
   );
 }

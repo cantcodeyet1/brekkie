@@ -43,7 +43,7 @@ const Sect = ({ title, hint, children }) => <section className="mb-sec"><div cla
 
 /* ───────── Home ───────── */
 /* the card for a meeting: one tap downloads its agenda. A role's card can also carry a link to the script and sheet. */
-function AgendaCard({ meetingId, date, title, sub, sheet }) {
+function AgendaCard({ meetingId, date, title, sub, sheet, sheetLabel = 'Open your role sheet', form }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const dt = new Date(date + 'T12:00:00');
@@ -63,8 +63,11 @@ function AgendaCard({ meetingId, date, title, sub, sheet }) {
       <span className="calbox"><small>{dt.toLocaleDateString('en-GB', { month: 'short' })}</small><b>{dt.getDate()}</b></span>
       <span className="tt"><b>{title}</b><span>{sub}</span></span>
       <span className="mh-acts">
-        <button type="button" className="mh-go" onClick={get} disabled={busy}>{I.dl} {busy ? 'Getting it…' : 'Download the agenda'}</button>
-        {sheet && <Link className="mr-sheet" to={sheet}>Open your role sheet</Link>}
+        <button type="button" className="mh-btn mh-main" onClick={get} disabled={busy}>{I.dl} {busy ? 'Getting it…' : 'Agenda'}</button>
+        {(sheet || form) && <span className="mh-more">
+        {sheet && <Link className="mh-btn" to={sheet}>{I.doc} {sheetLabel}</Link>}
+        {form && <a className="mh-btn" href={form} target="_blank" rel="noreferrer" download>{I.dl} Evaluation form</a>}
+        </span>}
       </span>
     </div>
   );
@@ -88,11 +91,12 @@ export function MemberHome() {
     <MPage root eyebrow="Champions Toastmasters" title={`Hi ${first}`} sub="Your feedback from the club, all in one place.">
       <div className="mb-stack">
         {d.upcoming.map((u) => {
-          const act = !['toastmaster', 'speaker'].includes(u.role_key);
+          const act = u.role_key !== 'speaker';
+          const sheetLabel = u.role_key === 'evaluator' ? 'Open my evaluation portal' : u.role_key === 'grammarian' ? 'Open my Grammarian link' : 'Open your role sheet';
           return <AgendaCard key={u.token} meetingId={u.meeting_id} date={u.date}
             title={`You are ${/\d$/.test(u.label) ? '' : /^[AEIOU]/.test(u.label) ? 'an ' : 'a '}${u.label}`}
             sub={`${fmtDate(u.date, { weekday: 'long', day: 'numeric', month: 'long' })}, meeting ${u.number}`}
-            sheet={act ? `/r/${u.token}` : null} />;
+            sheet={act ? `/r/${u.token}` : null} sheetLabel={sheetLabel} form={u.form} />;
         })}
 
         <div className="mb-card">
@@ -105,7 +109,7 @@ export function MemberHome() {
         {!d.upcoming.length && d.next_meeting && (
           <p className="mr-foot">Our next meeting is {fmtDate(d.next_meeting.date, { weekday: 'long', day: 'numeric', month: 'long' })}. You do not have a role yet.</p>
         )}
-        {guest && <div className="mb-card"><div className="mb-sec"><JoinAsk data={{ me: d.person }} endpoint="/me/join-request" /></div></div>}
+        {guest && <div className="mb-card mr-join"><JoinAsk data={{ me: d.person }} endpoint="/me/join-request" /></div>}
       </div>
     </MPage>
   );

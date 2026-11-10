@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initDb, q, tx } from './db.js';
+import { applyFormText } from './formtext.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(here, '..', 'data', 'pathways.json');
@@ -49,6 +50,7 @@ export async function importPathways() {
     }
   });
   await backfillPaths();
+  await applyFormText();
   const [c] = await q('select count(*)::int as projects, (select count(distinct path)::int from path_projects) as paths from projects');
   return c;
 }

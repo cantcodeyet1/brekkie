@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { secs, mmss, cardOf, cap, sum, mean, fmtDate, longDate } from '../src/data.js';
+import { secs, mmss, cardOf, cap, sum, mean, fmtDate, longDate, evalFormUrl } from '../src/data.js';
 import { parseCsv, cleanPhone, pathFromCredentials, fromClubCentral, toMembers, PATH_CODES } from '../src/roster.js';
 
 describe('time helpers', () => {
@@ -68,5 +68,26 @@ describe('roster import', () => {
     expect(rows[1]).toMatchObject({ name: 'Bob', guessed: false, enrolled: false });
     rows[1].on = false;
     expect(toMembers(rows).map((m) => m.name)).toEqual(['Ann Lee']);
+  });
+});
+
+describe('evalFormUrl', () => {
+  const one = { page: 'https://x/page', pdf: '/eval-forms/a.pdf', forms: ['/eval-forms/a.pdf'] };
+  const two = { page: 'https://x/page', pdf: '/eval-forms/b.pdf', forms: ['/eval-forms/b.pdf', '/eval-forms/b-2.pdf'] };
+  it('uses our own copy', () => expect(evalFormUrl(one, 1)).toBe('/eval-forms/a.pdf'));
+  it('picks the form for the speech being evaluated', () => {
+    expect(evalFormUrl(two, 1)).toBe('/eval-forms/b.pdf');
+    expect(evalFormUrl(two, 2)).toBe('/eval-forms/b-2.pdf');
+  });
+  it('defaults to the first form and clamps out-of-range speech numbers', () => {
+    expect(evalFormUrl(two)).toBe('/eval-forms/b.pdf');
+    expect(evalFormUrl(two, 0)).toBe('/eval-forms/b.pdf');
+    expect(evalFormUrl(two, 9)).toBe('/eval-forms/b-2.pdf');
+    expect(evalFormUrl(one, 3)).toBe('/eval-forms/a.pdf');
+  });
+  it('falls back to the Toastmasters page, and to nothing', () => {
+    expect(evalFormUrl({ page: 'https://x/page', pdf: null }, 1)).toBe('https://x/page');
+    expect(evalFormUrl(undefined, 1)).toBeNull();
+    expect(evalFormUrl({}, 1)).toBeNull();
   });
 });

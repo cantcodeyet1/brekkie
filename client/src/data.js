@@ -36,7 +36,7 @@ export const FEEDBACK_ROLES = ['grammarian', 'ah_counter', 'timer', 'topicsmaste
 
 /* scripts: [label, text]. {w} word, {m} meaning, {x} example, {s} speaker, {t} title */
 export const SCRIPTS = {
-  grammarian: [['When introduced by the Toastmaster', '“Mr./Madam Toastmaster, fellow Toastmasters, and visitors. As Grammarian, it is my responsibility to pay close attention to all speakers, listening carefully to their language usage. I’ll take note of any misuses of the English language, as well as any outstanding words, quotes, sayings, or thoughts. As Grammarian, it is also my duty to introduce the Word of the Day. For today’s meeting, the Word is {w}, which means {m}. [Display the Word of the Day at the front of the room.] An example of using the word is: {x}. Each speaker is encouraged to use the Word of the Day. I will give a Word of the Day report and grammatical usage report when called upon during the meeting. Thank you, Mr./Madam Toastmaster.”']],
+  grammarian: [['When introduced by the Toastmaster', '“Mr./Madam Toastmaster, fellow Toastmasters, and visitors. As Grammarian, it is my responsibility to pay close attention to all speakers, listening carefully to their language usage. I’ll take note of any misuses of the English language, as well as any outstanding words, quotes, sayings, or thoughts.\n\nAs Grammarian, it is also my duty to introduce the Word of the Day. For today’s meeting, the Word is {w}, which means {m}. An example of using the word is: {x}. Each speaker is encouraged to use the Word of the Day.\n\nI will give a Word of the Day report and grammatical usage report when called upon during the meeting. Thank you, Mr./Madam Toastmaster.”']],
   ah_counter: [['When introduced by the Toastmaster', '“Greetings Mr./Madam Toastmaster, fellow Toastmasters, and visitors. The purpose of the Ah-Counter is to note words and sounds that are used as a “crutch” or “pause filler” by anyone who speaks. During the meeting, I will listen for overused words, including and, well, but, so, and you know. I will also listen for filler sounds, including ah, um, and er. I will also note when a speaker repeats a word or phrase, such as “I, I” or “This means, this means.” At the end of the meeting, I will report the number of times that each speaker used these expressions. Thank you, Mr./Madam Toastmaster.”']],
   timer: [['When introduced by the Toastmaster', '“Greetings Mr./Madam Toastmaster, fellow Toastmasters, and visitors. As Timer, I will time the Table Topics speakers, formal speeches, and the evaluations. I will also alert each speaker of the time they have left, using the green, yellow, and red cards, which denote specific times remaining.”'],
     ['Table Topics', 'Speakers should limit their remarks to no more than 2 minutes. At 1 minute, I will raise the green card. At 1 minute and 30 seconds, the yellow card. At 2 minutes, the red card.'],
@@ -54,3 +54,18 @@ export const GE_SECTIONS = [
   ['General Evaluator', ['Did the General Evaluator properly introduce the Grammarian?', 'Was the Grammarian prepared and did they introduce their role within the allotted time?', 'Did the Grammarian properly introduce the Word of the Day?', 'Was the Word of the Day challenging, appropriate, and fitting for the theme of the meeting?', 'Did the General Evaluator properly introduce the Timer?', 'Was the Timer prepared and did they introduce their role within the allotted time?', 'Did the General Evaluator properly introduce the Ah-Counter?', 'Was the Ah-Counter prepared and did they introduce their role within the allotted time?', 'Was the General Evaluator’s report given?']],
   ['Topicsmaster', ['Was the purpose and timing of Table Topics properly explained?', 'Was the topic selected appropriate and did it fit the meeting theme?', 'Did the Topicsmaster call on people who did not have a meeting role first during Table Topics?', 'Were visitors invited to participate?', 'Did the Topicsmaster track time to ensure the meeting stayed on schedule?', 'Was control properly returned to the Toastmaster?']],
 ];
+
+/* the official evaluation form for a project: our own copy for the speech being evaluated (a project with two forms has one per speech), else the Toastmasters page */
+export const evalFormUrl = (res, speechNo) => (res?.forms?.length ? res.forms[Math.min(Math.max(speechNo || 1, 1), res.forms.length) - 1] : res?.pdf || res?.page || null);
+
+/* one part of a project (a project with several parts has its own purpose, length and notes for each): the project with that part's details laid over it */
+export const partOf = (proj, n) => {
+  if (!proj) return proj;
+  const pt = proj.parts?.[(n || 1) - 1];
+  if (!pt) return proj;
+  return {
+    ...proj, part_n: pt.n, part_label: pt.label, part_kind: pt.kind, form: pt.form,
+    length_text: pt.length_text || proj.length_text, green: pt.green ?? proj.green, yellow: pt.yellow ?? proj.yellow, red: pt.red ?? proj.red,
+    purpose: [...(proj.purpose || []), ...(pt.purpose || [])], notes: pt.notes || proj.notes, about: pt.about?.length ? pt.about : proj.about,
+  };
+};

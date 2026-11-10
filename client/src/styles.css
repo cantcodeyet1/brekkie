@@ -859,6 +859,8 @@ details.rec summary span:nth-child(2){margin-left:auto}
 .sv section:first-of-type{border-top:0;margin-top:6px}
 .sv h5{font:700 12px var(--head);letter-spacing:.09em;text-transform:uppercase;color:var(--maroon);margin:0 0 8px}
 .sv section p{margin:0;font-size:19px;line-height:1.62;color:#1D1D1F;letter-spacing:-.005em}
+.sv section p+p{margin-top:1.1em}
+.script .sb p+p{margin-top:.9em}
 .sv section p em{font-style:normal;background:var(--yellow);padding:0 4px;border-radius:5px;font-weight:600}
 .sv .wotd,.sv .obj{margin-bottom:10px}
 /* notes: grey cards on the white sheet, white fields inside */
@@ -2473,11 +2475,14 @@ html,body{background:#F5F5F7}
 .mr-next .tt{flex:1 1 220px;min-width:0}
 .mr-next .tt b{display:block;font:700 20px/1.2 var(--head);letter-spacing:-.025em}
 .mr-next .tt span{display:block;margin-top:3px;color:#6E6E73;font-size:16px}
-.mh-acts{display:flex;flex-direction:column;align-items:stretch;gap:8px;flex:none}
-.mh-go{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:48px;padding:0 24px;border:0;border-radius:999px;background:var(--yellow);color:#1D1D1F;font:800 15.5px var(--head);cursor:pointer;white-space:nowrap;transition:filter .15s,transform .15s}
-.mh-go:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px)}
-.mh-go:disabled{opacity:.7}
-.mr-sheet{text-align:center;color:var(--blue);font:600 14px var(--head);text-decoration:underline;text-underline-offset:3px}
+.mh-acts{display:flex;flex-direction:column;align-items:flex-start;gap:8px;flex:1 0 100%;padding-top:16px;margin-top:2px;border-top:1px solid #EEF0F2}
+.mh-more{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+.mh-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border:0;border-radius:999px;background:#F2F2F5;color:#1D1D1F;font:700 15px var(--head);cursor:pointer;white-space:nowrap;text-decoration:none;transition:filter .15s,background .15s}
+.mh-btn:hover:not(:disabled){background:#E8E8EC}
+.mh-btn svg{width:18px;height:18px;flex:none}
+.mh-main{background:var(--yellow)}.mh-main:hover:not(:disabled){background:var(--yellow);filter:brightness(1.04)}
+.mh-btn:disabled{opacity:.7}
+.mh-btn:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .mr-lab{font:700 11.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:#8A8A90;padding:22px 28px 8px}
 .mr-row{display:block;color:inherit;text-decoration:none;border-top:1px solid #EEF0F2}
 .mr-lab+.mr-row{border-top:0}
@@ -2500,7 +2505,7 @@ html,body{background:#F5F5F7}
 .mr-pane .pc-h{display:none}
 .mr-foot{margin:2px 6px 0;color:#6E6E73;font-size:15.5px}
 @media (max-width:640px){
-  .mr-next{padding:16px}.mr-next .tt b{font-size:18px}.mh-acts{width:100%}
+  .mr-next{padding:16px}.mr-next .tt b{font-size:18px}.mh-acts{align-items:stretch}.mh-more{flex-direction:column}
   .mr-lab{padding:20px 16px 6px}.mr-h{padding:14px 16px;gap:12px}.mr-pane .pcard2,.mr-pane .myplans{padding:16px}
   .mr-r{display:none}.mr-seg i{width:26px}
 }
@@ -2934,3 +2939,24 @@ html,body{background:#F5F5F7}
 .side .me-views a:hover{background:rgba(255,255,255,.22)}
 .side .me-views a svg{width:14px;height:14px;opacity:.9}
 .side .me-views{margin:12px 0 10px}
+
+.pc-parts{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.pc-part{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;background:#F5F5F7;color:var(--mute);font:600 11.5px var(--head)}
+.pc-part svg{width:11px;height:11px}
+.pc-part.on{background:#3F7D5C1A;color:#2F6B4C}
+.pc-part.sc{background:#1F5E8C14;color:var(--blue)}
+
+/* the join prompt on the member home: one card, icon and words on the left, the button on the right */
+.mr-join{padding:22px 28px}
+.mr-join .joinask{max-width:none;flex-direction:row;align-items:center;gap:18px;padding:0;background:none;border:0;border-radius:0}
+.mr-join .joinask .jtx{flex:1;display:grid;grid-template-columns:1fr auto;column-gap:20px;row-gap:2px;align-items:center}
+.mr-join .joinask .jtx b{grid-column:1;font-size:18px}
+.mr-join .joinask .jtx span{grid-column:1;font-size:15.5px}
+.mr-join .joinask .jbtn{grid-column:2;grid-row:1/3;margin:0;align-self:center}
+.mr-join .joinask .err{grid-column:1/-1}
+@media (max-width:640px){
+  .mr-join{padding:18px 16px}
+  .mr-join .joinask{align-items:flex-start}
+  .mr-join .joinask .jtx{grid-template-columns:1fr}
+  .mr-join .joinask .jbtn{grid-column:1;grid-row:auto;align-self:stretch;margin-top:10px}
+}
