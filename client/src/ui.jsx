@@ -123,13 +123,7 @@ export const Foot = ({ children, col }) => <div className={'foot' + (col ? ' col
 export const Btn = ({ kind = '', sm, children, ...p }) => <button type="button" className={`btn ${kind} ${sm ? 'sm' : ''}`} {...p}>{children}</button>;
 export const Chip = ({ kind = '', children, ...p }) => <span className={'chip ' + kind} {...p}>{children}</span>;
 /* a calm shimmering outline of a page, tall enough that the card around it does not jump when the content arrives */
-export const Loading = () => (
-  <div className="skel" role="status" aria-label="Loading">
-    <i className="h" /><i className="p" /><i className="p s" />
-    <div className="g"><i /><i /><i /></div>
-    <div className="g"><i /><i /><i /></div>
-  </div>
-);
+export const Loading = () => <SkPage plain rows={6} pill={false} />;
 /* Page-shaped skeletons: the same header, card and rows as the page they stand in for, so nothing jumps on arrival */
 const Sk = ({ w, h, r, cls = '' }) => <i className={'sk ' + cls} style={{ width: w, height: h, borderRadius: r }} />;
 export const SkRows = ({ n = 5, avatar = false, pill = true }) => Array.from({ length: n }, (_, i) => (

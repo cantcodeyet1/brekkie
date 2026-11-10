@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
-import { Btn, Loading, Seg, Wordmark } from '../ui.jsx';
+import { Btn, Seg, Wordmark } from '../ui.jsx';
 import { HeroText } from './AuthFrame.jsx';
 import { VPE_WHATSAPP } from './Role.jsx';
 
@@ -113,7 +113,25 @@ export default function Landing({ force }) {
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
-  if (checking) return <Loading />;
+  if (checking) return (
+    <>
+      <HeroText>
+        <i className="sk1 s-h" /><i className="sk1 s-h b" />
+        <i className="sk1 s-p" /><i className="sk1 s-p" style={{ width: 'min(360px,70%)' }} />
+      </HeroText>
+      <section className="land-panel" role="status" aria-label="Loading">
+        <div className="panel-in">
+          <i className="sk" style={{ height: 44, borderRadius: 22, margin: '14px 0 22px' }} />
+          <i className="sk" style={{ height: 30, width: '56%', borderRadius: 10, marginBottom: 22 }} />
+          <i className="sk" style={{ height: 12, width: 60, margin: '0 0 8px' }} />
+          <i className="sk" style={{ height: 50, borderRadius: 14, marginBottom: 18 }} />
+          <i className="sk" style={{ height: 12, width: 80, margin: '0 0 8px' }} />
+          <i className="sk" style={{ height: 50, borderRadius: 14, marginBottom: 26 }} />
+          <i className="sk" style={{ height: 52, borderRadius: 26 }} />
+        </div>
+      </section>
+    </>
+  );
   const ready = f.email.trim() && f.password;
   return (
     <>
