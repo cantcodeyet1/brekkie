@@ -128,10 +128,10 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
           <section className="ac-sec">
             <h3>Sign in</h3>
             <label className="fl" htmlFor="a-email">Email</label>
-            <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" />
-            {data.has_password && <><label className="fl" htmlFor="a-cur">Current password <i>(only to change it)</i></label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} autoComplete="current-password" /></>}
+            <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} autoComplete="email" />
+            {data.has_password && <><label className="fl" htmlFor="a-cur">Current password <i>(only to change it)</i></label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF((s) => ({ ...s, current: e.target.value }))} autoComplete="current-password" /></>}
             {data.has_password ? <p className="fl" style={{ marginBottom: 0 }}>New password <i>(optional)</i></p> : null}
-            <PwPair id="a-pw" value={f.password} again={f.again || ''} onChange={(e) => setF({ ...f, password: e.target.value })} onAgain={(e) => setF({ ...f, again: e.target.value })} />
+            <PwPair id="a-pw" value={f.password} again={f.again || ''} onChange={(e) => setF((s) => ({ ...s, password: e.target.value }))} onAgain={(e) => setF((s) => ({ ...s, again: e.target.value }))} />
             <p className="ac-note">{data.has_password ? 'Leave the password boxes empty to keep your current one.' : 'Add a password so you can sign in with your email.'}</p>
           </section>
 

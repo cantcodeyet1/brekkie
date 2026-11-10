@@ -107,7 +107,7 @@
     "purpose": [],
     "notes": "The member completing this project has spent time preparing a social speech. Listen for: A well-organized, well-delivered speech with appropriate content for the type of social speech. You may be evaluating one of the following types of social speeches: • A toast • An acceptance speech • A speech to honor an individual (the presentation of an award, other type of recognition, or a eulogy) • A speech to honor an organization",
     "about": [],
-    "form": "/eval-forms/deliver-social-speeches.pdf"
+    "form": "/api/eval-forms/deliver-social-speeches.pdf"
    },
    {
     "n": 2,
@@ -119,7 +119,7 @@
     "purpose": [],
     "notes": "The member completing this project has spent time preparing a social speech. Listen for: A well-organized, well-delivered speech with appropriate content for the type of social speech. You may be evaluating one of the following types of social speeches: • A toast • An acceptance speech • A speech to honor an individual (the presentation of an award, other type of recognition, or a eulogy) • A speech to honor an organization",
     "about": [],
-    "form": "/eval-forms/deliver-social-speeches-2.pdf"
+    "form": "/api/eval-forms/deliver-social-speeches-2.pdf"
    }
   ]
  },
@@ -166,7 +166,7 @@
      "The speech may be humorous, informational, or any style the member chooses.",
      "The speech should not be a report on the content of the Develop Your Vision project."
     ],
-    "form": "/eval-forms/develop-your-vision.pdf"
+    "form": "/api/eval-forms/develop-your-vision.pdf"
    },
    {
     "n": 2,
@@ -184,7 +184,7 @@
      "The speech may be humorous, informational, or any style the member chooses.",
      "The speech should not be a report on the content of the Develop Your Vision project."
     ],
-    "form": "/eval-forms/develop-your-vision-2.pdf"
+    "form": "/api/eval-forms/develop-your-vision-2.pdf"
    }
   ]
  },
@@ -227,7 +227,7 @@
      "The member should strive to achieve exemplary ratings on every evaluation criteria for this speech.",
      "You are responsible for evaluating the member's speech, not the project they will complete."
     ],
-    "form": "/eval-forms/distinguished-toastmaster.pdf"
+    "form": "/api/eval-forms/distinguished-toastmaster.pdf"
    },
    {
     "n": 2,
@@ -246,7 +246,7 @@
      "The member should strive to achieve exemplary ratings on every evaluation criteria for this speech.",
      "You are responsible for evaluating the member's speech, not the project they completed."
     ],
-    "form": "/eval-forms/distinguished-toastmaster-2.pdf"
+    "form": "/api/eval-forms/distinguished-toastmaster-2.pdf"
    }
   ]
  },
@@ -322,7 +322,7 @@
      "The speech may be humorous, informational, or any style the member chooses.",
      "The member will ask you to evaluate their second speech at a future meeting."
     ],
-    "form": "/eval-forms/evaluation-and-feedback-1.pdf"
+    "form": "/api/eval-forms/evaluation-and-feedback-1.pdf"
    },
    {
     "n": 2,
@@ -339,7 +339,7 @@
      "The member will deliver a well-organized speech on any topic and incorporate feedback from their previous speech evaluation.",
      "The member may choose to present the same speech, a revision of their first Evaluation and Feedback speech, or a new speech."
     ],
-    "form": "/eval-forms/evaluation-and-feedback-2.pdf"
+    "form": "/api/eval-forms/evaluation-and-feedback-2.pdf"
    },
    {
     "n": 3,
@@ -358,7 +358,7 @@
      "They will also demonstrate proper meeting etiquette by being fully engaged during all speeches.",
      "The member may choose to take notes during the speech they are evaluating."
     ],
-    "form": "/eval-forms/evaluation-and-feedback-3.pdf"
+    "form": "/api/eval-forms/evaluation-and-feedback-3.pdf"
    }
   ]
  },
@@ -401,7 +401,7 @@
      "■■The member will deliver a well-thought-out plan and an organized, engaging speech. ■■The speech may be humorous, informational, or presented in any style the member chooses.",
      "The style should be appropriate for the content of the speech. ■■The speech should not be a report on the content of the “High Performance Leadership” project, but a presentation about the member's plan and goals."
     ],
-    "form": "/eval-forms/high-performance-leadership.pdf"
+    "form": "/api/eval-forms/high-performance-leadership.pdf"
    },
    {
     "n": 2,
@@ -420,7 +420,7 @@
      "The style should be appropriate for the content of the speech.",
      "The speech should not be a report on the content of the High Performance Leadership project, but a presentation about the member's plan, goals, and experience completing a project of their choosing."
     ],
-    "form": "/eval-forms/high-performance-leadership-2.pdf"
+    "form": "/api/eval-forms/high-performance-leadership-2.pdf"
    }
   ]
  },
@@ -608,7 +608,7 @@
     ],
     "notes": "The member completing this project has committed a great deal of time to building a team and developing a project plan. This is a 2- to 3-minute report on the member's plan. Listen for: • An explanation of what the member intends to accomplish • Information about the team the member has built to help them accomplish the plan • A well-organized informational speech",
     "about": [],
-    "form": "/eval-forms/manage-projects-successfully.pdf"
+    "form": "/api/eval-forms/manage-projects-successfully.pdf"
    },
    {
     "n": 2,
@@ -623,7 +623,7 @@
     ],
     "notes": "The member completing this project has committed a great deal of time to developing a project plan, building a team, and fulfilling the plan. This is a 5- to 7-minute speech about the member's experience managing a project. This speech can be humorous, informational, or any type the member feels is appropriate. Listen for: • \u0007Information about what the member learned from planning, building a team, and leading that team through the completion of their project • The speech should not be a report on the content of the Manage Projects Successfully project.",
     "about": [],
-    "form": "/eval-forms/manage-projects-successfully-2.pdf"
+    "form": "/api/eval-forms/manage-projects-successfully-2.pdf"
    }
   ]
  },
@@ -829,7 +829,7 @@
      "The speech can be humorous, informational, or any style the member chooses.",
      "The speech should not be a report on the content of the Team Building project."
     ],
-    "form": "/eval-forms/team-building.pdf"
+    "form": "/api/eval-forms/team-building.pdf"
    },
    {
     "n": 2,
@@ -848,7 +848,7 @@
      "The speech can be humorous, informational or any style the member chooses.",
      "The speech should not be a report on the content of the Team Building project."
     ],
-    "form": "/eval-forms/team-building-2.pdf"
+    "form": "/api/eval-forms/team-building-2.pdf"
    }
   ]
  },

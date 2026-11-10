@@ -2861,7 +2861,7 @@ html,body{background:#F5F5F7}
 .ev-speech b{font:700 20px/1.25 var(--head);color:var(--ink);letter-spacing:-.02em}
 .eval-go{display:none}
 .app.desk .in:has(.pdfwrap){position:relative}
-.app.desk .eval-go{display:block;position:absolute;right:28px;bottom:28px;z-index:5}
+.app.desk .eval-go{display:flex;gap:10px;position:absolute;right:28px;bottom:28px;z-index:5}
 .app.desk .eval-go .btn{width:auto;height:44px;min-height:44px;min-width:0;padding:0 26px;font-size:15.5px;border-radius:999px}
 
 /* evaluation header, kept light */
@@ -2960,3 +2960,21 @@ html,body{background:#F5F5F7}
   .mr-join .joinask .jtx{grid-template-columns:1fr}
   .mr-join .joinask .jbtn{grid-column:1;grid-row:auto;align-self:stretch;margin-top:10px}
 }
+
+/* speaker and evaluator contact cards, and the speaker's own link page */
+.pt-card{padding:22px 28px}
+.pt-lab{font:700 11.5px var(--head);letter-spacing:.12em;text-transform:uppercase;color:#8A8A90;margin-bottom:12px}
+.pt-who{display:flex;align-items:center;gap:14px}
+.pt-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pt-t b{font:700 19px/1.2 var(--head);letter-spacing:-.02em}
+.pt-t span{color:#6E6E73;font-size:15.5px;line-height:1.4}
+.pt-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.pt-txt,.pt-none{margin:0;color:#6E6E73;font-size:15.5px;line-height:1.5}
+.pt-fb{border-radius:16px;padding:14px 16px;margin-top:10px;background:#F5F5F7}
+.pt-fb.good{background:#EAF5EE}.pt-fb.bad{background:#FBECEC}
+.pt-fb small{display:block;font:700 11.5px var(--head);letter-spacing:.1em;text-transform:uppercase;color:#6E6E73;margin-bottom:4px}
+.pt-fb p{margin:0;font-size:16.5px;line-height:1.55;color:#1D1D1F;white-space:pre-wrap}
+.pt-rates{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.pt-rate{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 13px;border-radius:999px;background:#F2F2F5;font:600 13.5px var(--head);color:#4A4A50}
+.pt-rate b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:99px;background:#fff;font-weight:800;color:#1D1D1F}
+@media (max-width:640px){.pt-card{padding:18px 16px}.pt-acts .mh-btn{flex:1 1 auto}}

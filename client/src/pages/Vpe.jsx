@@ -179,6 +179,7 @@ export function VpeMeeting() {
   const setRole = async (r, body) => { try { await api(`/vpe/roles/${r.id}`, { method: 'PATCH', body }); await reload(); if (body.person_id !== undefined) peopleQ.reload(); } catch (e) { toast(e.message); } };
   const addGuest = async (name) => { const g = await api('/people/guest', { method: 'POST', body: { name } }); await peopleQ.reload(); return g; };
   const fb = roles.filter((r) => FEEDBACK_ROLES.includes(r.role_key));
+  const linkRows = roles.filter((r) => FEEDBACK_ROLES.includes(r.role_key) || r.role_key === 'speaker');
   const speakers = roles.filter((r) => r.role_key === 'speaker');
   const personChip = (r) => r.person_kind === 'guest' && <GBadge />;
   const fillWord = async () => {
@@ -220,7 +221,49 @@ export function VpeMeeting() {
         : <input className="inp" type={type} value={m[k] || ''} placeholder={ph} onChange={(e) => (type !== 'date' || e.target.value) && setField({ [k]: e.target.value })} />}
     </div>
   );
+  // a speaker and their evaluator are told who the other is, with contact details, and asked to get in touch
+  const personOf = (id) => people.find((x) => x.id === id);
+  const reach = (x) => [x?.phone && `WhatsApp or call ${x.phone}`, x?.email && `email ${x.email}`].filter(Boolean).join(', or ') || 'ask me for their details';
+  const evalsOf = (r) => roles.filter((e) => e.role_key === 'evaluator' && e.target_role_id === r.id && e.person_id).map((e) => personOf(e.person_id)).filter(Boolean);
+  const speakerOf = (r) => personOf(roles.find((x) => x.id === r.target_role_id)?.person_id);
+  const talkOf = (sp) => { const pr = projects.find((x) => x.id === sp?.project_id), t = sp?.speech_title && `"${sp.speech_title}"`, pj = pr && `${pr.name}, Level ${pr.level}`; return t && pj ? `${t} (${pj})` : t || pj || ''; };
+  const pairing = (r, kind) => {
+    if (r.role_key === 'evaluator' && kind !== 'remind') {
+      const sr = roles.find((x) => x.id === r.target_role_id), sp = speakerOf(r);
+      if (!sp) return '';
+      const talk = talkOf(sr);
+      return `
+
+You will be evaluating ${sp.name}${talk ? `, speaking on ${talk}` : ''}. Please get in touch with them before the meeting to introduce yourself and ask what they would like feedback on. You can reach them: ${reach(sp)}.`;
+    }
+    return '';
+  };
+  const speakerMsg = (r, kind) => {
+    const who = personOf(r.person_id), title = who?.credential ? `${who.credential} ` : '';
+    const sender = people.find((p) => p.is_vpe)?.name;
+    const evs = evalsOf(r), talk = talkOf(r);
+    const theme = m.theme ? ` The theme for the evening is "${m.theme}".` : '';
+    const pair = evs.length
+      ? `Your speech evaluator is ${evs.map((e) => e.name).join(' and ')}. Please get in touch with them before the meeting: tell them what you are working on and what you would like feedback on. You can reach ${evs.length > 1 ? evs.map((e) => `${e.name}: ${reach(e)}`).join('; ') : `them: ${reach(evs[0])}`}.`
+      : 'Your speech evaluator has not been chosen yet. Their name and contact details will show on your link as soon as they are.';
+    return `Hello ${title}${r.person},
+
+${kind === 'remind' ? 'A gentle reminder that you are speaking' : 'Thank you for agreeing to speak'} at our club meeting on ${fmtDate(m.date)}${talk ? `, with ${talk}` : ''}.${theme}
+
+${pair}
+
+Your link below opens your project's evaluation form to download, your evaluator's details and, as soon as they have submitted it, the feedback they wrote for you. There is no sign-in or app to install.
+
+${roleLink(base, r.token)}
+
+Good luck, we are looking forward to your speech!
+
+Kind regards,
+${sender || 'Your VPE'}
+VPE, Champions Toastmasters Club`;
+  };
   const msg = (r, kind = 'send') => {
+    if (r.role_key === 'speaker') return speakerMsg(r, kind);
     const who = people.find((p) => p.id === r.person_id), title = who?.credential ? `${who.credential} ` : '';
     const sender = people.find((p) => p.is_vpe)?.name;
     const theme = m.theme ? ` The theme for the evening is "${m.theme}".` : '';
@@ -236,7 +279,7 @@ A gentle reminder to fill in your notes on Brekkie when you have a moment. The p
 
 I trust this message finds you well.
 
-${intro}${kind === 'remind' ? '' : word}
+${intro}${kind === 'remind' ? '' : word}${pairing(r, kind)}
 
 ${kind === 'remind'
     ? 'Your link is below. It opens your sheet with your notes as you left them, and you can edit and resubmit at any time.'
@@ -251,7 +294,7 @@ ${sender || 'Your VPE'}
 VPE, Champions Toastmasters Club`;
   };
   const copy = async (text) => { toast((await copyText(text)) ? 'Copied' : 'Copy failed'); };
-  const all = fb.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
+  const all = linkRows.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
   const resetFb = async () => {
     if (!window.confirm(`Clear everything submitted for meeting ${m.number}? Every role sheet goes back to blank and the notes, counts, timings and evaluations built from them are removed. Room comments stay. This cannot be undone.`)) return;
     try { const r = await api(`/vpe/meetings/${id}/reset-feedback`, { method: 'POST' }); toast(`Cleared ${r.sheets} ${r.sheets === 1 ? 'sheet' : 'sheets'}`); reload(); } catch (e) { toast(e.message); }
@@ -342,7 +385,7 @@ VPE, Champions Toastmasters Club`;
         <Panel k="links" title="Role links" hint="Send each person their link. It opens their script and sheet, no sign-in."
           right={<div style={{ display: 'flex', gap: 8 }}><a className="btn sm" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(all)}>{I.send} Send all</a><Btn sm kind="ghost" onClick={() => copy(all)}>Copy all</Btn></div>}>
           <div className="list">
-            {fb.map((r) => r.person ? (
+            {linkRows.map((r) => r.person ? (
               <div className="linkrow" key={r.id}>
                 <div className="grow"><b>{r.label}</b> <small>· {r.person}</small>{personChip(r)}<code>{roleLink(base, r.token)}</code></div>
                 <Btn sm kind="ghost" onClick={() => copy(roleLink(base, r.token))}>{I.copy}Copy</Btn>

@@ -384,8 +384,19 @@ function timeTone(e) {
   return e.seconds >= Number(m[1]) * 60 - 30 && e.seconds <= Number(m[2]) * 60 + 30 ? 'ok' : 'warn';
 }
 
+const getOfficial = async (path, toast) => {
+  try {
+    const res = await fetch(`/api${path}`, { headers: { 'x-token': getToken() } });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not make the form');
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Evaluation.pdf';
+    const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) { toast(e.message); }
+};
 export function EvaluationDetail({ vpe }) {
   const { id } = useParams();
+  const toast = useToast();
+  const official = () => getOfficial(`${vpe ? '/vpe' : '/me'}/evaluations/${id}/form.pdf`, toast);
   const desk = useDesk();
   const { data: e, error, loading } = useApi(vpe ? `/vpe/evaluations/${id}` : `/me/evaluations/${id}`);
   const back = vpe ? undefined : '/m/speeches';
@@ -418,11 +429,11 @@ export function EvaluationDetail({ vpe }) {
     </>
   );
   return (
-    <Page title={vpe ? 'Evaluation' : 'Speech feedback'} wide={desk} back={back} foot={desk ? undefined : <Foot col><Btn onClick={() => printEval(e)}>{I.dl} Download evaluation sheet (PDF)</Btn></Foot>}>
+    <Page title={vpe ? 'Evaluation' : 'Speech feedback'} wide={desk} back={back} foot={desk ? undefined : <Foot col><Btn onClick={official}>{I.dl} Official evaluation form (PDF)</Btn><Btn kind="ghost" onClick={() => printEval(e)}>{I.dl} Brekkie evaluation sheet</Btn></Foot>}>
       {desk
         ? <>
             <div className="split wide"><div>{left}</div><div className="ref"><div className="pdfwrap"><div style={{ zoom: 0.55 }}><EvalSheet e={e} /></div></div></div></div>
-            <div className="eval-go"><Btn onClick={() => printEval(e)}>{I.dl} Download evaluation sheet (PDF)</Btn></div>
+            <div className="eval-go"><Btn onClick={official}>{I.dl} Official evaluation form (PDF)</Btn><Btn kind="ghost" onClick={() => printEval(e)}>{I.dl} Brekkie evaluation sheet</Btn></div>
           </>
         : left}
     </Page>

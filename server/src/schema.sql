@@ -300,3 +300,10 @@ do $$ begin
     alter table member_projects add primary key (person_id, project_id, part);
   end if;
 end $$;
+
+-- failed sign-ins, so password guessing is slowed down across every copy of the server (see /api/auth/signin)
+create table if not exists login_failures (
+  key text not null,
+  at timestamptz not null default now()
+);
+create index if not exists login_failures_key_idx on login_failures(key, at);

@@ -1,4 +1,4 @@
-// The official evaluation forms (client/public/eval-forms) hold each project's purpose, the notes for the evaluator and, for a
+// The official evaluation forms (server/templates/eval-forms) hold each project's purpose, the notes for the evaluator and, for a
 // project made of several parts, one set of those per part. server/scripts/extract-eval-forms.py reads the forms into
 // server/data/project-parts.json; this copies that onto the projects table. Safe to run on every start.
 import fs from 'node:fs';

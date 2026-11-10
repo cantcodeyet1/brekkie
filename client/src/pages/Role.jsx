@@ -62,7 +62,73 @@ export default function RoleApp() {
   const { data, error, loading } = useApi('/role', { token });
   if (loading) return <Shell nav={[]} who="" noSide bare><div className="main"><div className="rwel rwel-sk" aria-busy="true" aria-label="Loading"><Wordmark className="wm-light" /><div className="rwel-in"><i className="sk1 s-tag" /><i className="sk1 s-h" /><i className="sk1 s-h b" /><i className="sk1 s-p" /><i className="sk1 s-btn" /></div></div></div></Shell>;
   if (error) return <Shell nav={[]} who="" noSide bare><div className="main"><div className="rwel"><Wordmark className="wm-light" /><div className="rwel-in"><div className="tag">Brekkie</div><h1>This link is not valid.</h1><p className="sub">It may have been replaced by a newer one. Ask your VPE to send your link again.</p></div></div></div></Shell>;
-  return <Shell nav={[]} who={data.me?.name || ''} noSide bare><RoleBody data={data} token={token} /></Shell>;
+  return <Shell nav={[]} who={data.me?.name || ''} noSide bare>{data.role.key === 'speaker' ? <SpeakerBody data={data} token={token} /> : <RoleBody data={data} token={token} />}</Shell>;
+}
+
+
+/* ───────── speaker and evaluator are put in touch ───────── */
+const digits = (v) => String(v || '').replace(/\D/g, '');
+function PartnerCard({ p, title, lede }) {
+  return (
+    <div className="mb-card pt-card">
+      <div className="pt-lab">{title}</div>
+      <div className="pt-who"><Avatar name={p.name} size={48} /><span className="pt-t"><b>{p.name}</b><span>{lede}</span></span></div>
+      <div className="pt-acts">
+        {p.phone && <a className="mh-btn mh-main" href={`https://wa.me/${digits(p.phone)}`} target="_blank" rel="noreferrer">{I.send} WhatsApp</a>}
+        {p.phone && <a className="mh-btn" href={`tel:${p.phone}`}>Call {p.phone}</a>}
+        {p.email && <a className="mh-btn" href={`mailto:${p.email}`}>Email</a>}
+        {!p.phone && !p.email && <span className="pt-none">No contact details yet. Ask your VPE.</span>}
+      </div>
+    </div>
+  );
+}
+
+/* the speaker's own link: who evaluates them, the form for their project, and their feedback once it is in */
+function SpeakerBody({ data, token }) {
+  const { partners = [], mine, meeting } = data;
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const first = (data.me?.name || '').split(' ')[0];
+  const got = partners.find((x) => x.evaluation);
+  const official = async () => {
+    setBusy(true); setErr('');
+    try {
+      const res = await fetch('/api/role/received-evaluation.pdf', { headers: { 'x-token': token } });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not make the form');
+      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'Evaluation.pdf';
+      const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const e = got?.evaluation;
+  const rated = e ? CRIT.map(([n], i) => ({ n, v: e.ratings?.[i], c: e.comments?.[i] })).filter((x) => x.v) : [];
+  return (
+    <Page root wide full>
+      <div className="rpage mb"><div className="mb-in">
+        <div className="rhead"><div><p className="reyebrow">{data.club} · Meeting {meeting.number} · {longDate(meeting.date)}</p><h1 className="rtitle">Hi {first}</h1>
+          <p className="rsub">{mine?.title ? <>You are speaking: “{mine.title}”{mine.project ? `, ${mine.project}` : ''}.</> : 'You are speaking at this meeting.'}</p></div></div>
+        <div className="mb-stack">
+          {partners.length === 0 && <div className="mb-card pt-card"><div className="pt-lab">Your evaluator</div><p className="pt-none">Your VPE has not picked an evaluator for you yet. They will appear here as soon as they do.</p></div>}
+          {partners.map((x) => <PartnerCard key={x.role_id} p={x} title={partners.length > 1 ? x.label : 'Your evaluator'}
+            lede="Get in touch before the meeting: tell them what you would like feedback on." />)}
+          {mine?.form && <div className="mb-card pt-card"><div className="pt-lab">Your evaluation form</div>
+            <p className="pt-txt">This is the form your evaluator will use{mine.project ? ` for ${mine.project}` : ''}. Read it before you speak so you know what they are listening for.</p>
+            <div className="pt-acts"><a className="mh-btn mh-main" href={mine.form} target="_blank" rel="noreferrer" download>{I.dl} Evaluation form (PDF)</a></div></div>}
+          <div className="mb-card pt-card"><div className="pt-lab">Your feedback</div>
+            {!got && <p className="pt-txt">{partners.length ? 'Your evaluator has not submitted it yet. It appears here as soon as they do.' : 'It appears here once your evaluator has submitted it.'}</p>}
+            {got && <>
+              {e.excelled && <div className="pt-fb good"><small>You excelled at</small><p>{e.excelled}</p></div>}
+              {e.work && <div className="pt-fb bad"><small>You may want to work on</small><p>{e.work}</p></div>}
+              {e.challenge && <div className="pt-fb"><small>To challenge yourself</small><p>{e.challenge}</p></div>}
+              {rated.length > 0 && <div className="pt-rates">{rated.map((x) => <span className="pt-rate" key={x.n}>{x.n}<b>{x.v}</b></span>)}</div>}
+              <div className="pt-acts"><button type="button" className="mh-btn mh-main" onClick={official} disabled={busy}>{I.dl} {busy ? 'Filling in the form…' : 'Download on the official form'}</button></div>
+              {err && <p className="err">{err}</p>}
+            </>}
+          </div>
+        </div>
+      </div></div>
+    </Page>
+  );
 }
 
 /* shown to visitors: one tap tells the VPE, and opens a ready-written WhatsApp message to them */
@@ -134,19 +200,22 @@ function RoleBody({ data, token }) {
   const desk = desk0;
   const [dlBusy, setDlBusy] = useState(false);
   const downloadPdf = async () => {
-    if (key === 'evaluator') { const d = evalDoc(data, sheet, people, false); if (d) printEval(d); return; }
-    // the official Toastmasters International script and log, filled in with these notes
+    // the official Toastmasters International form (an evaluator's own evaluation form, or the role's script and log), filled in with these notes
     setDlBusy(true); setErr('');
     try {
-      const res = await fetch('/api/role/report.pdf', { method: 'POST', headers: { 'content-type': 'application/json', 'x-token': token }, body: JSON.stringify(sheet) });
+      const res = await fetch(key === 'evaluator' ? '/api/role/evaluation.pdf' : '/api/role/report.pdf', { method: 'POST', headers: { 'content-type': 'application/json', 'x-token': token }, body: JSON.stringify(sheet) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not make the PDF');
       const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || `${meta.name}.pdf`;
       const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch (e) { setErr(e.message); } finally { setDlBusy(false); }
+    } catch (e) {
+      // no official form for this project: fall back to the club's own printout
+      if (key === 'evaluator') { const d = evalDoc(data, sheet, people, false); if (d) { printEval(d); setDlBusy(false); return; } }
+      setErr(e.message);
+    } finally { setDlBusy(false); }
   };
-  const pdfTitle = key === 'evaluator' ? 'Completed evaluation form' : 'Official report (PDF)';
-  const pdfSub = key === 'evaluator' ? 'Your ratings and comments, as a PDF' : dlBusy ? 'Filling in the official form…' : 'Your notes on the Toastmasters International form';
+  const pdfTitle = key === 'evaluator' ? 'Official evaluation form (PDF)' : 'Official report (PDF)';
+  const pdfSub = key === 'evaluator' ? (dlBusy ? 'Filling in the official form…' : 'Your ratings and comments on the Toastmasters form') : dlBusy ? 'Filling in the official form…' : 'Your notes on the Toastmasters International form';
   const ctx = { data, sheet, setSheet, people, addGuest, mode };
   // swipe sideways to move between script, notes and report
   const touch = useRef(null);
@@ -620,6 +689,7 @@ function EvalForm({ data, sheet, setSheet, people, mode }) {
   return (
     <Modes mode={mode}
       script={<ScriptDoc k="evaluator" body={<section><h5>When introduced by the Toastmaster</h5><p>{(proj.purpose || []).join(' ')}</p></section>} before={<>
+        {data.partners?.[0] && <PartnerCard p={data.partners[0]} title="Your speaker" lede="Get in touch before the meeting: ask what they would like feedback on." />}
         {(() => { const r = data.evalResources?.[proj.name], url = evalFormUrl(r, target.part); return url ? <DlBtn href={url} title="Evaluation form" sub={proj.part_label ? `${proj.part_label}, to take along` : 'The official form, to take along'} /> : null; })()}
         <div className="obj"><small>Evaluating</small><p style={{ margin: '6px 0 2px', font: '700 20px var(--head)' }}>{who}</p>
           <p style={{ margin: 0 }}>“{target.speech_title || 'Untitled'}” · {target.path_name || proj.path}, Level {target.path_level ?? proj.level}{proj.part_label ? ` · Part ${proj.part_n}, ${proj.part_label}` : ''}</p></div>

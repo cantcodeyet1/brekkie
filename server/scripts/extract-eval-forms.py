@@ -1,10 +1,10 @@
-"""Reads the official evaluation forms in client/public/eval-forms/ and writes server/data/project-parts.json:
+"""Reads the official evaluation forms in server/templates/eval-forms/ and writes server/data/project-parts.json:
 for each project its purpose statement, evaluator notes and "about this speech" text, and (for projects with
 several forms) one entry per part. Needs `pdftotext` (poppler). Run: python server/scripts/extract-eval-forms.py"""
 import json, os, re, subprocess
 
 ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
-FORMS = os.path.join(ROOT, 'client', 'public', 'eval-forms')
+FORMS = os.path.join(ROOT, 'server', 'templates', 'eval-forms')
 RES = json.load(open(os.path.join(ROOT, 'server', 'data', 'evaluation-resources.json'), encoding='utf8'))
 BULLET = '•'
 

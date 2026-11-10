@@ -125,10 +125,10 @@ export default function Wizard() {
                 <h2>First, you.</h2>
                 <p className="lede">You will be the VPE. Your email and password are how you sign in.</p>
                 <label className="fl" htmlFor="w-name">Your name</label>
-                <input id="w-name" className="inp" value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value })} autoComplete="name" placeholder="Your full name" />
+                <input id="w-name" className="inp" value={me.name} onChange={(e) => setMe((s) => ({ ...s, name: e.target.value }))} autoComplete="name" placeholder="Your full name" />
                 <label className="fl" htmlFor="w-email">Email</label>
-                <input id="w-email" className="inp" type="email" value={me.email} onChange={(e) => setMe({ ...me, email: e.target.value })} autoComplete="email" placeholder="you@example.com" />
-                <PwPair id="w-pw" value={me.password} again={me.again} onChange={(e) => setMe({ ...me, password: e.target.value })} onAgain={(e) => setMe({ ...me, again: e.target.value })} onEnter={next} />
+                <input id="w-email" className="inp" type="email" value={me.email} onChange={(e) => setMe((s) => ({ ...s, email: e.target.value }))} autoComplete="email" placeholder="you@example.com" />
+                <PwPair id="w-pw" value={me.password} again={me.again} onChange={(e) => setMe((s) => ({ ...s, password: e.target.value }))} onAgain={(e) => setMe((s) => ({ ...s, again: e.target.value }))} onEnter={next} />
               </>
             )}
             {step === 1 && (

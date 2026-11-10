@@ -11,6 +11,7 @@ import { loadHist, progressFor, summary } from './progress.js';
 import { buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda } from './agenda.js';
 import { docxToPdf, pdfAvailable } from './pdf.js';
 import { buildRoleReport, hasOfficialReport } from './roleReport.js';
+import { EVAL_FORMS, fillEvalForm, formFile } from './evalForm.js';
 import { nextClubDate } from './schedule.js';
 import { checkPw, cleanPattern, describePattern, generateMeetings, hashPw, joinCode, normEmail, nextPatternDate, pwProblem, validEmail } from './club.js';
 import { validWord, wordDetails } from './words.js';
@@ -19,13 +20,16 @@ import { applyFormText } from './formtext.js';
 import { forecastMember, goalsFrom, programYear } from './dcp.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const DEMO = process.env.DEMO_MODE !== 'false';
+// The demo picker lists every member's sign-in token, so it must never exist on a real database: it is off whenever DATABASE_URL is set
+// (production), whatever DEMO_MODE says, and otherwise (local PGlite) on unless DEMO_MODE=false.
+const DEMO = !process.env.DATABASE_URL && process.env.DEMO_MODE !== 'false';
 const app = express();
 app.use(cors());
 // health answers before start-up finishes and says whether the database is reachable (never the connection string)
 app.get('/api/health', (_req, res) => boot().then(() => res.json({ ok: true }), (e) => res.status(503).json({ ok: false, db: String(e.code || e.name || 'error'), why: String(e.message || '').replace(/postgres(ql)?:\/\/\S+/gi, '').slice(0, 120) })));
 app.use((_req, _res, next) => { boot().then(() => next(), next); });
 app.use(express.json({ limit: '1mb' }));
+app.use('/api/eval-forms', express.static(EVAL_FORMS, { index: false, maxAge: '1d' }));   // the blank official forms
 
 /* a few plain counters for the super admin page: how the server has done since it started */
 const STARTED = Date.now();
@@ -87,17 +91,24 @@ app.get('/api/session', wrap(async (req, res) => {
 }));
 
 /* ───────── accounts: email and password, a club code to join, and a wizard to start a club ───────── */
-const tries = new Map();   // slows down password guessing: 10 tries per email per 15 minutes
-const tooMany = (key) => { const now = Date.now(), hits = (tries.get(key) || []).filter((t) => now - t < 900000); hits.push(now); tries.set(key, hits); return hits.length > 10; };
+// Slows down password guessing. The count lives in the database, not in memory: a hosted function runs as many separate
+// copies, and a counter in one copy's memory would not stop someone spread across them.
+const LOGIN_WINDOW = "interval '15 minutes'";
+const tooMany = async (key, max) => ((await q(`select count(*)::int as n from login_failures where key=$1 and at > now() - ${LOGIN_WINDOW}`, [key]))[0].n >= max);
+const noteFailure = async (...keys) => { for (const k of keys) await q('insert into login_failures(key) values ($1)', [k]); if (Math.random() < 0.02) await q(`delete from login_failures where at < now() - interval '1 day'`); };
+const clientIp = (req) => String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim().slice(0, 64);
+const newPw = (v) => (typeof v === 'string' ? v.trim() : v);
 const sessionFor = (p) => ({ token: p.token, type: p.is_vpe ? 'vpe' : 'member' });
 
 app.post('/api/auth/signin', wrap(async (req, res) => {
   const email = normEmail(req.body.email), pw = String(req.body.password || '');
   if (!email || !pw) return bad(res, 'Enter your email and password');
-  if (tooMany(email)) return bad(res, 'Too many tries. Wait a few minutes and try again.', 429);
+  const ipKey = 'ip:' + clientIp(req), emailKey = 'email:' + email;
+  if ((await tooMany(emailKey, 10)) || (await tooMany(ipKey, 40))) return bad(res, 'Too many tries. Wait a few minutes and try again.', 429);
   const rows = await q(`select p.*, c.name as club_name from people p join clubs c on c.id=p.club_id where lower(p.email)=$1 and p.password_hash is not null and p.status<>'inactive'`, [email]);
-  const ok = rows.filter((r) => checkPw(pw, r.password_hash));
-  if (!ok.length) return bad(res, 'That email and password do not match', 401);
+  // exactly as typed first; then without a space at either end, which phone keyboards add after a suggested word
+  const ok = rows.filter((r) => checkPw(pw, r.password_hash) || (pw !== pw.trim() && checkPw(pw.trim(), r.password_hash)));
+  if (!ok.length) { await noteFailure(emailKey, ipKey); return bad(res, 'That email and password do not match', 401); }
   await q('update people set last_login_at=now() where id = any($1)', [ok.map((r) => r.id)]);
   if (ok.length === 1) return res.json(sessionFor(ok[0]));
   res.json({ choose: ok.map((r) => ({ club: r.club_name, ...sessionFor(r) })) });
@@ -125,8 +136,8 @@ app.get('/api/auth/reset/:token', wrap(async (req, res) => {
   p ? res.json(p) : bad(res, 'This link has expired. Ask your VPE for a new one.', 404);
 }));
 app.post('/api/auth/reset', wrap(async (req, res) => {
-  const bp = pwProblem(req.body.password); if (bp) return bad(res, bp);
-  const [p] = await q(`update people set password_hash=$1, reset_token=null, reset_expires=null, token=$3, last_login_at=now() where reset_token=$2 and reset_expires > now() and status<>'inactive' returning *`, [hashPw(req.body.password), String(req.body.token || ''), token()]);
+  const bp = pwProblem(newPw(req.body.password)); if (bp) return bad(res, bp);
+  const [p] = await q(`update people set password_hash=$1, reset_token=null, reset_expires=null, token=$3, last_login_at=now() where reset_token=$2 and reset_expires > now() and status<>'inactive' returning *`, [hashPw(newPw(req.body.password)), String(req.body.token || ''), token()]);
   p ? res.json(sessionFor(p)) : bad(res, 'This link has expired. Ask your VPE for a new one.', 404);
 }));
 
@@ -247,7 +258,7 @@ app.post('/api/clubs', wrap(async (req, res) => {
   const clubName = String(req.body.club?.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
   if (name.length < 2 || name.length > 80) return bad(res, 'Enter your name');
   if (!validEmail(email)) return bad(res, 'Enter a valid email address');
-  const bp = pwProblem(req.body.password); if (bp) return bad(res, bp);
+  const bp = pwProblem(newPw(req.body.password)); if (bp) return bad(res, bp);
   if (clubName.length < 2) return bad(res, 'Enter your club name');
   const tmNum = cleanNum(req.body.club?.number);
   if (tmNum.length < 3 || tmNum.length > 10) return bad(res, 'Enter your Toastmasters club number');
@@ -257,7 +268,7 @@ app.post('/api/clubs', wrap(async (req, res) => {
   const out = await tx(async (t) => {
     let code; for (let i = 0; i < 8; i++) { code = joinCode(); if (!(await t('select 1 as x from clubs where join_code=$1', [code])).length) break; }
     const [club] = await t('insert into clubs(name,pattern,join_code,tm_number) values ($1,$2,$3,$4) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code, tmNum]);
-    const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(req.body.password)]);
+    const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(newPw(req.body.password))]);
     const made = await generateMeetings(t, club, { months: 12, firstNumber: number });
     let added = 0;
     for (const m of (Array.isArray(req.body.members) ? req.body.members : []).slice(0, 300)) {
@@ -284,7 +295,7 @@ app.get('/api/vpe/club/summary', needPerson, needVpe, wrap(async (req, res) => {
   res.json({ ...p, ...m, next: n || null, speeches: s.speeches });
 }));
 app.put('/api/account', needPerson, wrap(async (req, res) => {
-  const email = normEmail(req.body.email), pw = req.body.password;
+  const email = normEmail(req.body.email), pw = newPw(req.body.password);
   if (!validEmail(email)) return bad(res, 'Enter a valid email address');
   if (req.person.password_hash && pw && !checkPw(String(req.body.current || ''), req.person.password_hash)) return bad(res, 'Your current password is not right', 403);
   const [dup] = await q('select 1 as x from people where club_id=$1 and lower(email)=$2 and id<>$3', [req.person.club_id, email, req.person.id]);
@@ -355,8 +366,25 @@ app.get('/api/role', needRole, wrap(async (req, res) => {
   const roles = await q(`select id, role_key, label, position, person_id, project_id, part, path_name, path_level, speech_title, target_role_id from meeting_roles where meeting_id=$1 order by position`, [r.meeting_id]);
   const projects = await q('select * from projects order by level, id');
   const [club] = await q('select name from clubs where id=$1', [r.club_id]);
+  // a speaker and their evaluator are put in touch: each is told the other's name and contact details, and the speaker gets the
+  // evaluation once the evaluator has submitted it
+  const contact = 'p.id as person_id, p.name, p.phone, p.email';
+  let partners = [], mine = null;
+  if (r.role_key === 'speaker') {
+    partners = await q(`select r2.id as role_id, r2.label, r2.submitted_at, ${contact} from meeting_roles r2 join people p on p.id=r2.person_id where r2.target_role_id=$1 and r2.meeting_id=$2 and p.club_id=$3 order by r2.position`, [r.id, r.meeting_id, r.club_id]);
+    for (const p of partners) if (p.submitted_at) {
+      const [e] = await q('select id, ratings, comments, excelled, work, challenge from evaluations where role_id=$1', [p.role_id]);
+      p.evaluation = e || null;
+    }
+    const [pr] = r.project_id ? await q('select name, level, path from projects where id=$1', [r.project_id]) : [];
+    const res0 = pr && EVAL_RESOURCES[pr.name];
+    mine = { project: pr?.name || null, level: r.path_level ?? pr?.level ?? null, path: r.path_name ?? pr?.path ?? null, part: r.part, title: r.speech_title,
+      form: res0 ? (res0.forms?.[Math.max(0, (r.part || 1) - 1)] || res0.pdf || null) : null };
+  } else if (r.role_key === 'evaluator' && r.target_role_id) {
+    partners = await q(`select r2.id as role_id, r2.label, r2.speech_title as title, ${contact} from meeting_roles r2 join people p on p.id=r2.person_id where r2.id=$1 and r2.meeting_id=$2 and p.club_id=$3`, [r.target_role_id, r.meeting_id, r.club_id]);
+  }
   res.json({
-    club: club?.name || '',
+    club: club?.name || '', partners, mine,
     role: { id: r.id, key: r.role_key, label: r.label, submitted_at: r.submitted_at, target_role_id: r.target_role_id },
     me: req.rolePerson && { ...pub(req.rolePerson), join_requested: !!req.rolePerson.join_requested_at }, meeting, people, roles, projects, sheet: r.sheet || {}, evalResources: r.role_key === 'evaluator' ? EVAL_RESOURCES : undefined,
   });
@@ -449,7 +477,7 @@ async function saveSheet(role, sheet) {
       }
     } else if (role.role_key === 'evaluator') {
       await t('delete from evaluations where role_id=$1', [rid]);
-      const [tr] = role.target_role_id ? await t('select person_id, project_id, part, speech_title, path_name, path_level from meeting_roles where id=$1', [role.target_role_id]) : [];
+      const [tr] = role.target_role_id ? await t('select person_id, project_id, part, speech_title, path_name, path_level from meeting_roles where id=$1 and meeting_id=$2', [role.target_role_id, mid]) : [];
       const ratings = (sheet.ratings || []).map((v) => Math.max(0, Math.min(5, +v || 0)));
       const any = ratings.some(Boolean) || sheet.excelled || sheet.work || sheet.challenge;
       if (tr?.person_id && tr.project_id && any) {
@@ -530,6 +558,48 @@ app.get('/api/me/evaluations', needPerson, wrap(async (req, res) => {
 }));
 app.get('/api/me/evaluations/:id', needPerson, wrap(async (req, res) => evalDetail(req, res, req.person.id)));
 app.get('/api/vpe/evaluations/:id', needPerson, needVpe, wrap(async (req, res) => evalDetail(req, res, null)));
+// an evaluation written onto the official form for its project (and part)
+const longDate = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+async function sendEvalForm(res, { project, part, data, fileName }) {
+  const file = formFile(EVAL_RESOURCES[project]?.forms?.[Math.max(0, (part || 1) - 1)] || EVAL_RESOURCES[project]?.pdf);
+  if (!file) return bad(res, 'There is no official form for this project', 404);
+  const { pdf } = await fillEvalForm(file, data);
+  res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${fileName}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
+  res.send(pdf);
+}
+const formName = (who, date) => `Evaluation-${who.replace(/[^A-Za-z0-9]+/g, '-')}-${date}.pdf`;
+app.post('/api/role/evaluation.pdf', needRole, wrap(async (req, res) => {
+  const r = req.role;
+  if (r.role_key !== 'evaluator') return bad(res, 'Only a Speech Evaluator has an evaluation form', 404);
+  const [t] = r.target_role_id ? await q(`select r.speech_title, r.part, r.project_id, p.name as speaker, pr.name as project from meeting_roles r left join people p on p.id=r.person_id left join projects pr on pr.id=r.project_id where r.id=$1 and r.meeting_id=$2`, [r.target_role_id, r.meeting_id]) : [];
+  if (!t?.project) return bad(res, 'You need a speaker and a project before the form can be filled in', 400);
+  const [m] = await q(`select ${DATE('date')} as date from meetings where id=$1`, [r.meeting_id]);
+  const sh = req.body && typeof req.body === 'object' && Object.keys(req.body).length ? req.body : (r.sheet || {});
+  await sendEvalForm(res, { project: t.project, part: t.part, fileName: formName(t.speaker || 'speaker', m.date),
+    data: { member: t.speaker, evaluator: req.rolePerson?.name, date: longDate(m.date), title: t.speech_title, excelled: sh.excelled, work: sh.work, challenge: sh.challenge, ratings: sh.ratings, comments: sh.comments } });
+}));
+// a speaker, from their own link, downloads what their evaluator wrote on the official form (once the evaluator has submitted it)
+app.get('/api/role/received-evaluation.pdf', needRole, wrap(async (req, res) => {
+  const r = req.role;
+  if (r.role_key !== 'speaker') return bad(res, 'Only a speaker receives an evaluation', 404);
+  const [e] = await q(`select e.*, ${DATE('m.date')} as date, p.name as project, sp.name as member, ev.name as by
+    from evaluations e join meeting_roles er on er.id=e.role_id join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id
+    join people sp on sp.id=e.speaker_id left join people ev on ev.id=er.person_id
+    where er.target_role_id=$1 and er.meeting_id=$2 and er.submitted_at is not null order by e.id limit 1`, [r.id, r.meeting_id]);
+  if (!e) return bad(res, 'Your evaluation is not in yet', 404);
+  await sendEvalForm(res, { project: e.project, part: e.part, fileName: formName(e.member, e.date),
+    data: { member: e.member, evaluator: e.by, date: longDate(e.date), title: e.title, excelled: e.excelled, work: e.work, challenge: e.challenge, ratings: e.ratings, comments: e.comments } });
+}));
+async function evalFormFor(req, res, onlyMe) {
+  const [e] = await q(`select e.*, ${DATE('m.date')} as date, m.club_id, p.name as project, sp.name as member, ev.name as by
+    from evaluations e join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id join people sp on sp.id=e.speaker_id
+    join meeting_roles r on r.id=e.role_id left join people ev on ev.id=r.person_id where e.id=$1`, [req.params.id]);
+  if (!e || e.club_id !== req.person.club_id || (onlyMe && e.speaker_id !== onlyMe)) return bad(res, 'Not found', 404);
+  await sendEvalForm(res, { project: e.project, part: e.part, fileName: formName(e.member, e.date),
+    data: { member: e.member, evaluator: e.by, date: longDate(e.date), title: e.title, excelled: e.excelled, work: e.work, challenge: e.challenge, ratings: e.ratings, comments: e.comments } });
+}
+app.get('/api/me/evaluations/:id/form.pdf', needPerson, wrap((req, res) => evalFormFor(req, res, req.person.id)));
+app.get('/api/vpe/evaluations/:id/form.pdf', needPerson, needVpe, wrap((req, res) => evalFormFor(req, res, null)));
 async function evalDetail(req, res, onlyMe) {
   const [e] = await q(`select e.*, ${DATE('m.date')} as date, m.number, m.club_id, p.name as project, coalesce(e.path_level, p.level) as level, coalesce(e.path_name, p.path) as path, p.form_title, p.length_text, p.purpose, p.notes, p.about, p.green, p.yellow, p.red,
       sp.name as member, ev.name as by
@@ -818,7 +888,11 @@ app.patch('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
   if ('path_level' in b) next.path_level = b.path_level ?? null;
   if ('project_id' in b && !b.project_id) { next.path_name = 'path_name' in b ? next.path_name : r.path_name; }
   if ('speech_title' in b) next.speech_title = String(b.speech_title || '');
-  if ('target_role_id' in b) next.target_role_id = b.target_role_id || null;
+  if ('target_role_id' in b) {
+    // an evaluator is paired with a speaker of the same meeting, never with a role of another meeting (or another club)
+    if (b.target_role_id) { const [tr] = await q('select id from meeting_roles where id=$1 and meeting_id=$2 and id<>$3', [b.target_role_id, r.meeting_id, r.id]); if (!tr) return bad(res, 'Unknown role'); }
+    next.target_role_id = b.target_role_id || null;
+  }
   // a speaker slot starts from the member's own path, level and next project, and stays editable
   if (r.role_key === 'speaker' && next.person_id && next.person_id !== r.person_id && !('path_name' in b) && !('project_id' in b)) {
     const [pp] = await q('select * from people where id=$1', [next.person_id]);
@@ -1122,8 +1196,8 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 app.post('/api/vpe/people/:id/extend', needPerson, needVpe, wrap(async (req, res) => {
-  await q(`update people set temp_until = coalesce(temp_until, current_date) + (select coalesce(guest_days, 30) from clubs where id=$2), status='temporary' where id=$1 and club_id=$2 and kind='guest'`, [req.params.id, req.person.club_id]);
-  res.json({ ok: true });
+  const r = await q(`update people set temp_until = coalesce(temp_until, current_date) + (select coalesce(guest_days, 30) from clubs where id=$2), status='temporary' where id=$1 and club_id=$2 and kind='guest' returning id`, [req.params.id, req.person.club_id]);
+  r.length ? res.json({ ok: true }) : bad(res, 'Not found', 404);
 }));
 /** The role sheets a person has submitted, newest first, with a one-line description of each. */
 async function givenFor(pid) {

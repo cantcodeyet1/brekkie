@@ -366,7 +366,7 @@ test('inactive people cannot use their token', async () => {
 
 /* ───────── evaluation forms ───────── */
 import fs from 'node:fs';
-const FORMS_DIR = new URL('../../client/public/eval-forms/', import.meta.url);
+const FORMS_DIR = new URL('../templates/eval-forms/', import.meta.url);
 test('every evaluation form in the data exists on disk, is a PDF, and nothing on disk is orphaned', async () => {
   const r = await get('/api/evaluation-resources', member);
   assert.equal(r.status, 200);
@@ -375,11 +375,11 @@ test('every evaluation form in the data exists on disk, is a PDF, and nothing on
     if (!v.forms) continue;
     assert.equal(v.pdf, v.forms[0], name + ': pdf is the first form');
     for (const f of v.forms) {
-      assert.match(f, /^\/eval-forms\/[a-z0-9-]+\.pdf$/, name);
-      const file = new URL(f.replace('/eval-forms/', ''), FORMS_DIR);
+      assert.match(f, /^\/api\/eval-forms\/[a-z0-9-]+\.pdf$/, name);
+      const file = new URL(f.replace('/api/eval-forms/', ''), FORMS_DIR);
       assert.ok(fs.existsSync(file), `${name}: ${f} is missing`);
       assert.equal(fs.readFileSync(file).subarray(0, 5).toString(), '%PDF-', f);
-      used.add(f.replace('/eval-forms/', ''));
+      used.add(f.replace('/api/eval-forms/', ''));
     }
   }
   const onDisk = fs.readdirSync(FORMS_DIR).filter((f) => f.endsWith('.pdf'));
@@ -388,7 +388,7 @@ test('every evaluation form in the data exists on disk, is a PDF, and nothing on
 });
 test('multi-speech projects list their forms in speech order', async () => {
   const r = (await get('/api/evaluation-resources', member)).json;
-  assert.deepEqual(r['Deliver Social Speeches'].forms, ['/eval-forms/deliver-social-speeches.pdf', '/eval-forms/deliver-social-speeches-2.pdf']);
+  assert.deepEqual(r['Deliver Social Speeches'].forms, ['/api/eval-forms/deliver-social-speeches.pdf', '/api/eval-forms/deliver-social-speeches-2.pdf']);
   assert.equal(r['Evaluation and Feedback'].forms.length, 3);
   assert.match(r['Evaluation and Feedback'].forms[0], /-1\.pdf$/);
 });

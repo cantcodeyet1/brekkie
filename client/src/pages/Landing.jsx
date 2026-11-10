@@ -32,7 +32,7 @@ export function PwInput({ id, value, onChange, onKeyDown, placeholder, autoCompl
   const [show, setShow] = useState(false);
   return (
     <div className="pwbox">
-      <input id={id} className="inp" type={show ? 'text' : 'password'} value={value} onChange={onChange} onKeyDown={onKeyDown} autoComplete={autoComplete} placeholder={placeholder} />
+      <input id={id} className="inp" type={show ? 'text' : 'password'} value={value} onChange={onChange} onKeyDown={onKeyDown} autoComplete={autoComplete} placeholder={placeholder} autoCapitalize="none" autoCorrect="off" spellCheck={false} />
       <button type="button" className="pwtog" onClick={() => setShow(!show)} aria-pressed={show} aria-label={show ? 'Hide password' : 'Show password'} title={show ? 'Hide password' : 'Show password'}>
         {show
           ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18" /><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6a14 14 0 0 1-2.6 3.3M6.6 7.6A14.5 14.5 0 0 0 2.5 12c1 2 4.5 6 9.5 6 1.5 0 2.8-.3 4-.9" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
@@ -80,7 +80,7 @@ export default function Landing({ force }) {
   const [f, setF] = useState({ name: '', email: '', password: '', again: '', code: '' });
   const [choose, setChoose] = useState(null);   // the same email and password in more than one club
     const [forgot, setForgot] = useState(false);
-  const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setErr(''); };
+  const set = (k) => (e) => { const v = e.target.value; setF((s) => ({ ...s, [k]: v })); setErr(''); };
 
   const finish = (s) => { setToken(s.token); nav(s.type === 'vpe' ? '/v' : '/m', { replace: true }); };
   const enterLink = async (raw) => {
@@ -107,7 +107,8 @@ export default function Landing({ force }) {
   const submit = async () => {
     setBusy(true); setErr('');
     try {
-      const r = await api('/auth/signin', { method: 'POST', body: { email: f.email, password: f.password } });
+      const email = (document.getElementById('l-email')?.value ?? f.email).trim(), password = document.getElementById('l-pw')?.value ?? f.password;
+      const r = await api('/auth/signin', { method: 'POST', body: { email, password } });
       if (r.choose) setChoose(r.choose); else finish(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -140,7 +141,7 @@ export default function Landing({ force }) {
               <Seg className="auth-tabs" value="in" onChange={(v) => v === 'up' && nav('/start/club')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />
               <h2>Welcome back.</h2>
               <label className="fl" htmlFor="l-email">Email</label>
-              <input id="l-email" className="inp" type="email" value={f.email} onChange={set('email')} autoComplete="email" placeholder="you@example.com" />
+              <input id="l-email" className="inp" type="email" value={f.email} onChange={set('email')} autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="you@example.com" />
               <label className="fl" htmlFor="l-pw">Password</label>
               <PwInput id="l-pw" value={f.password} onChange={set('password')} autoComplete="current-password" placeholder="Your password" onKeyDown={(e) => e.key === 'Enter' && ready && submit()} />
               <button type="button" className="forgot" onClick={() => setForgot(!forgot)} aria-expanded={forgot}>Forgot your password?</button>
@@ -152,7 +153,6 @@ export default function Landing({ force }) {
               )}
               {err && <p className="err">{err}</p>}
               <div style={{ marginTop: 18 }}><Btn onClick={submit} disabled={!ready || busy}>{busy ? 'One moment…' : 'Sign in'}</Btn></div>
-              <p className="fine" style={{ marginTop: 14 }}>New to Brekkie? Your VPE sends you an invite on WhatsApp. Tap it to choose your password.</p>
             </>
           )}
 
