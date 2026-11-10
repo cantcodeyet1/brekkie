@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { fmtDate, longDate, partOf } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
-import { Btn, DatePick, ErrorMsg, I, SkPage, Modal, Page, PartSelect, Select, Seg, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, Modal, Page, PartSelect, Select, Seg, useToast } from '../ui.jsx';
 
 /* Plan a speech: at this club or another. The VPE picks the member; a member plans their own. */
 /* every project on a member's path for the project picker: their next one first, then the rest of the level they are on and above,
@@ -203,6 +203,37 @@ function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
   );
 }
 
+/* the dashboard's own shape while it loads: heading, four level tabs, the goals bar and member rows */
+const B = ({ w, h, r, style }) => <i className="sk" style={{ width: w, height: h, borderRadius: r, ...style }} />;
+function DashSkeleton() {
+  return (
+    <div className="rpage" role="status" aria-label="Loading">
+      <div className="rhead"><div><B w={230} h={12} /><B w={190} h={40} r={10} style={{ margin: '12px 0' }} /><B w="min(420px,80%)" h={14} /></div></div>
+      <div className="dv-card">
+        <div className="dv-tabs">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="dv-tab" style={{ cursor: 'default', background: i === 0 ? '#F0F3F5' : undefined }}>
+              <B w={70} h={11} /><B w={86} h={28} r={8} style={{ margin: '8px 0 6px' }} /><B w="82%" h={12} />
+            </div>
+          ))}
+        </div>
+        <div className="dv-bar"><B w="min(360px,60%)" h={14} /><B w={170} h={12} /></div>
+        <ul className="dv-rows">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <li key={i} className="dv-row">
+              <div className="dv-h" style={{ cursor: 'default' }}>
+                <B w={16} h={14} /><B w={`${52 + ((i * 13) % 30)}%`} h={16} />
+                <span className="dv-seg">{[0, 1, 2, 3].map((k) => <i key={k} />)}</span>
+                <B w={120} h={13} style={{ marginLeft: 'auto' }} /><span />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const toast = useToast();
   const { data: d, error, reload } = useApi('/vpe/dashboard');
@@ -211,7 +242,7 @@ export default function Dashboard() {
   const [pick, setPick] = useState(null);
   const [all, setAll] = useState(false);
   if (error) return <Page title="Dashboard" root wide full><ErrorMsg error={error} /></Page>;
-  if (!d) return <Page title="Dashboard" root wide full><SkPage tabs={5} avatar rows={6} /></Page>;
+  if (!d) return <Page title="Dashboard" root wide full><DashSkeleton /></Page>;
   const goal = (n) => d.goals.find((g) => g.n === n);
   const groups = GROUPS.map((g) => {
     const gs = g.goals.map(goal), need = gs.reduce((a, x) => a + x.need, 0), have = gs.reduce((a, x) => a + x.have, 0);
