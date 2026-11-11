@@ -282,8 +282,8 @@ app.post('/api/clubs', wrap(async (req, res) => {
 
 /* the signed-in person's account, and their club's details */
 app.get('/api/account', needPerson, wrap(async (req, res) => {
-  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time from clubs where id=$1', [req.person.club_id]);
-  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '' } });
+  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time, tm_number from clubs where id=$1', [req.person.club_id]);
+  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, number: c.tm_number || '', join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '' } });
 }));
 /* the club at a glance, for the VPE's Club page */
 app.get('/api/vpe/club/summary', needPerson, needVpe, wrap(async (req, res) => {
@@ -309,8 +309,16 @@ app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
   const pc = cleanPattern(req.body.pattern); if (pc.error) return bad(res, pc.error);
   const name = String(req.body.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
   const gd = Math.min(180, Math.max(7, parseInt(req.body.guest_days, 10) || 30));
-  const venue = String(req.body.venue || '').trim().slice(0, 120), mtime = String(req.body.meeting_time || '').trim().slice(0, 40);
-  await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name), guest_days=$4, venue=$5, meeting_time=$6 where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id, gd, venue, mtime]);
+  const [cur] = await q('select venue, meeting_time from clubs where id=$1', [req.person.club_id]);
+  const venue = 'venue' in req.body ? String(req.body.venue || '').trim().slice(0, 120) : cur.venue, mtime = 'meeting_time' in req.body ? String(req.body.meeting_time || '').trim().slice(0, 40) : cur.meeting_time;
+  // the Toastmasters club number (shown on the agenda): optional here, unique across clubs
+  let tm;
+  if ('number' in req.body) {
+    tm = cleanNum(req.body.number) || null;
+    if (tm && (tm.length < 3 || tm.length > 10)) return bad(res, 'A club number has 3 to 10 digits');
+    if (tm && (await q('select 1 as x from clubs where tm_number=$1 and id<>$2', [tm, req.person.club_id])).length) return bad(res, 'Another club on Brekkie already uses that number', 409);
+  }
+  await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name), guest_days=$4, venue=$5, meeting_time=$6, tm_number=case when $7::boolean then $8 else tm_number end where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id, gd, venue, mtime, 'number' in req.body, tm ?? null]);
   res.json({ ok: true });
 }));
 app.post('/api/vpe/club/meetings', needPerson, needVpe, wrap(async (req, res) => {
@@ -746,9 +754,9 @@ app.post('/api/vpe/meetings/:id/roles', needPerson, needVpe, wrap(async (req, re
   res.json(out);
 }));
 app.delete('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
-  const r = await q(`delete from meeting_roles where id=$1 and role_key in ('speaker','evaluator') and person_id is null and submitted_at is null
+  const r = await q(`delete from meeting_roles where id=$1 and role_key in ('speaker','evaluator') and submitted_at is null
     and meeting_id in (select id from meetings where club_id=$2) returning id`, [req.params.id, req.person.club_id]);
-  r.length ? res.json({ ok: true }) : bad(res, 'Only an empty speaker or evaluator row can be removed', 400);
+  r.length ? res.json({ ok: true }) : bad(res, 'Only a speaker or evaluator row that has not submitted yet can be removed', 400);
 }));
 
 /* ───────── agenda: edits the club's Word template ───────── */
@@ -914,6 +922,14 @@ app.patch('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
     const nx = pp?.path_name ? (await pathProgress(pp)).next : null;
     if (nx?.part_kind === 'evaluator') { next.project_id = nx.id; next.part = nx.part; next.path_name = pp.path_name; next.path_level = nx.level; }
     else if (r.project_id && !('project_id' in b)) { next.project_id = null; next.part = 1; }
+  }
+  // a speech slot takes a speech part, an evaluator slot only the evaluator part of a project
+  if (next.project_id && (r.role_key === 'speaker' || r.role_key === 'evaluator')) {
+    const [pj] = await q('select parts from projects where id=$1', [next.project_id]);
+    if (!pj) return bad(res, 'Unknown project');
+    const kind = (pj.parts || [])[(next.part || 1) - 1]?.kind || 'speech';
+    if (r.role_key === 'speaker' && kind === 'evaluator') return bad(res, 'That part is given from an evaluator slot, not a speech slot');
+    if (r.role_key === 'evaluator' && kind !== 'evaluator') return bad(res, 'An evaluator slot only carries the evaluator part of a project');
   }
   // a new person gets a fresh link, so the previous person's link stops working
   const tk = next.person_id !== r.person_id ? token() : r.token;

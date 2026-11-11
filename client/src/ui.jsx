@@ -1,6 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { api } from './api.js';
 
 /* ───────── icons ───────── */
 const Ic = ({ d, w = 20, s = 1.8, children }) => (
@@ -362,18 +363,19 @@ export const copyText = async (text) => { try { await navigator.clipboard.writeT
 
 /* Which part of a project: shown only for a project made of several (two speeches, or two speeches and an evaluation).
    Parts already done or scheduled are greyed out, except the one being edited. */
-export function PartSelect({ parts, value, onChange, sm = true }) {
+export function PartSelect({ parts, value, onChange, sm = true, speechOnly = false }) {
   if (!parts || parts.length < 2) return null;
+  const today = new Date().toISOString().slice(0, 10), booked = (x) => !!x.sched && !(x.sched.date && x.sched.date < today);   // a slot that has gone by does not hold the part
   return (
     <Select sm={sm} value={value || ''} placeholder="Which part" searchable={false}
-      options={parts.map((x) => ({ value: x.n, label: `Part ${x.n} · ${x.label}`, sub: x.done ? 'Done' : x.sched && x.n !== value ? 'Scheduled' : x.length, disabled: !!(x.done || (x.sched && x.n !== value)) }))}
+      options={parts.map((x) => ({ value: x.n, label: `Part ${x.n} · ${x.label}`, sub: x.done ? 'Done' : booked(x) && x.n !== value ? 'Scheduled' : speechOnly && x.kind === 'evaluator' ? 'Given from an evaluator slot' : x.length, disabled: !!(x.done || (booked(x) && x.n !== value) || (speechOnly && x.kind === 'evaluator')) }))}
       onChange={onChange} />
   );
 }
 
 /* Path, then level, then project, from the Pathways catalog. Each choice narrows the next, and a half-finished
    choice is remembered. onChange receives { project_id, path_name, path_level }. */
-export function ProjectPicker({ catalog, value, part, pathName, level, onChange }) {
+export function ProjectPicker({ catalog, value, part, pathName, level, onChange, memberId }) {
   const [path, setPath] = useState(pathName || '');
   const [lv, setLv] = useState(level ?? '');
   useEffect(() => { setPath(pathName || ''); setLv(level ?? ''); }, [pathName, level]);
@@ -381,6 +383,16 @@ export function ProjectPicker({ catalog, value, part, pathName, level, onChange 
   const L = P?.levels.find((l) => l.level === lv);
   const req = L?.projects.filter((p) => p.kind === 'required') || [], opt = L?.projects.filter((p) => p.kind === 'elective') || [];
   const chosen = L?.projects.find((p) => p.id === value);
+  // what this member has done and booked of each part, so finished and booked parts are greyed out and the next one is offered
+  const [prog, setProg] = useState(null);
+  useEffect(() => {
+    let off = false; setProg(null);
+    if (memberId) api(`/vpe/people/${memberId}/path`).then((d) => { if (!off) setProg(d); }).catch(() => {});
+    return () => { off = true; };
+  }, [memberId, value, part]);
+  const mine = prog?.levels.flatMap((l) => l.projects).find((p) => p.id === value);
+  const parts = chosen?.parts?.map((x) => ({ ...x, ...(mine?.parts?.find((y) => y.n === x.n) ? { done: mine.parts.find((y) => y.n === x.n).done, sched: mine.parts.find((y) => y.n === x.n).sched } : {}) }));
+  const firstPart = (pid) => { const c = L?.projects.find((p) => p.id === pid), m = prog?.levels.flatMap((l) => l.projects).find((p) => p.id === pid); return c?.parts?.find((x) => x.kind !== 'evaluator' && !m?.parts?.find((y) => y.n === x.n)?.done && !m?.parts?.find((y) => y.n === x.n)?.sched)?.n || 1; };
   return (
     <div className="ppick">
       <Select sm value={path} placeholder="Path" searchable={false} options={catalog.map((p) => ({ value: p.name, label: p.name }))}
@@ -390,9 +402,9 @@ export function ProjectPicker({ catalog, value, part, pathName, level, onChange 
           onChange={(v) => { setLv(v); onChange({ project_id: null, path_name: path, path_level: v }); }} />
         <Select sm value={value} placeholder="Project" disabled={!L} searchable={(L?.projects.length || 0) > 8}
           options={[...req.map((p) => ({ value: p.id, label: `${p.code} ${p.name}`, sub: 'Required' })), ...opt.map((p) => ({ value: p.id, label: p.name, sub: L.choose ? `Elective, choose ${L.choose}` : 'Elective' }))]}
-          onChange={(v) => onChange({ project_id: v, part: 1, path_name: path, path_level: lv })} />
+          onChange={(v) => onChange({ project_id: v, part: firstPart(v), path_name: path, path_level: lv })} />
       </div>
-      <PartSelect parts={chosen?.parts} value={part || 1} onChange={(n) => onChange({ project_id: value, part: n, path_name: path, path_level: lv })} />
+      <PartSelect speechOnly parts={parts} value={part || 1} onChange={(n) => onChange({ project_id: value, part: n, path_name: path, path_level: lv })} />
     </div>
   );
 }

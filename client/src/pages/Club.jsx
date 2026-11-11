@@ -13,6 +13,7 @@ export default function Club() {
   const sum = useApi('/vpe/club/summary');
   const [pat, setPat] = useState(null);
   const [name, setName] = useState('');
+  const [tm, setTm] = useState('');
   const [gd, setGd] = useState(30);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
@@ -20,11 +21,11 @@ export default function Club() {
   const ppl = useApi('/vpe/people');
   const sess = useApi('/session');
   const [bulk, setBulk] = useState(false);
-  useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setGd(data.club.guest_days || 30); } }, [data]);
+  useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setTm(data.club.number || ''); setGd(data.club.guest_days || 30); } }, [data]);
   if (loading || !pat) return <Page title="Club" root wide full><SkPage stats={3} rows={4} pill={false} /></Page>;
   if (error) return <Page title="Club" root wide full><ErrorMsg error={error} /></Page>;
 
-  const body = () => ({ name, pattern: pat, guest_days: gd });
+  const body = () => ({ name, number: tm, pattern: pat, guest_days: gd });
   const save = async () => {
     setBusy('save'); setErr('');
     try { await api('/vpe/club', { method: 'PUT', body: body() }); toast('Saved'); reload(); } catch (e) { setErr(e.message); } finally { setBusy(''); }
@@ -86,6 +87,8 @@ export default function Club() {
             <div className="cl-r">
               <label className="fl" htmlFor="c-name">Club name</label>
               <input id="c-name" className="inp" value={name} onChange={(e) => setName(e.target.value)} />
+              <label className="fl" htmlFor="c-tm">Club number <i>(shown on the agenda)</i></label>
+              <input id="c-tm" className="inp cl-num" inputMode="numeric" maxLength={10} placeholder="e.g. 04647453" value={tm} onChange={(e) => setTm(e.target.value.replace(/\D/g, ''))} />
               <PatternFields value={pat} onChange={setPat} />
               <div className="cl-prev"><small>Next meetings</small><div>{datesFor(pat, new Date().toISOString().slice(0, 10) > pat.start ? new Date().toISOString().slice(0, 10) : pat.start, 6).map((d) => <span key={d}>{fmtDate(d)}</span>)}</div></div>
               {sm?.next && <p className="fine">Next up: meeting {sm.next.number}, {fmtDate(sm.next.date)}.</p>}

@@ -146,3 +146,22 @@ test('the Word file follows the running order: an educational session in, no spe
   const x2 = await (await JSZip.loadAsync(await A.buildDocx(noSpeeches, ctx))).file('word/document.xml').async('string');
   assert.ok(!x2.includes('Project Details'));
 });
+
+test('the club number is set in the club settings, shown on the agenda, and unique', async () => {
+  const club = (await call('GET', '/api/account', vpe)).json.club;
+  const put = (b) => call('PUT', '/api/vpe/club', vpe, { name: club.name, pattern: club.pattern || { day: 3, mode: 'weekly', start: '2026-01-07' }, guest_days: club.guest_days, ...b });
+  assert.equal((await put({ number: '12' })).status, 400);
+  assert.equal((await put({ number: '55 66-77' })).status, 200);
+  assert.equal((await call('GET', '/api/account', vpe)).json.club.number, '556677');
+  const JSZip = (await import('jszip')).default;
+  const ctx = await ctxOf();
+  assert.equal(ctx.clubNumber, '556677');
+  const xml = await (await JSZip.loadAsync(await A.buildDocx(A.defaultAgenda(ctx), ctx))).file('word/document.xml').async('string');
+  assert.ok(xml.includes('Club Number: 556677') && !xml.includes('04647453'));
+  assert.equal(Buffer.from(await renderAgendaPdf(A.defaultAgenda(ctx), ctx)).subarray(0, 5).toString(), '%PDF-');
+  const [other] = await q('select id from clubs where id<>$1 limit 1', [meeting.club_id]);
+  if (other) { await q('update clubs set tm_number=$1 where id=$2', ['998877', other.id]); assert.equal((await put({ number: '998877' })).status, 409); await q('update clubs set tm_number=null where id=$1', [other.id]); }
+  assert.equal((await put({ number: '' })).status, 200);
+  assert.equal((await call('GET', '/api/account', vpe)).json.club.number, '');
+  assert.equal((await put({})).status, 200, 'saving without a number leaves it alone');
+});

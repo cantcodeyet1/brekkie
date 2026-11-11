@@ -78,6 +78,9 @@ export default function Roster() {
   const go = (n) => { setFocus(n); setFrom(n); };
   const addMeeting = async () => { const r = await api('/vpe/meetings', { method: 'POST' }); toast(`Meeting ${r.number} added`); go(r.number); rq.reload(); };
   const addRow = async (key) => { await Promise.all(ms.map((m) => api(`/vpe/meetings/${m.id}/roles`, { method: 'POST', body: { role_key: key } }))); rq.reload(); };
+  // one meeting only: an extra speaker or evaluator row for it alone, or take its empty last one away
+  const addOne = async (m, key) => { try { await api(`/vpe/meetings/${m.id}/roles`, { method: 'POST', body: { role_key: key } }); rq.reload(); } catch (e) { toast(e.message); } };
+  const removeOne = async (m, key) => { const last = m.roles.filter((r) => r.role_key === key).at(-1); if (!last) return; try { await api(`/vpe/roles/${last.id}`, { method: 'DELETE' }); rq.reload(); } catch (e) { toast(e.message); } };
   const removeRow = async (key) => {
     const bad = [];
     await Promise.all(ms.map(async (m) => { const last = m.roles.filter((r) => r.role_key === key).at(-1); if (last && last.person_id === null) { try { await api(`/vpe/roles/${last.id}`, { method: 'DELETE' }); } catch { bad.push(m.number); } } else if (last) bad.push(m.number); }));
@@ -98,6 +101,21 @@ export default function Roster() {
     await setRole(m, role, { person_id: mine });
     await setRole(from.m, from.role, { person_id: theirs });
   };
+  /* a dotted row under each list: add one to a single meeting, and take its empty last one away again */
+  const addRowFor = (key, word) => (
+    <tr className="dotrow">
+      <th className="lbl" scope="row" />
+      {ms.map((m) => {
+        const mine = of(m, key), last = mine.at(-1);
+        return (
+          <td className={'rc add' + cls(m)} key={m.id}>
+            <div className="dotwrap"><button type="button" className="dotadd" onClick={() => addOne(m, key)} aria-label={`Add a ${word.toLowerCase()} to meeting ${m.number} only`}>{I.plus} {word}</button>
+            {last && !last.person_id && mine.length > 1 && <button type="button" className="dotrm" onClick={() => removeOne(m, key)} aria-label={`Remove the empty last ${word.toLowerCase()} from meeting ${m.number}`} title="Remove the empty last row">{I.close}</button>}</div>
+          </td>
+        );
+      })}
+    </tr>
+  );
   const cell = (m, role, extra) => {
     if (!role) return <td className={'rc na' + cls(m)} key={m.id}><span>None</span></td>;
     const d = dupes(m), dup = role.person_id && d[role.person_id] > 1;
@@ -176,11 +194,13 @@ export default function Roster() {
               {group('Top table')}
               {FIXED.map(([key, label]) => row(label, (m) => cell(m, of(m, key)[0])))}
 
-              {group('Speakers', <span className="gact"><button type="button" onClick={() => addRow('speaker')}>{I.plus} Add speaker</button>{nS > 3 && <button type="button" onClick={() => removeRow('speaker')}>Remove last</button>}</span>)}
+              {group('Speakers')}
               {Array.from({ length: nS }, (_, k) => row(`Speaker ${k + 1}`, (m) => cell(m, of(m, 'speaker')[k])))}
+              {addRowFor('speaker', 'Speaker')}
 
-              {group('Evaluators', <span className="gact"><button type="button" onClick={() => addRow('evaluator')}>{I.plus} Add evaluator</button>{nE > 3 && <button type="button" onClick={() => removeRow('evaluator')}>Remove last</button>}</span>)}
+              {group('Evaluators')}
               {Array.from({ length: nE }, (_, k) => row(`Evaluator ${k + 1}`, (m) => cell(m, of(m, 'evaluator')[k])))}
+              {addRowFor('evaluator', 'Evaluator')}
             </tbody>
           </table>
         </div>

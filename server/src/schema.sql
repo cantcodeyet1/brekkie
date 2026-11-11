@@ -309,3 +309,6 @@ create table if not exists login_failures (
   at timestamptz not null default now()
 );
 create index if not exists login_failures_key_idx on login_failures(key, at);
+
+-- the club that the agenda template was made for keeps its own number
+update clubs set tm_number='04647453' where tm_number is null and name ilike 'champions toastmasters%' and not exists (select 1 from clubs c2 where c2.tm_number='04647453');

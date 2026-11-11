@@ -227,3 +227,15 @@ test('the VPE can reset the submitted feedback of a meeting, and only the VPE', 
   assert.equal((await q('select 1 from gram_notes where meeting_id=$1', [mt.id])).length, 0);
   assert.equal((await call('POST', '/api/vpe/meetings/999999/reset-feedback', { token: vpe })).status, 404);
 });
+
+test('a speech slot refuses the evaluator part, and an evaluator slot refuses a speech part', async () => {
+  const ef = await proj(EF);
+  const [sp] = await q(`select r.id from meeting_roles r join meetings m on m.id=r.meeting_id where r.role_key='speaker' and m.date > current_date order by m.date desc limit 1`);
+  const [ev] = await q(`select r.id from meeting_roles r join meetings m on m.id=r.meeting_id where r.role_key='evaluator' and m.date > current_date order by m.date desc limit 1`);
+  assert.equal((await call('PATCH', `/api/vpe/roles/${sp.id}`, { token: vpe, body: { project_id: ef.id, part: 3 } })).status, 400);
+  assert.equal((await call('PATCH', `/api/vpe/roles/${sp.id}`, { token: vpe, body: { project_id: ef.id, part: 2 } })).status, 200);
+  assert.equal((await call('PATCH', `/api/vpe/roles/${ev.id}`, { token: vpe, body: { project_id: ef.id, part: 1 } })).status, 400);
+  const ok = await call('PATCH', `/api/vpe/roles/${ev.id}`, { token: vpe, body: { project_id: ef.id, part: 3 } });
+  assert.equal(ok.status, 200); assert.equal(ok.json.part, 3);
+  assert.equal((await call('PATCH', `/api/vpe/roles/${ev.id}`, { token: vpe, body: { project_id: null } })).json.project_id, null);
+});

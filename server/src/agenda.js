@@ -59,10 +59,10 @@ export async function loadContext(meetingId, clubId) {
   const roles = await q(`select r.id, r.role_key, r.label, r.position, r.target_role_id, r.speech_title, p.name, p.credential, pr.name as project, r.path_name as path, r.path_level as level, (select pp.pos from path_projects pp where pp.path=r.path_name and pp.level=r.path_level and pp.project_id=r.project_id) as pos, (select pp.kind from path_projects pp where pp.path=r.path_name and pp.level=r.path_level and pp.project_id=r.project_id) as pkind, pr.length_text
     from meeting_roles r left join people p on p.id=r.person_id left join projects pr on pr.id=r.project_id where r.meeting_id=$1 order by r.position`, [m.id]);
   const [next] = await q(`select to_char(date,'YYYY-MM-DD') as date from meetings where club_id=$1 and number > $2 order by number limit 1`, [clubId, m.number]);
-  const [club] = await q('select agenda_default from clubs where id=$1', [clubId]);
+  const [club] = await q('select agenda_default, tm_number from clubs where id=$1', [clubId]);
   let standard = {};
   try { standard = club?.agenda_default ? JSON.parse(club.agenda_default) : {}; } catch { standard = {}; }
-  return { m, roles, next: next?.date || null, standard };
+  return { m, roles, next: next?.date || null, standard, clubNumber: club?.tm_number || '' };
 }
 
 /** one block, cleaned up: unknown fields are dropped and every value is kept to a sensible size */
@@ -260,6 +260,10 @@ export async function buildDocx(ag, ctx, opts = {}) {
   const T = elems(doc, 'w:tbl');
   const plan = planOf(ag, ctx);
   const base = opts.base;
+
+  // the club number in the banner is the club's own (blank when none is set)
+  const cn = elems(doc, 'w:t').find((t) => /^Club Number:/.test(t.textContent));
+  if (cn && !base) setTextNode(cn, ctx.clubNumber ? `Club Number: ${ctx.clubNumber}` : '');
 
   // heading block
   const cap = P.find((p) => elems(p, 'w:t').map((t) => t.textContent).join('').trim() === 'Prepared Speeches');

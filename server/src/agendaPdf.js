@@ -125,6 +125,10 @@ export async function renderAgendaPdf(ag, ctx) {
   const p = programme(plan, F, k);               // drawn with this document's own fonts
   const draw = (s, x, y, font, size, color) => { if (s) page.drawText(s, { x, y, font, size, color }); };
 
+  // the club number in the banner: the page has the template's own, so it is covered with the banner blue and drawn again
+  page.drawRectangle({ x: 450, y: 796, width: 140, height: 15, color: rgb(0, 63 / 255, 98 / 255) });
+  if (ctx.clubNumber) { const cs = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(cs, 581.2 - width(F.b, 11, cs), 798.6, F.b, 11, rgb(1, 1, 1)); }
+
   // heading: the date, then the theme and quotation on up to two centred lines
   const cx = 369.5;
   const dateW = width(F.bi, 11, plan.date);

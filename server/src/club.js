@@ -15,7 +15,8 @@ export const ROLE_DEFS = [
    { day: 0-6 (Sunday = 0), mode: 'weekly' | 'fortnightly' | 'monthly', weeks: [1..5] (monthly; 5 means the last one),
      time: 'HH:MM', place: '', start: 'YYYY-MM-DD' (the first meeting; fortnightly counts from it) } */
 const MODES = ['weekly', 'fortnightly', 'monthly'];
-export function cleanPattern(p = {}) {
+export function cleanPattern(p) {
+  p = p && typeof p === "object" ? p : {};
   const d = Number.isInteger(+p.day) && +p.day >= 0 && +p.day <= 6 ? +p.day : null;
   if (d === null) return { error: 'Choose the day of the week your club meets' };
   const mode = MODES.includes(p.mode) ? p.mode : null;

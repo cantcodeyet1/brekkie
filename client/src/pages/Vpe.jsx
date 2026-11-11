@@ -139,6 +139,26 @@ function Panel({ k, title, hint, right, children }) {
   );
 }
 
+/* An evaluator slot can carry the evaluator part of a project ("Evaluator Speech" in Evaluation and Feedback): serving it finishes that part. */
+function EvalCounts({ role, onChange }) {
+  const [prog, setProg] = useState(null);
+  useEffect(() => {
+    let off = false; setProg(null);
+    api(`/vpe/people/${role.person_id}/path`).then((d) => { if (!off) setProg(d); }).catch(() => {});
+    return () => { off = true; };
+  }, [role.person_id, role.project_id]);
+  // only for a member who is on that project now (it is their next one), or whose slot already carries it
+  const found = prog?.levels.flatMap((l) => l.projects.filter((p) => p.id === role.project_id || p.id === prog.next?.id).flatMap((p) => (p.parts || []).filter((x) => x.kind === 'evaluator' && (!x.done && (!x.sched || p.id === role.project_id)) ? true : false).map((x) => ({ id: p.id, name: p.name, n: x.n, label: x.label, level: l.level })))) || [];
+  if (!found.length) return null;
+  const on = role.project_id && found.find((f) => f.id === role.project_id && f.n === role.part);
+  const f = on || found[0];
+  return (
+    <button type="button" className={'evcount' + (on ? ' on' : '')} onClick={() => onChange(on ? { project_id: null } : { project_id: f.id, part: f.n, path_name: prog.path, path_level: f.level })}>
+      <span className="evbox" aria-hidden="true">{on ? I.check : null}</span>Counts as {f.name}, {f.label}
+    </button>
+  );
+}
+
 export function VpeMeeting() {
   const { id } = useParams();
   const toast = useToast();
@@ -312,7 +332,7 @@ VPE, Champions Toastmasters Club`;
       {r.role_key === 'speaker' && (locked
         ? <div style={{ color: 'var(--mute)', fontSize: 14, marginTop: 4 }}>{projOf(r.project_id) ? `${r.path_name || projOf(r.project_id).path}, Level ${r.path_level ?? projOf(r.project_id).level}: ${projOf(r.project_id).name}${projOf(r.project_id).parts?.length > 1 ? ` (Part ${r.part})` : ''}` : 'No project set'}{r.speech_title ? ` · “${r.speech_title}”` : ''}</div>
         : <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-          <ProjectPicker catalog={catalog} value={r.project_id} part={r.part} pathName={r.path_name} level={r.path_level} onChange={(body) => setRole(r, body)} />
+          <ProjectPicker memberId={r.person_id} catalog={catalog} value={r.project_id} part={r.part} pathName={r.path_name} level={r.path_level} onChange={(body) => setRole(r, body)} />
           <input className={'inp' + (r.speech_title ? '' : ' todo')} defaultValue={r.speech_title} placeholder="Speech title" onBlur={(e) => e.target.value !== r.speech_title && setRole(r, { speech_title: e.target.value })} />
         </div>)}
       {r.role_key === 'evaluator' && (locked
@@ -321,6 +341,8 @@ VPE, Champions Toastmasters Club`;
           <Select value={r.target_role_id} placeholder="Evaluates which speaker?" options={speakers.map((s) => ({ value: s.id, label: s.label, sub: s.person || 'unassigned' }))} onChange={(v) => setRole(r, { target_role_id: v })} />
           {(() => { const sp = speakers.find((s) => s.id === r.target_role_id), pj = sp && projOf(sp.project_id); return pj ? <p className="evnote">Will see {sp.path_name || pj.path}, Level {sp.path_level ?? pj.level}: {pj.name}{pj.parts?.length > 1 ? `, ${pj.parts[(sp.part || 1) - 1]?.label}` : ''}</p> : null; })()}
         </div>)}
+      {r.role_key === 'evaluator' && !locked && r.person_id && <EvalCounts role={r} onChange={(body) => setRole(r, body)} />}
+      {r.role_key === 'evaluator' && locked && r.project_id && projOf(r.project_id) && <p className="evnote">Counts as {projOf(r.project_id).name}, {projOf(r.project_id).parts?.[(r.part || 1) - 1]?.label}</p>}
       {r.role_key === 'evaluator' && (() => {
         const sp = speakers.find((s) => s.id === r.target_role_id), pj = sp && projOf(sp.project_id), res = pj && resQ.data?.[pj.name], url = evalFormUrl(res, sp?.part);
         return (url || r.submitted_at) ? (
@@ -396,7 +418,15 @@ VPE, Champions Toastmasters Club`;
           const evs = roles.filter((r) => r.role_key === 'evaluator'), used = new Set();
           const cols = speakers.map((s) => { const mine = evs.filter((e) => e.target_role_id === s.id); mine.forEach((e) => used.add(e.id)); return { key: s.id, items: [s, ...mine] }; });
           evs.filter((e) => !used.has(e.id)).forEach((e) => cols.push({ key: e.id, items: [e] }));
-          return <Strip>{cols.map((c) => <div className="pcol" key={c.key}>{c.items.map(tile)}</div>)}</Strip>;
+          const addPair = async () => { try { await api(`/vpe/meetings/${id}/roles`, { method: 'POST', body: { role_key: 'speaker' } }); await api(`/vpe/meetings/${id}/roles`, { method: 'POST', body: { role_key: 'evaluator' } }); reload(); } catch (e) { toast(e.message); } };
+          const dropPair = async (c) => { const who = c.items.filter((r) => r.person).map((r) => r.person); if (who.length && !window.confirm(`Remove this speaker slot? ${who.join(' and ')} will be taken off it.`)) return; try { for (const r of [...c.items].reverse()) await api(`/vpe/roles/${r.id}`, { method: 'DELETE' }); reload(); } catch (e) { toast(e.message); reload(); } };
+          return <Strip>{cols.map((c) => (
+            <div className="pcol" key={c.key}>
+              {c.items.map(tile)}
+              {!locked && c.items.every((r) => !r.submitted_at) && cols.length > 1 && <button type="button" className="dotrm wide" onClick={() => dropPair(c)}>{I.close} Remove this speaker</button>}
+            </div>))}
+            {!locked && <div className="pcol padd"><button type="button" className="dotadd tall" onClick={addPair}>{I.plus} Add speaker<small>for this meeting only</small></button></div>}
+          </Strip>;
         })()}</div>
       </Panel>
 

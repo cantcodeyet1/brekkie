@@ -3091,3 +3091,29 @@ html,body{background:#F5F5F7}
 .ph-pills .btn{width:auto;gap:7px;text-decoration:none}
 .ph-pills .btn svg{width:16px;height:16px}
 @media (max-width:560px){.ph-r{align-items:flex-start;width:100%}.ph-pills{justify-content:flex-start}}
+/* add and remove one speaker or evaluator for a single meeting */
+.rtbl tr.dotrow th.lbl{border-top:0}
+.rtbl td.add{text-align:center;padding:8px 10px;white-space:nowrap}
+.dotadd{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #B9C2C6;border-radius:12px;color:var(--blue);font:600 13px var(--head);padding:9px 14px;background:transparent;transition:background .15s,border-color .15s}
+.dotadd:hover{background:#EAF2F8;border-color:var(--blue)}
+.dotadd svg{width:15px;height:15px}
+.dotrm{display:inline-grid;place-items:center;width:30px;height:30px;margin-left:6px;border-radius:50%;color:#8E8E93;vertical-align:middle}
+.dotrm:hover{background:#F8EDEF;color:var(--maroon)}
+.dotrm.wide{display:inline-flex;gap:6px;align-items:center;width:auto;height:auto;margin:6px 0 0;padding:8px 12px;border-radius:12px;font:600 13px var(--head)}
+.pcol.padd{display:flex;align-items:stretch}
+.dotadd.tall{flex-direction:column;gap:2px;min-height:96px;width:100%;padding:18px}
+.dotadd.tall small{font:500 12px var(--body);color:#8E8E93}
+.evcount{display:flex;align-items:center;gap:9px;margin-top:8px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer;text-align:left}
+.evcount .evbox{width:18px;height:18px;border-radius:6px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:#fff}
+.evcount.on{border-color:var(--blue)}
+.evcount.on .evbox{background:var(--blue);border-color:var(--blue)}
+.rtbl tr.dotrow td.rc{vertical-align:middle;white-space:nowrap}
+.rtbl tr.dotrow .dotadd{padding:7px 12px}
+.rtbl tr.dotrow .dotrm{width:28px;height:28px;margin-left:4px}
+/* the "counts as" toggle on an evaluator tile: a small chip, not a bar */
+.evcount{display:inline-flex;gap:7px;margin-top:8px;padding:5px 11px 5px 8px;font-size:12.5px;line-height:1.25;border-radius:999px;background:transparent;border-style:dashed;color:var(--mute)}
+.evcount .evbox{width:15px;height:15px;border-radius:5px;margin-top:0}
+.evcount.on{background:#fff;color:var(--ink);border-style:solid}
+.dotwrap{display:flex;align-items:center;gap:4px;width:100%}
+.rtbl tr.dotrow .dotadd{flex:1;min-width:0;width:auto}
+.rtbl tr.dotrow .dotrm{flex:none;margin-left:0}
