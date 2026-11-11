@@ -152,6 +152,8 @@ create index if not exists peer_to_idx on peer_feedback(to_person_id);
 alter table meetings add column if not exists theme_quote text not null default '';
 alter table meetings add column if not exists theme_quote_by text not null default '';
 alter table meetings add column if not exists agenda jsonb not null default '{}';
+-- the club's standard agenda layout (JSON text): new meetings start from it
+alter table clubs add column if not exists agenda_default text;
 alter table people add column if not exists credential text not null default '';
 alter table projects add column if not exists code text not null default '';
 insert into projects(name,level,path,form_title,length_text,green,yellow,red,purpose,notes,about) values

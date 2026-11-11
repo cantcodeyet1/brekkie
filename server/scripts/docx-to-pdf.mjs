@@ -1,4 +1,5 @@
-// Word to PDF, so the agenda keeps the template's exact layout.
+// Word to PDF, for the maintainer only: make-agenda-base.mjs uses it to turn the Word template into the blank pages the
+// PDF agenda is drawn on. The site itself never calls it, so the server needs neither Word nor LibreOffice.
 // Uses LibreOffice when it is installed (the usual choice on a server), otherwise Microsoft Word on Windows.
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';

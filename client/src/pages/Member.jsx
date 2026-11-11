@@ -50,9 +50,9 @@ function AgendaCard({ meetingId, date, title, sub, sheet, sheetLabel = 'Open you
   const get = async () => {
     setBusy(true);
     try {
-      const res = await fetch(`/api/me/meetings/${meetingId}/agenda.docx`, { headers: { 'x-token': getToken() } });
+      const res = await fetch(`/api/me/meetings/${meetingId}/agenda.pdf`, { headers: { 'x-token': getToken() } });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not get the agenda');
-      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Agenda.docx';
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'Agenda.pdf';
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
       toast('Agenda downloaded');

@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { initDb, q, tx } from './db.js';
 import { seedIfEmpty } from './seed.js';
 import { loadHist, progressFor, summary } from './progress.js';
-import { buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda } from './agenda.js';
-import { docxToPdf, pdfAvailable } from './pdf.js';
+import { EXTRAS, STD_BLOCKS, buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda, pickConfig } from './agenda.js';
+import { agendaFits, renderAgendaPdf } from './agendaPdf.js';
 import { buildRoleReport, hasOfficialReport } from './roleReport.js';
 import { EVAL_FORMS, fillEvalForm, formFile } from './evalForm.js';
 import { nextClubDate } from './schedule.js';
@@ -771,53 +771,60 @@ async function agendaFor(req, res, startOverride) {
   const def = defaultAgenda(ctx, startOverride ?? ctx.m.agenda?.start);
   return { ctx, def, merged: mergeAgenda(def, ctx.m.agenda || {}) };
 }
+const agendaBody = async (a) => ({
+  meeting: { id: a.ctx.m.id, number: a.ctx.m.number, date: a.ctx.m.date, theme: a.ctx.m.theme, theme_quote: a.ctx.m.theme_quote, theme_quote_by: a.ctx.m.theme_quote_by, word: a.ctx.m.word },
+  agenda: a.merged, edited: Object.keys(a.ctx.m.agenda || {}).length > 0, standard: Object.keys(a.ctx.standard || {}).length > 0,
+  extras: EXTRAS, catalog: STD_BLOCKS, fits: await agendaFits(a.merged, a.ctx),
+});
 app.get('/api/vpe/meetings/:id/agenda', needPerson, needVpe, wrap(async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
-  const { m } = a.ctx;
-  res.json({ meeting: { id: m.id, number: m.number, date: m.date, theme: m.theme, theme_quote: m.theme_quote, theme_quote_by: m.theme_quote_by, word: m.word }, agenda: a.merged, edited: Object.keys(m.agenda || {}).length > 0 });
+  res.json(await agendaBody(a));
 }));
 app.put('/api/vpe/meetings/:id/agenda', needPerson, needVpe, wrap(async (req, res) => {
   const a = await agendaFor(req, res, req.body?.start); if (!a) return;
   const saved = diffAgenda(a.def, req.body || {});
   await q('update meetings set agenda=$1 where id=$2', [JSON.stringify(saved), req.params.id]);
-  res.json({ ok: true });
+  a.ctx.m.agenda = saved; a.merged = mergeAgenda(a.def, saved);
+  res.json({ ok: true, agenda: a.merged, fits: await agendaFits(a.merged, a.ctx) });
 }));
 app.post('/api/vpe/meetings/:id/agenda/reset', needPerson, needVpe, wrap(async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
   let saved = {};
   if (req.body?.what === 'times') {
     saved = JSON.parse(JSON.stringify(a.ctx.m.agenda || {}));
-    for (const k of ['opening', 'closing']) if (saved[k]) saved[k] = saved[k].map((x) => { const { time, ...r } = x || {}; return r; });
-    if (saved.speeches) for (const id of Object.keys(saved.speeches)) delete saved.speeches[id].time;
+    if (saved.blocks) saved.blocks = saved.blocks.map(({ at, ...r }) => r);
   }
   await q('update meetings set agenda=$1 where id=$2', [JSON.stringify(saved), req.params.id]);
   const a2 = await agendaFor(req, res);
-  res.json({ agenda: a2.merged });
+  res.json(await agendaBody(a2));
 }));
-const sendAgenda = async (req, res) => {
+/* the club standard: the running order, lengths and chairperson every new agenda starts from */
+app.put('/api/vpe/agenda-standard', needPerson, needVpe, wrap(async (req, res) => {
+  await q('update clubs set agenda_default=$1 where id=$2', [JSON.stringify(pickConfig(req.body || {})), req.person.club_id]);
+  res.json({ ok: true });
+}));
+app.delete('/api/vpe/agenda-standard', needPerson, needVpe, wrap(async (req, res) => {
+  await q('update clubs set agenda_default=null where id=$1', [req.person.club_id]);
+  res.json({ ok: true });
+}));
+const fileDate = (d) => { const x = new Date(d + 'T12:00:00'); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}.${String(x.getFullYear()).slice(-2)}`; };
+const sendAgenda = (ext) => async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
-  const buf = await buildDocx(a.merged, a.ctx);
-  const d = new Date(a.ctx.m.date + 'T12:00:00');
-  const name = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}.docx`;
-  res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
-  res.send(buf);
+  const pdf = ext === 'pdf';
+  const buf = pdf ? await renderAgendaPdf(a.merged, a.ctx) : await buildDocx(a.merged, a.ctx);
+  const [club] = await q('select name from clubs where id=$1', [req.person.club_id]);
+  const title = `${String(club?.name || '').replace(/\s+club$/i, '').trim()} Agenda ${fileDate(a.ctx.m.date)}`.trim();
+  const plain = title.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w .()-]/g, '').trim() || 'Agenda';
+  res.set({ 'Content-Type': pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': `${req.query.inline ? 'inline' : 'attachment'}; filename="${plain}.${ext}"; filename*=UTF-8''${encodeURIComponent(title)}.${ext}`, 'Access-Control-Expose-Headers': 'Content-Disposition', 'Cache-Control': 'no-store' });
+  res.send(Buffer.from(buf));
 };
-app.get('/api/vpe/meetings/:id/agenda.docx', needPerson, needVpe, wrap(sendAgenda));
-/* a role link can fetch the agenda of its own meeting (Toastmaster and speakers have no sheet, only the agenda) */
-app.get('/api/role/agenda.docx', needRole, wrap((req, res) => { req.params.id = req.role.meeting_id; req.person = { club_id: req.role.club_id }; return sendAgenda(req, res); }));
-/* any member or guest can download the agenda of a meeting in their club */
-app.get('/api/me/meetings/:id/agenda.docx', needPerson, wrap(sendAgenda));
-
-app.get('/api/vpe/meetings/:id/agenda.pdf', needPerson, needVpe, wrap(async (req, res) => {
-  const a = await agendaFor(req, res); if (!a) return;
-  try {
-    const pdf = await docxToPdf(await buildDocx(a.merged, a.ctx));
-    const d = new Date(a.ctx.m.date + 'T12:00:00');
-    const name = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}.pdf`;
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${name}"`, 'Access-Control-Expose-Headers': 'Content-Disposition' });
-    res.send(pdf);
-  } catch (e) { console.error(e); bad(res, e.status === 501 ? e.message : 'Could not create the PDF. The Word download still works.', e.status || 500); }
-}));
+for (const ext of ['docx', 'pdf']) {
+  app.get(`/api/vpe/meetings/:id/agenda.${ext}`, needPerson, needVpe, wrap(sendAgenda(ext)));
+  /* a role link can fetch the agenda of its own meeting (Toastmaster and speakers have no sheet, only the agenda) */
+  app.get(`/api/role/agenda.${ext}`, needRole, wrap((req, res) => { req.params.id = req.role.meeting_id; req.person = { club_id: req.role.club_id }; return sendAgenda(ext)(req, res); }));
+  /* any member or guest can download the agenda of a meeting in their club */
+  app.get(`/api/me/meetings/:id/agenda.${ext}`, needPerson, wrap(sendAgenda(ext)));
+}
 /* ───────── word of the day: fill in the details ───────── */
 app.post('/api/vpe/word-details', needPerson, needVpe, wrap(async (req, res) => {
   const { word, theme, quote } = req.body || {};

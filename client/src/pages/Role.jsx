@@ -190,9 +190,9 @@ function RoleBody({ data, token }) {
   const getAgenda = async () => {
     setAgBusy(true); setErr('');
     try {
-      const res = await fetch('/api/role/agenda.docx', { headers: { 'x-token': token } });
+      const res = await fetch('/api/role/agenda.pdf', { headers: { 'x-token': token } });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not get the agenda');
-      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'Agenda.docx';
+      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'Agenda.pdf';
       const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (e) { setErr(e.message); } finally { setAgBusy(false); }

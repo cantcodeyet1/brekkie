@@ -7,7 +7,7 @@ import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFo
 import PathCard from './PathCard.jsx';
 import RosterImport, { PathDone } from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
-import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Wcard, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Dashboard', icon: I.chart },
@@ -194,9 +194,9 @@ export function VpeMeeting() {
   const downloadAgenda = async () => {
     setPdfBusy(true);
     try {
-      const res = await fetch(`/api/vpe/meetings/${id}/agenda.docx`, { headers: { 'x-token': getToken() } });
+      const res = await fetch(`/api/vpe/meetings/${id}/agenda.pdf`, { headers: { 'x-token': getToken() } });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not create the agenda');
-      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `Agenda ${m.number}.docx`;
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `Agenda ${m.number}.pdf`;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -340,13 +340,16 @@ VPE, Champions Toastmasters Club`;
           <h1 className="pg" style={{ margin: '6px 0 2px' }}>{fmtDate(m.date)}</h1>
           <p className="lede" style={{ margin: 0 }}>{m.theme || 'No theme yet'}{m.word ? <> · Word of the day <b style={{ color: 'var(--ink)' }}>{m.word}</b></> : ''}</p>
         </div>
-        <Btn kind="ghost" sm onClick={downloadAgenda} disabled={pdfBusy}>{pdfBusy ? 'Preparing…' : 'Download agenda'}</Btn>
         <nav className="jump" aria-label="Sections">
           {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received']].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
         </nav>
       </div>
 
-      <Panel k="details" title="Theme and word of the day" hint="The Grammarian reads the word on their sheet, with its meaning and example.">
+      <Panel k="details" title="Theme and word of the day" hint="The Grammarian reads the word on their sheet, with its meaning and example."
+        right={<div className="ph-r"><div className="ph-pills">
+          <Link className="btn sm ghost" to={`/v/meetings/${id}/agenda`}>{I.cal}Configure agenda</Link>
+          <Btn sm kind="ghost" onClick={downloadAgenda} disabled={pdfBusy}>{I.dl}{pdfBusy ? 'Preparing…' : 'Agenda PDF'}</Btn>
+        </div></div>}>
         <div className="mgrid">
           <div className="mcol">
             <div className="lab blue" style={{ marginTop: 0 }}>The meeting</div>
@@ -357,16 +360,32 @@ VPE, Champions Toastmasters Club`;
           </div>
           <div className="mcol">
             <div className="lab blue" style={{ marginTop: 0 }}>Word of the day</div>
-            {field({ label: 'Word', k: 'word', ph: 'e.g. Assiduous' })}
-            <div style={{ margin: '10px 0 2px' }}><Btn sm kind="ghost" onClick={fillWord} disabled={wordBusy || !m.word}>{wordBusy ? 'Looking it up…' : 'Fill in the details'}</Btn>{wordNote && <p style={{ margin: '8px 0 0', fontSize: 13.5, color: 'var(--mute)' }}>{wordNote}</p>}</div>
-            <div className="two">{field({ label: 'Part of speech', k: 'pos', ph: 'adj.' })}{field({ label: 'Pronunciation', k: 'pron', ph: 'uh-SIJ-oo-us' })}</div>
-            {field({ label: 'Meaning', k: 'meaning', ph: 'What it means', area: true })}
-            {wordAlts.length > 0 && <div className="alts"><small>Other meanings. Tap one to use it.</small>{wordAlts.map((a, k) => <button type="button" key={k} className={m.meaning === a.text ? 'on' : ''} onClick={() => setField({ meaning: a.text, ...(a.pos ? { pos: a.pos } : {}) })}>{a.pos && <b>{a.pos}</b>} {a.text}</button>)}</div>}
-            {field({ label: 'Example', k: 'example', ph: 'Use it in a sentence', area: true })}
-            {field({ label: 'Synonyms', k: 'synonyms', ph: 'Diligent, Studious, Persevering' })}
-            {field({ label: 'Origin', k: 'origin', ph: 'Where the word comes from', area: true })}
+            <div className="wd">
+              <div className="wd-word">
+                <label className="fl" htmlFor="wd-w">Word</label>
+                <div className="wd-in">
+                  <input id="wd-w" className="inp" value={m.word || ''} placeholder="e.g. Assiduous" onChange={(e) => setField({ word: e.target.value })} />
+                  <button type="button" className="wd-fill" onClick={fillWord} disabled={wordBusy || !m.word} title="Look up the meaning, example and more">{wordBusy ? 'Looking it up…' : 'Fill in the rest'}</button>
+                </div>
+                {wordNote && <p className="wd-note">{wordNote}</p>}
+              </div>
+              <div className="wd-pos">
+                <label className="fl">Part of speech</label>
+                <div className="wd-chips" role="group" aria-label="Part of speech">
+                  {['noun', 'verb', 'adj.', 'adv.'].map((x) => <button type="button" key={x} className={(m.pos || '') === x ? 'on' : ''} aria-pressed={(m.pos || '') === x} onClick={() => setField({ pos: (m.pos || '') === x ? '' : x })}>{x}</button>)}
+                  {m.pos && !['noun', 'verb', 'adj.', 'adv.'].includes(m.pos) && <button type="button" className="on" onClick={() => setField({ pos: '' })}>{m.pos}</button>}
+                </div>
+              </div>
+              <div className="wd-pron">{field({ label: 'Pronunciation', k: 'pron', ph: 'uh-SIJ-oo-us' })}</div>
+              <div className="wd-meaning">
+                {field({ label: 'Meaning', k: 'meaning', ph: 'What it means', area: true })}
+                {wordAlts.length > 0 && <div className="alts"><small>Other meanings. Tap one to use it.</small>{wordAlts.map((a, k) => <button type="button" key={k} className={m.meaning === a.text ? 'on' : ''} onClick={() => setField({ meaning: a.text, ...(a.pos ? { pos: a.pos } : {}) })}>{a.pos && <b>{a.pos}</b>} {a.text}</button>)}</div>}
+              </div>
+              <div className="wd-example">{field({ label: 'Example', k: 'example', ph: 'Use it in a sentence', area: true })}</div>
+              <div className="wd-syn">{field({ label: 'Synonyms', k: 'synonyms', ph: 'Diligent, Studious, Persevering' })}</div>
+              <div className="wd-origin">{field({ label: 'Origin', k: 'origin', ph: 'Where the word comes from' })}</div>
+            </div>
           </div>
-          <div className="mcol mprev"><div className="lab" style={{ marginTop: 0 }}>What the Grammarian sees</div><Wcard m={m} /></div>
         </div>
       </Panel>
 
