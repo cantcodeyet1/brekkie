@@ -3197,3 +3197,5 @@ html,body{background:#F5F5F7}
 button.pc-part{border:1px solid transparent;cursor:pointer}
 button.pc-part:hover{border-color:#B8C2C8}
 .pc-part.pick{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+/* the note box can be dragged taller from its bottom-right corner */
+textarea.inp.jbody{resize:vertical;min-height:140px;max-height:80vh}
