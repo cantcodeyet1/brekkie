@@ -145,10 +145,17 @@ app.post('/api/auth/reset', wrap(async (req, res) => {
 /* Adds a member to a club, or brings an existing one (same email or same name) up to date. `run` is q or a transaction's query.
    A member can arrive with the path they are on and how many levels of it they have already finished. */
 const PATH_LEVELS = 5;
-async function setLevelsDone(run, personId, path, done) {
+/* `thisYear` is how many of the finished levels (the latest ones) were earned in the current program year; they are dated today
+   so they count towards this year's goals. Left out, each level keeps the date it already had. */
+async function setLevelsDone(run, personId, path, done, thisYear) {
+  const was = new Map((await run(`select level, ${DATE('done_on')} as d from member_levels where person_id=$1 and path=$2`, [personId, path])).map((x) => [x.level, x.d]));
   await run('delete from member_levels where person_id=$1', [personId]);
   const n = Math.max(0, Math.min(PATH_LEVELS, Number(done) || 0));
-  for (let l = 1; l <= n; l++) await run('insert into member_levels(person_id, path, level) values ($1,$2,$3) on conflict do nothing', [personId, path, l]);
+  const ty = thisYear === undefined || thisYear === null || thisYear === '' ? null : Math.max(0, Math.min(n, Number(thisYear) || 0));
+  for (let l = 1; l <= n; l++) {
+    const credit = ty === null ? !!was.get(l) : l > n - ty;
+    await run(`insert into member_levels(person_id, path, level, done_on) values ($1,$2,$3, case when $4::boolean then coalesce($5::date, current_date) end) on conflict do nothing`, [personId, path, l, credit, ty === null ? was.get(l) || null : null]);
+  }
   await run('update people set path_name=$1, path_level=$2 where id=$3', [path, Math.min(PATH_LEVELS, n + 1), personId]);
 }
 async function upsertMember(run, clubId, m) {
@@ -162,7 +169,7 @@ async function upsertMember(run, clubId, m) {
   if (p) await run('update people set phone=coalesce($1, phone), credential=case when $2<>\'\' then $2 else credential end where id=$3', [phone, cred, p.id]);
   else { [p] = await run(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [clubId, name, email || null, token(), cred, phone]); made = true; }
   const path = String(m.path_name || '').trim();
-  if (path && (await run('select 1 as x from path_projects where path=$1 limit 1', [path])).length) await setLevelsDone(run, p.id, path, m.levels_done);
+  if (path && (await run('select 1 as x from path_projects where path=$1 limit 1', [path])).length) await setLevelsDone(run, p.id, path, m.levels_done, m.levels_this_year);
   return { id: p.id, name: p.name, made };
 }
 
@@ -968,7 +975,7 @@ async function pathProgress(person) {
   const now = new Date().toISOString().slice(0, 10);
   for (const w of when.filter((x) => x.date >= now)) if (!sched.has(K(w.project_id, w.part))) sched.set(K(w.project_id, w.part), { date: w.date, venue: w.venue, plan: w.plan });
   for (const w of when.filter((x) => x.date < now).reverse()) if (!sched.has(K(w.project_id, w.part))) sched.set(K(w.project_id, w.part), { date: w.date, venue: w.venue, plan: w.plan });
-  const prior = new Set((await q('select level from member_levels where person_id=$1 and path=$2', [person.id, path])).map((x) => x.level));
+  const prior = new Map((await q(`select level, ${DATE('done_on')} as d from member_levels where person_id=$1 and path=$2`, [person.id, path])).map((x) => [x.level, x.d]));
   const levels = [];
   for (const r of rows) {
     let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, all: [] });
@@ -987,7 +994,8 @@ async function pathProgress(person) {
     const sel = el.filter((p) => p.done || picked.has(p.id));
     lv.prior = prior.has(lv.level);
     // a level finished before Brekkie: its required projects count as done (no dates are known) and no electives are left to pick
-    if (lv.prior) for (const p of req) { if (!p.done) p.done = { date: null, source: 'prior' }; for (const x of p.parts || []) if (!x.done) x.done = { date: null, source: 'prior' }; }
+    // (or it is dated, when the VPE said it was earned this program year, so it counts towards that year)
+    if (lv.prior) { const on = prior.get(lv.level) || null; for (const p of req) { if (!p.done) p.done = { date: on, source: 'prior' }; for (const x of p.parts || []) if (!x.done) x.done = { date: on, source: 'prior' }; } }
     lv.projects = [...req, ...sel];
     lv.options = el.filter((p) => !sel.includes(p)).map((p) => ({ id: p.id, name: p.name, length: p.length }));
     lv.to_pick = lv.prior ? 0 : Math.max(0, (lv.choose || 0) - sel.length);
@@ -1177,7 +1185,11 @@ app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const assigned = await counts(`select r.person_id as pid, count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id is not null group by r.person_id`);
   const done = await counts(`select r.person_id as pid, count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id is not null and m.date < current_date group by r.person_id`);
   const given = await counts(`select r.person_id as pid, count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id is not null and r.submitted_at is not null group by r.person_id`);
-  res.json(people.map((p) => ({ ...p, acct: p.has_pw ? 'active' : p.invited_at ? 'invited' : 'none', roles_played: assigned[p.id] || 0, speeches: speeches[p.id] || 0, roles_done: done[p.id] || 0, feedback_given: given[p.id] || 0 })));
+  // levels logged as finished this program year, so the edit form can show them
+  const ys = programYear(new Date().toISOString().slice(0, 10)).start;
+  const levelsYear = Object.fromEntries((await q(`select ml.person_id as pid, count(*)::int as n from member_levels ml join people p on p.id=ml.person_id where p.club_id=$1 and ml.done_on >= $2::date group by ml.person_id`, [club, ys])).map((r) => [r.pid, r.n]));
+  const levelsLogged = Object.fromEntries((await q(`select ml.person_id as pid, count(*)::int as n from member_levels ml join people p on p.id=ml.person_id where p.club_id=$1 group by ml.person_id`, [club])).map((r) => [r.pid, r.n]));
+  res.json(people.map((p) => ({ ...p, levels_this_year: levelsYear[p.id] || 0, levels_done: levelsLogged[p.id] || 0, acct: p.has_pw ? 'active' : p.invited_at ? 'invited' : 'none', roles_played: assigned[p.id] || 0, speeches: speeches[p.id] || 0, roles_done: done[p.id] || 0, feedback_given: given[p.id] || 0 })));
 }));
 app.post('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const { name, email, kind } = req.body, cred = String(req.body.credential || '').trim().slice(0, 20), phone = String(req.body.phone || '').trim().slice(0, 30) || null;
@@ -1185,8 +1197,22 @@ app.post('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const clean = String(name || '').trim();
   if (clean.length < 2) return bad(res, 'Enter a name');
   const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [req.person.club_id, clean, email || null, token(), cred, phone]);
-  if (req.body.path_name) await upsertMember(q, req.person.club_id, { name: clean, email, path_name: req.body.path_name, levels_done: req.body.levels_done });
+  if (req.body.path_name) await upsertMember(q, req.person.club_id, { name: clean, email, path_name: req.body.path_name, levels_done: req.body.levels_done, levels_this_year: req.body.levels_this_year });
   res.json(pub(p));
+}));
+/* which rows of a file are already in the club (by email, then name), with what Brekkie holds for them, so the VPE can choose to update */
+app.post('/api/vpe/people/import/match', needPerson, needVpe, wrap(async (req, res) => {
+  const club = req.person.club_id, ys = programYear(new Date().toISOString().slice(0, 10)).start;
+  const out = [];
+  for (const m of (Array.isArray(req.body.members) ? req.body.members : []).slice(0, 300)) {
+    const name = String(m.name || '').trim().replace(/\s+/g, ' '), email = normEmail(m.email);
+    let [p] = email ? await q('select * from people where club_id=$1 and lower(email)=$2', [club, email]) : [];
+    if (!p) [p] = await q(`select * from people where club_id=$1 and lower(name)=lower($2) and kind='member' and status<>'inactive'`, [club, name]);
+    if (!p) { out.push(null); continue; }
+    const [lv] = await q('select count(*)::int as n, count(*) filter (where done_on >= $2::date)::int as y from member_levels where person_id=$1', [p.id, ys]);
+    out.push({ id: p.id, name: p.name, phone: p.phone, credential: p.credential, path_name: p.path_name, path_level: p.path_level, levels_done: lv.n, levels_this_year: lv.y });
+  }
+  res.json(out);
 }));
 /* the roster, in one go: from the Toastmasters Club Central export, with each member's path and finished levels */
 app.post('/api/vpe/people/import', needPerson, needVpe, wrap(async (req, res) => {
@@ -1212,7 +1238,7 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
     email = e || null;
   }
   if ('path_name' in b) await q('update people set path_name=$1, path_level=$2 where id=$3', [b.path_name || null, b.path_name ? (Number(b.path_level) || null) : null, p.id]);
-  if ('levels_done' in b && (b.path_name || p.path_name)) await setLevelsDone(q, p.id, b.path_name || p.path_name, b.levels_done);
+  if ('levels_done' in b && (b.path_name || p.path_name)) await setLevelsDone(q, p.id, b.path_name || p.path_name, b.levels_done, b.levels_this_year);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
   await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,phone=$8,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential, phone]);
@@ -1258,12 +1284,45 @@ app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res
   const given = await givenFor(p.id);
   const mine = (rows) => rows.filter((r) => r.pid === p.id);
   res.json({
-    person: p, projects, roles, given, path: p.kind === 'guest' ? null : await pathProgress(p),
+    person: p, journal_count: (await q('select count(*)::int as n from member_notes where person_id=$1', [p.id]))[0].n, projects, roles, given, path: p.kind === 'guest' ? null : await pathProgress(p),
     received: {
       gram: mine(hist.gram).reverse(), fill: mine(hist.fill).reverse(), time: mine(hist.time).reverse(),
       roleFeedback: mine(hist.rolefb).reverse(), peer: mine(hist.peer).reverse(),
     },
   });
+}));
+
+/* the VPE's private journal on a member: dated notes from conversations, written in markdown */
+const noteRow = (n) => ({ id: n.id, body: n.body, date: n.d, created_at: n.created_at });
+const NOTE_COLS = `n.id, n.body, ${DATE('n.noted_on')} as d, n.created_at`;
+const ownMember = async (req) => (await q('select id from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]))[0];
+app.get('/api/vpe/people/:id/journal', needPerson, needVpe, wrap(async (req, res) => {
+  if (!(await ownMember(req))) return bad(res, 'Not found', 404);
+  res.json((await q(`select ${NOTE_COLS} from member_notes n where n.person_id=$1 and n.club_id=$2 order by n.noted_on desc, n.id desc`, [req.params.id, req.person.club_id])).map(noteRow));
+}));
+const noteFields = (b, cur = {}) => {
+  const body = 'body' in b ? String(b.body || '').trim().slice(0, 8000) : cur.body;
+  const date = 'date' in b ? b.date : cur.date;
+  if (!body) return { error: 'Write a note first' };
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: 'Enter a valid date' };
+  return { body, date: date || null };
+};
+app.post('/api/vpe/people/:id/journal', needPerson, needVpe, wrap(async (req, res) => {
+  if (!(await ownMember(req))) return bad(res, 'Not found', 404);
+  const f = noteFields(req.body); if (f.error) return bad(res, f.error);
+  const [n] = await q(`insert into member_notes(club_id, person_id, body, noted_on, created_by) values ($1,$2,$3,coalesce($4::date, current_date),$5) returning id, body, ${DATE('noted_on')} as d, created_at`, [req.person.club_id, req.params.id, f.body, f.date, req.person.id]);
+  res.json(noteRow(n));
+}));
+app.patch('/api/vpe/journal/:id', needPerson, needVpe, wrap(async (req, res) => {
+  const [cur] = await q(`select ${NOTE_COLS} from member_notes n where n.id=$1 and n.club_id=$2`, [req.params.id, req.person.club_id]);
+  if (!cur) return bad(res, 'Not found', 404);
+  const f = noteFields(req.body, { body: cur.body, date: cur.d }); if (f.error) return bad(res, f.error);
+  await q('update member_notes set body=$2, noted_on=coalesce($3::date, noted_on), updated_at=now() where id=$1', [cur.id, f.body, f.date]);
+  res.json({ ok: true });
+}));
+app.delete('/api/vpe/journal/:id', needPerson, needVpe, wrap(async (req, res) => {
+  const r = await q('delete from member_notes where id=$1 and club_id=$2 returning id', [req.params.id, req.person.club_id]);
+  r.length ? res.json({ ok: true }) : bad(res, 'Not found', 404);
 }));
 
 /* ───────── room feedback: public, reached by the QR code ───────── */

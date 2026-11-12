@@ -81,4 +81,5 @@ export function fromClubCentral(csv) {
 export const toMembers = (rows) => rows.filter((r) => r.on).map((r) => ({
   name: r.name, email: r.email, phone: r.phone, credential: r.credential,
   path_name: r.path_name || '', levels_done: r.path_name ? Number(r.levels_done) || 0 : 0,
+  levels_this_year: r.path_name ? Math.min(Number(r.levels_this_year) || 0, Number(r.levels_done) || 0) : 0,
 }));

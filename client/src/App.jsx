@@ -9,6 +9,7 @@ import RoleApp from './pages/Role.jsx';
 import Agenda from './pages/Agenda.jsx';
 import { ReceivedPage, SubmissionPage, VPE_NAV, VpeMeeting, VpePeople, VpePerson } from './pages/Vpe.jsx';
 import Roster from './pages/Roster.jsx';
+import JournalPage from './pages/Journal.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Calendar from './pages/Calendar.jsx';
 import Landing from './pages/Landing.jsx';
@@ -107,6 +108,7 @@ function VpeArea() {
         <Route path="evaluations/:id" element={<EvaluationDetail vpe />} />
         <Route path="sheets/:id" element={<SubmissionPage />} />
         <Route path="members/:id/received/:kind" element={<ReceivedPage />} />
+        <Route path="members/:id/journal" element={<JournalPage />} />
       </Routes>
       {acct && <AccountModal showPath portal admin={!!data.super} account={acc.data} onClose={() => { setAcct(false); acc.reload(); }} onSignOut={signOut(nav)} />}
     </Shell>

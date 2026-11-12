@@ -697,8 +697,8 @@ function ImportModal({ onClose, onDone }) {
   };
   return (
     <Modal title="Import your roster" onClose={onClose} wide>
-      <p style={{ color: 'var(--mute)', fontSize: 14.5, margin: '6px 0 12px' }}>Export your club roster from Club Central and choose the file. People already in Brekkie are matched by email or name and brought up to date, not added twice. Paths and levels come from the credentials in the file; fix any that are wrong.</p>
-      <RosterImport rows={rows} onRows={setRows} />
+      <p style={{ color: 'var(--mute)', fontSize: 14.5, margin: '6px 0 12px' }}>Export your club roster from Club Central and choose the file. People already in Brekkie are matched by email or name and start unticked: choose Update details to bring their phone, title, path and level up to date. Every level before the one you pick counts as finished; say which were earned this program year so they count towards your goals.</p>
+      <RosterImport rows={rows} onRows={setRows} matchExisting />
       {err && <p className="err">{err}</p>}
       <div className="row-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={go} disabled={busy || !rows.some((r) => r.on)}>{busy ? 'Importing…' : `Import ${rows.filter((r) => r.on).length || ''}`.trim()}</Btn></div>
     </Modal>
@@ -711,7 +711,7 @@ function AddPerson({ onClose, onDone, onInvite }) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [cred, setCred] = useState('TM');
-  const [pd, setPd] = useState({ path_name: '', levels_done: 0 });
+  const [pd, setPd] = useState({ path_name: '', levels_done: 0, levels_this_year: 0 });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const go = async () => {
@@ -732,7 +732,7 @@ function AddPerson({ onClose, onDone, onInvite }) {
       <label className="fl">Toastmasters title on the agenda (optional)</label><input className="inp" value={cred} onChange={(e) => setCred(e.target.value)} placeholder="TM, DTM, ACB…" maxLength={20} />
       {kind === 'member' && <>
         <label className="fl">Pathways path and current level (optional)</label>
-        <PathDone path={pd.path_name} done={pd.levels_done} onChange={setPd} />
+        <PathDone path={pd.path_name} done={pd.levels_done} thisYear={pd.levels_this_year} onChange={setPd} />
         <p className="fine" style={{ margin: '6px 0 0' }}>Every level before the one you pick is logged as finished, so you do not need the individual projects or dates.</p>
       </>}
       {err && <p className="err">{err}</p>}
@@ -886,7 +886,7 @@ export function BulkInvite({ people, club, onClose, onDone }) {
 /* edit a member's details from their settings menu */
 function EditPerson({ person, onClose, onSaved }) {
   const [f, setF] = useState({ name: person.name, email: person.email || '', phone: person.phone || '', credential: person.credential || '' });
-  const [pd, setPd] = useState({ path_name: person.path_name || '', levels_done: Math.max(0, (person.path_level || 1) - 1) });
+  const [pd, setPd] = useState({ path_name: person.path_name || '', levels_done: Math.max(0, (person.path_level || 1) - 1), levels_this_year: person.levels_this_year || 0 });
   const [pdTouched, setPdTouched] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -903,7 +903,7 @@ function EditPerson({ person, onClose, onSaved }) {
       <label className="fl">Toastmasters title on the agenda</label><input className="inp" value={f.credential} onChange={set('credential')} placeholder="TM, DTM, ACB…" maxLength={20} />
       {person.kind !== 'guest' && <>
         <label className="fl">Pathways path and current level</label>
-        <PathDone path={pd.path_name} done={pd.levels_done} onChange={(v) => { setPd(v); setPdTouched(true); }} />
+        <PathDone path={pd.path_name} done={pd.levels_done} thisYear={pd.levels_this_year} onChange={(v) => { setPd(v); setPdTouched(true); }} />
         <p className="fine" style={{ margin: '6px 0 0' }}>Levels before this one are logged as finished before Brekkie. Projects done at meetings count on their own.</p>
       </>}
       {err && <p className="err">{err}</p>}
@@ -963,6 +963,7 @@ export function VpePerson() {
             <span>Agenda title: {p.credential || 'none'}</span>
           </div>
         </div>
+        <Link className="jlink" to={`/v/members/${p.id}/journal`}>{I.pencil}<span>Journal</span>{data.journal_count > 0 && <em>{data.journal_count}</em>}{I.chev}</Link>
         <div className="pset">
           {!visitor && <Status kind={p.has_pw ? 'ok' : p.invited_at ? 'up' : 'fin'}>{p.has_pw ? 'Signed in' : p.invited_at ? 'Invited' : 'Not invited yet'}</Status>}
           <button type="button" className="ibtn pset-b" onClick={(e) => { e.stopPropagation(); setMenu(!menu); }} aria-label="Settings" aria-expanded={menu}>{I.more}</button>
@@ -1023,6 +1024,7 @@ export function VpePerson() {
           {Object.entries(RECEIVED).map(([k, K]) => <Rec key={k} title={K.title} count={K.pick(received).length} to={`/v/members/${id}/received/${k}`} />)}
         </div>
       </div>
+
       {viewing && <SubmissionViewer id={viewing} list={given.map((g) => ({ id: g.id, label: g.label, person: p.name, submitted_at: g.submitted_at }))} onGo={setViewing} onClose={() => setViewing(null)} remind={() => '#'} />}
     </Page>
   );

@@ -177,7 +177,7 @@ function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
                   <span className="it-s" aria-hidden="true">{it.state === 'done' ? I.check : ''}</span>
                   <span className="it-t"><b>{it.code || 'Elective'}</b><span>{it.id ? it.name : 'Choose an elective'}</span></span>
                   <span className="it-d">
-                    {it.state === 'done' ? <><em>{it.source === 'prior' ? 'Done before Brekkie' : <>Done {short(it.date)}</>}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
+                    {it.state === 'done' ? <><em>{it.source === 'prior' ? (it.date ? <>Logged {short(it.date)}</> : 'Done before Brekkie') : <>Done {short(it.date)}</>}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
                       : it.state === 'sched' || it.state === 'due' ? <><em>{it.state === 'due' ? 'Was ' : ''}{short(it.date)}{it.venue ? ` · ${it.venue}` : ''}</em><button type="button" className={it.state === 'due' ? 'go' : ''} onClick={stop(() => onDone(m, it, lv))}>{I.check} Mark done</button></>
                       : it.id ? <button type="button" onClick={stop(() => onSchedule(m, it))}>Schedule</button>
                       : <Link to={`/v/members/${m.id}?level=${lv}`} onClick={(ev) => ev.stopPropagation()}>Choose</Link>}

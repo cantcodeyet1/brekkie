@@ -271,6 +271,23 @@ create table if not exists member_levels (
   primary key (person_id, path, level)
 );
 
+-- a level logged as finished can be dated, so it counts in that program year's Distinguished Club Program (no date: earned earlier)
+alter table member_levels add column if not exists done_on date;
+
+-- the VPE's journal on each member: dated notes from conversations, filed under a topic (their why, areas to improve, speech feedback...)
+create table if not exists member_notes (
+  id serial primary key,
+  club_id int not null references clubs(id) on delete cascade,
+  person_id int not null references people(id) on delete cascade,
+  topic text not null default 'chat',
+  body text not null,
+  noted_on date not null default current_date,
+  created_by int references people(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists member_notes_person_idx on member_notes(person_id, noted_on desc);
+
 -- what the platform owner did from the super admin page, so every reset link issued is on record
 create table if not exists admin_log (
   id serial primary key,
