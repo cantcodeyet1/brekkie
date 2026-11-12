@@ -46,7 +46,9 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
     setBusy(id);
     try { await fn(); await prog.reload(); if (msg) toast(msg); } catch (e) { toast(e.message); } finally { setBusy(null); }
   };
-  const mark = (p, done) => call(p.id, () => api(`/vpe/people/${person.id}/projects`, { method: 'POST', body: { project_id: p.id, done, ...(done && p.sched && p.sched.date <= new Date().toISOString().slice(0, 10) ? { date: p.sched.date } : {}) } }), done ? `${p.name} marked as done` : 'Marked as not done');
+  // a project made of parts is marked one part at a time: `part` is the one the VPE picked on its chips
+  const mark = (p, done, part, at) => call(p.id, () => api(`/vpe/people/${person.id}/projects`, { method: 'POST', body: { project_id: p.id, done, ...(part ? { part } : {}), ...(done && at && at.date <= new Date().toISOString().slice(0, 10) ? { date: at.date } : {}) } }), done ? `${p.name}${part ? `, part ${part},` : ''} marked as done` : 'Marked as not done');
+  const [sel, setSel] = useState({});   // the part picked on each project that has parts
   const elective = (id, on) => call(id, () => api(`/vpe/people/${person.id}/electives`, { method: 'POST', body: { project_id: id, on } }), on ? 'Elective added' : 'Elective removed');
 
   const head = (
@@ -68,19 +70,36 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
 
   const row = (p) => {
     const isNext = d.next?.id === p.id && lv.level === d.current;
+    // for a project with parts, everything below (scheduled, done, Schedule, Mark done) is about the part picked on the chips
+    const multi = !!p.parts && !p.done;
+    const pn = multi ? (sel[p.id] ?? p.next_part ?? p.parts[0].n) : null;
+    const cur = multi ? p.parts.find((x) => x.n === pn) : p;
+    const evalPart = multi && cur.kind === 'evaluator';
+    const today = new Date().toISOString().slice(0, 10);
     return (
       <li key={p.id} className={(p.done ? 'is-done ' : '') + (isNext ? 'is-next' : '')}>
         <span className="pc-ic">{p.done ? I.check : isNext ? <i className="pulse" /> : null}</span>
-        <span className="pc-t">{isNext && <em className="pc-tag">Next up</em>}<b>{p.name}</b><small>{p.code ? `${p.code} · ` : ''}{p.kind === 'elective' ? 'Elective' : 'Required'}{p.length ? ` · ${p.length}` : ''}</small>{p.parts && <span className="pc-parts">{p.parts.map((x) => <span key={x.n} className={'pc-part' + (x.done ? ' dn' : x.sched ? ' bk' : '')} title={x.done ? 'Done' : x.sched ? `Scheduled ${x.sched.date}` : 'Not scheduled'}>{x.done ? I.check : null}{x.label}</span>)}</span>}{!p.done && p.sched && <small className="pc-when">{p.sched.date < new Date().toISOString().slice(0, 10) ? 'Was scheduled' : 'Scheduled'} {fmtDate(p.sched.date, { weekday: 'short', day: 'numeric', month: 'short' })}{p.sched.venue ? ` at ${p.sched.venue}` : ''}</small>}</span>
+        <span className="pc-t">{isNext && <em className="pc-tag">Next up</em>}<b>{p.name}</b><small>{p.code ? `${p.code} · ` : ''}{p.kind === 'elective' ? 'Elective' : 'Required'}{p.length ? ` · ${p.length}` : ''}</small>
+          {p.parts && <span className="pc-parts" role={multi ? 'group' : undefined} aria-label="Parts">{p.parts.map((x) => {
+            const state = x.done ? ' dn' : x.sched ? ' bk' : '';
+            const inner = <>{x.done ? I.check : null}{x.label}</>;
+            const tip = x.done ? 'Done' : x.sched ? `Scheduled ${x.sched.date}` : 'Not scheduled';
+            return multi
+              ? <button type="button" key={x.n} className={'pc-part' + state + (x.n === pn ? ' pick' : '')} aria-pressed={x.n === pn} title={tip} onClick={() => setSel({ ...sel, [p.id]: x.n })}>{inner}</button>
+              : <span key={x.n} className={'pc-part' + state} title={tip}>{inner}</span>;
+          })}</span>}
+          {!cur.done && cur.sched && <small className="pc-when">{multi ? `${cur.label}: ` : ''}{cur.sched.date < today ? 'Was scheduled' : 'Scheduled'} {fmtDate(cur.sched.date, { weekday: 'short', day: 'numeric', month: 'short' })}{cur.sched.venue ? ` at ${cur.sched.venue}` : ''}</small>}
+          {evalPart && !cur.done && !cur.sched && <small className="pc-when">Given from an evaluator slot on the roster. Mark it done once they have evaluated.</small>}
+        </span>
         <span className="pc-a">
-          {p.done
-            ? <><small>{p.done.source === 'prior' ? (p.done.date ? `Logged ${fmtDate(p.done.date, { day: 'numeric', month: 'short' })}` : 'Before Brekkie') : p.done.source === 'evaluation' ? `Evaluated, meeting ${p.done.meeting}` : fmtDate(p.done.date, { day: 'numeric', month: 'short' })}{p.done.venue ? ` at ${p.done.venue}` : ''}</small>{!mine && p.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false)} disabled={busy === p.id}>Undo</button>}</>
+          {cur.done
+            ? <><small>{multi ? `${cur.label}: ` : ''}{cur.done.source === 'prior' ? (cur.done.date ? `Logged ${fmtDate(cur.done.date, { day: 'numeric', month: 'short' })}` : 'Before Brekkie') : cur.done.source === 'evaluation' ? `Evaluated, meeting ${cur.done.meeting}` : fmtDate(cur.done.date, { day: 'numeric', month: 'short' })}{cur.done.venue ? ` at ${cur.done.venue}` : ''}</small>{!mine && cur.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false, multi ? pn : undefined)} disabled={busy === p.id}>Undo</button>}</>
             : <>
-                {canPlan && !p.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code })}>Schedule</button>}
-                {canPlan && p.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(p.sched.plan)}>Unschedule</button>}
+                {canPlan && !cur.sched && !evalPart && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code, ...(multi ? { part: pn } : {}) })}>Schedule{multi ? ` ${cur.label.toLowerCase()}` : ''}</button>}
+                {canPlan && cur.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(cur.sched.plan)}>Unschedule</button>}
               {!mine && <>
                 {p.kind === 'elective' && <button type="button" className="lnk" onClick={() => elective(p.id, false)} disabled={busy === p.id}>Remove</button>}
-                <Btn sm kind={isNext ? '' : 'ghost'} onClick={() => mark(p, true)} disabled={busy === p.id}>{isNext && I.check} Mark done</Btn>
+                <Btn sm kind={isNext ? '' : 'ghost'} onClick={() => mark(p, true, multi ? pn : undefined, cur.sched)} disabled={busy === p.id}>{isNext && I.check} Mark done{multi ? ` ${cur.label.toLowerCase()}` : ''}</Btn>
               </>}
               </>}
         </span>

@@ -3192,3 +3192,8 @@ html,body{background:#F5F5F7}
 .jact.del:hover{background:#FBE5E3;color:#B3261E}
 .jact svg{width:15px;height:15px}
 @media (max-width:520px){.jact span{display:none}.jact{padding:0 9px}}
+
+/* the chips of a project with parts pick the part that Schedule and Mark done act on */
+button.pc-part{border:1px solid transparent;cursor:pointer}
+button.pc-part:hover{border-color:#B8C2C8}
+.pc-part.pick{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
