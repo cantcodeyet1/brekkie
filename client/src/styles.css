@@ -2997,8 +2997,8 @@ html,body{background:#F5F5F7}
 .pc-parts{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .pc-part{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;background:#F5F5F7;color:var(--mute);font:600 11.5px var(--head)}
 .pc-part svg{width:11px;height:11px}
-.pc-part.on{background:#3F7D5C1A;color:#2F6B4C}
-.pc-part.sc{background:#1F5E8C14;color:var(--blue)}
+.pc-part.dn{background:#3F7D5C1A;color:#2F6B4C}
+.pc-part.bk{background:#1F5E8C14;color:var(--blue)}
 
 /* the join prompt on the member home: one card, icon and words on the left, the button on the right */
 .mr-join{padding:22px 28px}

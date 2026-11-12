@@ -36,7 +36,9 @@ export function forecastMember(prog, { year, today }) {
       e.date = items.filter((x) => x.state === 'done' && x.date).map((x) => x.date).sort().at(-1) || null;
       // a level finished before Brekkie has no date: it counts as earned earlier, not in this program year
       e.state = !e.date || e.date < year.start ? 'earlier' : 'done';
-    } else if (l.level >= (prog.current ?? 0)) {
+    } else if (l.level === (prog.current ?? 0) || (l.level > (prog.current ?? 0) && items.some((x) => x.state === 'sched' || x.state === 'due'))) {
+      // the level they are on is always a prospect. A level further up only shows once something in it is scheduled,
+      // so the dashboard lists real prospects: nobody appears on Level 3 before they have finished Level 2.
       e.state = e.unscheduled ? 'open' : 'forecast';
       if (e.state === 'forecast') e.date = items.filter((x) => x.state === 'sched' || x.state === 'due').map((x) => x.date).sort().at(-1);
     }
