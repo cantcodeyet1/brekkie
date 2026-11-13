@@ -5,7 +5,7 @@ import { getToken, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, LEVELN, cap, cardOf, fmtDate, longDate, mean, mmss, sum } from '../data.js';
 import { EvalSheet, printEval } from '../EvalSheet.jsx';
 import { api } from '../api.js';
-import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Page, SkPage, SkRows, useDesk, useToast } from '../ui.jsx';
+import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Lines, Page, SkPage, SkRows, useDesk, useToast } from '../ui.jsx';
 
 /* The member area is three big, plainly named places: Home, Meetings, Speeches. */
 export const MEMBER_NAV = [];   // no menu: Home is the only hub, every other page has a Back button
@@ -185,9 +185,9 @@ export function MeetingDetail() {
             <div className="ent-h"><b style={{ fontSize: 17 }}>{sp.project}</b><span>{sp.seconds != null && mmss(sp.seconds)}</span></div>
             <div className="by">“{sp.title}” · evaluated by <b>{sp.by}</b></div>
             <div className="score"><b>{avg.toFixed(1)}</b><span>out of 5</span></div>
-            <div className="note g"><i>You did well at</i>{sp.excelled}</div>
-            <div className="note m" style={{ marginTop: 10 }}><i>To work on</i>{sp.work}</div>
-            <div className="note" style={{ marginTop: 10 }}><i>Challenge yourself</i>{sp.challenge}</div>
+            <div className="note g"><i>You did well at</i><Lines text={sp.excelled} /></div>
+            <div className="note m" style={{ marginTop: 10 }}><i>To work on</i><Lines text={sp.work} /></div>
+            <div className="note" style={{ marginTop: 10 }}><i>Challenge yourself</i><Lines text={sp.challenge} /></div>
             <div className="btnrow"><Link className="btn ghost sm" style={{ textDecoration: 'none' }} to={`/m/speeches/${sp.id}`}>See the full evaluation</Link><Btn sm onClick={async () => printEval(await fetch(`/api/me/evaluations/${sp.id}`, { headers: { 'x-token': localStorage.getItem('brekkie_token') } }).then((r) => r.json()))}>{I.dl} Download PDF</Btn></div>
           </div>
         </Sect>
@@ -423,9 +423,9 @@ export function EvaluationDetail({ vpe }) {
         </li>
       </ul>
       <div className="lab">Ratings</div>{ratingList(e)}
-      <div className="lab blue">You excelled at</div><p className="note g" style={{ margin: 0 }}>{e.excelled || 'Nothing recorded'}</p>
-      <div className="lab maroon">You may want to work on</div><p className="note m" style={{ margin: 0 }}>{e.work || 'Nothing recorded'}</p>
-      <div className="lab">To challenge yourself</div><p className="note" style={{ margin: 0 }}>{e.challenge || 'Nothing recorded'}</p>
+      <div className="lab blue">You excelled at</div><div className="note g" style={{ margin: 0 }}>{e.excelled ? <Lines text={e.excelled} /> : 'Nothing recorded'}</div>
+      <div className="lab maroon">You may want to work on</div><div className="note m" style={{ margin: 0 }}>{e.work ? <Lines text={e.work} /> : 'Nothing recorded'}</div>
+      <div className="lab">To challenge yourself</div><div className="note" style={{ margin: 0 }}>{e.challenge ? <Lines text={e.challenge} /> : 'Nothing recorded'}</div>
     </>
   );
   return (

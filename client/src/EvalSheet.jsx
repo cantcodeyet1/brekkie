@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Lines } from './ui.jsx';
 import { CRIT, LEVELN, longDate } from './data.js';
 
 const CLUB = 'Champions Toastmasters Club';
@@ -20,9 +21,9 @@ export function EvalSheet({ e }) {
           <h4>Notes for the Evaluator</h4><p>{e.notes}</p><p>About this speech:</p>
           <ul className="tri">{(e.about || []).map((x, i) => <li key={i}>{x}</li>)}</ul>
           <h4>General Comments</h4>
-          <div className="gc"><span>You excelled at:</span>{e.excelled}</div>
-          <div className="gc"><span>You may want to work on:</span>{e.work}</div>
-          <div className="gc"><span>To challenge yourself:</span>{e.challenge}</div>
+          <div className="gc"><span>You excelled at:</span><Lines text={e.excelled} /></div>
+          <div className="gc"><span>You may want to work on:</span><Lines text={e.work} /></div>
+          <div className="gc"><span>To challenge yourself:</span><Lines text={e.challenge} /></div>
         </div>
         <Foot n={1} />
       </div>

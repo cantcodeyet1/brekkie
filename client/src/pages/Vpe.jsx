@@ -7,7 +7,7 @@ import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFo
 import PathCard from './PathCard.jsx';
 import RosterImport, { PathDone } from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
-import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, Lines, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Dashboard', icon: I.chart },
@@ -560,9 +560,9 @@ export function SubmissionBody({ d, cur, error, loading, remind, flat }) {
           <Card><div className="who">{e.speaker}</div><b>{e.path}, Level {e.level}: {e.project}</b><div style={{ color: 'var(--mute)', fontSize: 14 }}>“{e.title}”{e.seconds != null ? ` · ${mmss(e.seconds)}` : ''}</div>
             <div className="score"><b>{avg ? avg.toFixed(1) : '-'}</b><span>out of 5</span></div></Card>
           <div className="list">{CRIT.map(([n], k) => { const v = e.ratings?.[k] || 0; return <div className="rrow" key={n}><div className="rh"><b>{n}</b><span className="scale">{[1, 2, 3, 4, 5].map((q) => <u key={q} className={q <= v ? (v >= 4 ? 'hi' : v === 3 ? 'mid' : 'lo') : ''} />)}</span><span className="v">{v ? `${v} · ${LEVELN[v]}` : 'Not rated'}</span></div>{e.comments?.[k] && <p>{e.comments[k]}</p>}</div>; })}</div>
-          <div className="note g" style={{ marginTop: 14 }}><i>Excelled at</i>{e.excelled || 'Nothing recorded'}</div>
-          <div className="note m" style={{ marginTop: 10 }}><i>May want to work on</i>{e.work || 'Nothing recorded'}</div>
-          <div className="note" style={{ marginTop: 10 }}><i>Challenge</i>{e.challenge || 'Nothing recorded'}</div></>); })() : <p className="lede">No evaluation recorded.</p>)}
+          <div className="note g" style={{ marginTop: 14 }}><i>Excelled at</i>{e.excelled ? <Lines text={e.excelled} /> : 'Nothing recorded'}</div>
+          <div className="note m" style={{ marginTop: 10 }}><i>May want to work on</i>{e.work ? <Lines text={e.work} /> : 'Nothing recorded'}</div>
+          <div className="note" style={{ marginTop: 10 }}><i>Challenge</i>{e.challenge ? <Lines text={e.challenge} /> : 'Nothing recorded'}</div></>); })() : <p className="lede">No evaluation recorded.</p>)}
         {d && d.role.key === 'general_evaluator' && <>
           {d.comments.length > 0 && <><div className="lab" style={{ marginTop: 0 }}>Comments on role players</div>{d.comments.map((c, k) => <Card key={k}><div className="who">{c.person} · {c.role}</div>{c.well && <div className="note g"><i>Went well</i>{c.well}</div>}{c.improve && <div className="note m" style={{ marginTop: 8 }}><i>To improve</i>{c.improve}</div>}</Card>)}</>}
           <div className="lab">Checklist</div>

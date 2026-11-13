@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, evalFormUrl, partOf, longDate, mmss, secs, sum } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
-import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
+import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Lines, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
 
 /* ───────── helpers ───────── */
 const Paras = ({ t, v }) => t.split('\n\n').map((x, i) => <p key={i}>{fill(x, v || {})}</p>);
@@ -117,9 +117,9 @@ function SpeakerBody({ data, token }) {
           <div className="mb-card pt-card"><div className="pt-lab">Your feedback</div>
             {!got && <p className="pt-txt">{partners.length ? 'Your evaluator has not submitted it yet. It appears here as soon as they do.' : 'It appears here once your evaluator has submitted it.'}</p>}
             {got && <>
-              {e.excelled && <div className="pt-fb good"><small>You excelled at</small><p>{e.excelled}</p></div>}
-              {e.work && <div className="pt-fb bad"><small>You may want to work on</small><p>{e.work}</p></div>}
-              {e.challenge && <div className="pt-fb"><small>To challenge yourself</small><p>{e.challenge}</p></div>}
+              {e.excelled && <div className="pt-fb good"><small>You excelled at</small><div><Lines text={e.excelled} /></div></div>}
+              {e.work && <div className="pt-fb bad"><small>You may want to work on</small><div><Lines text={e.work} /></div></div>}
+              {e.challenge && <div className="pt-fb"><small>To challenge yourself</small><div><Lines text={e.challenge} /></div></div>}
               {rated.length > 0 && <div className="pt-rates">{rated.map((x) => <span className="pt-rate" key={x.n}>{x.n}<b>{x.v}</b></span>)}</div>}
               <div className="pt-acts"><button type="button" className="mh-btn mh-main" onClick={official} disabled={busy}>{I.dl} {busy ? 'Filling in the form…' : 'Download on the official form'}</button></div>
               {err && <p className="err">{err}</p>}
@@ -829,9 +829,9 @@ function EvalReport({ who, target, sheet }) {
       <div className="rep-hero"><small>Evaluation of</small><b>{who}</b><p>“{target.speech_title || 'Untitled'}”</p></div>
       {!any && <RepEmpty />}
       {any && <>
-        {sheet.excelled && <Rep title="You excelled at"><p className="rep-t">{sheet.excelled}</p></Rep>}
-        {sheet.work && <Rep title="You may want to work on"><p className="rep-t">{sheet.work}</p></Rep>}
-        {sheet.challenge && <Rep title="To challenge yourself"><p className="rep-t">{sheet.challenge}</p></Rep>}
+        {sheet.excelled && <Rep title="You excelled at"><div className="rep-t"><Lines text={sheet.excelled} /></div></Rep>}
+        {sheet.work && <Rep title="You may want to work on"><div className="rep-t"><Lines text={sheet.work} /></div></Rep>}
+        {sheet.challenge && <Rep title="To challenge yourself"><div className="rep-t"><Lines text={sheet.challenge} /></div></Rep>}
         {rated.length > 0 && <Rep title="Your ratings" sub={`${rated.length} of ${CRIT.length}`}>
           {high.length > 0 && <RepLine label="Strongest" kind="blue">{high.map((x) => `${x.n} (${x.v})`).join(', ')}</RepLine>}
           {low.length > 0 && <RepLine label="Room to grow" kind="maroon">{low.map((x) => `${x.n} (${x.v})`).join(', ')}</RepLine>}

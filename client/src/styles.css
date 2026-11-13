@@ -3345,3 +3345,6 @@ button.it-go{background:none;border:0;padding:0;cursor:pointer}
 .rm-act{white-space:nowrap;text-align:right}
 .rm-act .x{display:inline-flex;vertical-align:middle;background:none;border:0;cursor:pointer;color:var(--mute);padding:6px}
 .rm-act .x:hover{color:var(--blue)}
+.bl{margin:2px 0;padding-left:20px;list-style:disc} .bl li{margin:1px 0} .ln{margin:0}
+.ln+.ln,.ln+.bl,.bl+.ln{margin-top:2px}
+.pt-fb>div,.rep-t{white-space:normal}

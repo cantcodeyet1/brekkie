@@ -59,7 +59,7 @@ export async function fillEvalForm(file, data) {
       if (!value || done.has(key)) return;
       const l = label(re); if (!l) return;
       const f = boxes.filter((b) => b.y2 <= l.y + 6 && l.y - b.y2 < 60 && b.y2 - b.y1 > 28 && Math.abs(b.x1 - l.x) < 30).sort((p, q) => q.y2 - p.y2)[0];
-      if (f) { put(f.a, String(value)); done.add(key); }
+      if (f) { put(f.a, String(value).replace(/^[ 	]*[-*–][ 	]+/gm, '• ')); done.add(key); }
     };
     below('excelled', /^you excelled at$/, data.excelled);
     below('work', /^you may want to work on$/, data.work);

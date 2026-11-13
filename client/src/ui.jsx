@@ -120,6 +120,16 @@ export function Page({ title, root, wide, narrow, full, foot, back, onBack, chil
   );
 }
 
+/** free text with its line breaks kept, and lines starting with - (or a bullet) shown as bullets */
+export function Lines({ text }) {
+  const out = []; let list = null;
+  String(text || '').split(/\r?\n/).forEach((raw, i) => {
+    const m = /^\s*[-•*–]\s+(.*)$/.exec(raw);
+    if (m) { if (!list) { list = []; out.push(<ul className="bl" key={'u' + i}>{list}</ul>); } list.push(<li key={i}>{m[1]}</li>); }
+    else { list = null; if (raw.trim()) out.push(<div className="ln" key={i}>{raw}</div>); }
+  });
+  return <>{out}</>;
+}
 export const Foot = ({ children, col }) => <div className={'foot' + (col ? ' col' : '')}>{children}</div>;
 export const Btn = ({ kind = '', sm, children, ...p }) => <button type="button" className={`btn ${kind} ${sm ? 'sm' : ''}`} {...p}>{children}</button>;
 export const Chip = ({ kind = '', children, ...p }) => <span className={'chip ' + kind} {...p}>{children}</span>;
