@@ -17,8 +17,10 @@ const FLOOR = [248, 168, 88];
 
 // written out in full so the host sees every file this needs
 const BASE_FILES = [path.join(here, '..', 'templates', 'agenda-base-0.pdf'), path.join(here, '..', 'templates', 'agenda-base-1.pdf'), path.join(here, '..', 'templates', 'agenda-base-2.pdf')];
-const bases = [];
-const baseBytes = async (n) => (bases[n] ||= await fs.readFile(BASE_FILES[n]));
+// the same pages with the Champions details taken out (scripts/make-plain-bases.py), for clubs that bring their own
+const PLAIN_FILES = [path.join(here, '..', 'templates', 'agenda-plain-0.pdf'), path.join(here, '..', 'templates', 'agenda-plain-1.pdf'), path.join(here, '..', 'templates', 'agenda-plain-2.pdf')];
+const bases = [], plains = [];
+const baseBytes = async (n, plain) => (plain ? (plains[n] ||= await fs.readFile(PLAIN_FILES[n])) : (bases[n] ||= await fs.readFile(BASE_FILES[n])));
 
 async function fontsOf(pdf) {
   return { r: await pdf.embedFont(StandardFonts.Helvetica), b: await pdf.embedFont(StandardFonts.HelveticaBold), i: await pdf.embedFont(StandardFonts.HelveticaOblique), bi: await pdf.embedFont(StandardFonts.HelveticaBoldOblique) };
@@ -136,18 +138,38 @@ export async function agendaFits(ag, ctx) {
   return choose(planOf(ag, ctx), await fontsOf(pdf)).fits;
 }
 
+/** a club's own name, number, area line, mission and officers, drawn where the Champions ones are on the original page */
+function clubDetails(page, F, draw, ctx, prof) {
+  const white = rgb(1, 1, 1), RIGHT = 581.2, Y = (top) => 841.89 - top;
+  let size = 26; const name = safe(F.b, ctx.clubName || '');
+  while (size > 14 && width(F.b, size, name) > 380) size -= 1;
+  draw(name, RIGHT - width(F.b, size, name), Y(27.6), F.b, size, white);
+  if (ctx.clubNumber) { const s = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(s, RIGHT - width(F.b, 11, s), 798.6, F.b, 11, white); }
+  if (prof.region) { const s = fit(F.b, 11, prof.region, 300); draw(s, RIGHT - width(F.b, 11, s), 785.7, F.b, 11, white); }
+  if (prof.mission) wrap(F.r, 10, prof.mission, 140, { limit: 8 }).forEach((l, i) => draw(l, 12.2, Y(174.7 + i * 13.2), F.r, 10, BLACK));
+  const OFF = rgb(7 / 255, 68 / 255, 102 / 255);
+  (Array.isArray(prof.officers) ? prof.officers : []).slice(0, 7).forEach((o, i) => {
+    const top = 299.4 + i * 42.4;
+    draw(fit(F.b, 11, o.role || '', 165), 12.2, Y(top), F.b, 11, BLUE);
+    if (o.name) draw(fit(F.b, 9, o.name, 165), 12.2, Y(top + 12.8), F.b, 9, OFF);
+    if (o.phone) draw(fit(F.i, 9, o.phone, 165), 12.2, Y(top + 25.1), F.i, 9, BLACK);
+  });
+}
+
 export async function renderAgendaPdf(ag, ctx) {
   const plan = planOf(ag, ctx);
   const probe = await PDFDocument.create();
   const { v, k } = choose(plan, await fontsOf(probe));
-  const pdf = await PDFDocument.load(await baseBytes(v));
+  const prof = ctx.profile && typeof ctx.profile === 'object' ? ctx.profile : null;
+  const pdf = await PDFDocument.load(await baseBytes(v, !!prof));
   const page = pdf.getPage(0), F = await fontsOf(pdf);
   const p = programme(plan, F, k);               // drawn with this document's own fonts
   const draw = (s, x, y, font, size, color) => { if (s) page.drawText(s, { x, y, font, size, color }); };
 
   // the club number in the banner: the page has the template's own, so it is covered with the banner blue and drawn again
-  page.drawRectangle({ x: 450, y: 796, width: 140, height: 15, color: rgb(0, 63 / 255, 98 / 255) });
-  if (ctx.clubNumber) { const cs = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(cs, 581.2 - width(F.b, 11, cs), 798.6, F.b, 11, rgb(1, 1, 1)); }
+  if (!prof) page.drawRectangle({ x: 450, y: 796, width: 140, height: 15, color: rgb(0, 63 / 255, 98 / 255) });
+  if (prof) clubDetails(page, F, draw, ctx, prof);
+  else if (ctx.clubNumber) { const cs = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(cs, 581.2 - width(F.b, 11, cs), 798.6, F.b, 11, rgb(1, 1, 1)); }
 
   // heading: the date, then the theme and quotation on up to two centred lines
   const cx = 369.5;

@@ -356,3 +356,6 @@ create index if not exists member_enh_club_idx on member_enh(club_id, date);
 alter table people add column if not exists credential_manual boolean;
 update people set credential_manual = (coalesce(credential,'') not in ('','TM') and credential !~ '^[A-Z]{2}[1-5]$') where credential_manual is null;
 alter table people alter column credential_manual set default false;
+
+-- a club's own details for the agenda page (area line, mission, officers): when set, the agenda is drawn on the plain page instead of the Champions one
+alter table clubs add column if not exists agenda_profile jsonb;

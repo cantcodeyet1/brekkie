@@ -313,6 +313,14 @@ app.put('/api/account', needPerson, wrap(async (req, res) => {
   if ('path_name' in req.body) await q('update people set path_name=$1, path_level=$2 where id=$3', [req.body.path_name || null, req.body.path_name ? (Number(req.body.path_level) || null) : null, req.person.id]);
   res.json({ ok: true });
 }));
+/** a club's own details for its agenda page: area line, mission and up to seven officers. Empty means the club uses the standard page. */
+function cleanProfile(p) {
+  if (!p || typeof p !== 'object') return null;
+  const s = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const officers = (Array.isArray(p.officers) ? p.officers : []).slice(0, 7).map((o) => ({ role: s(o?.role, 40), name: s(o?.name, 60), phone: s(o?.phone, 30) })).filter((o) => o.role);
+  const out = { region: s(p.region, 80), mission: s(p.mission, 600), officers };
+  return out.region || out.mission || officers.length ? out : null;
+}
 app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
   const pc = cleanPattern(req.body.pattern); if (pc.error) return bad(res, pc.error);
   const name = String(req.body.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
@@ -327,6 +335,7 @@ app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
     if (tm && (await q('select 1 as x from clubs where tm_number=$1 and id<>$2', [tm, req.person.club_id])).length) return bad(res, 'Another club on Brekkie already uses that number', 409);
   }
   await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name), guest_days=$4, venue=$5, meeting_time=$6, tm_number=case when $7::boolean then $8 else tm_number end where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id, gd, venue, mtime, 'number' in req.body, tm ?? null]);
+  if ('agenda_profile' in req.body) await q('update clubs set agenda_profile=$1 where id=$2', [cleanProfile(req.body.agenda_profile) ? JSON.stringify(cleanProfile(req.body.agenda_profile)) : null, req.person.club_id]);
   res.json({ ok: true });
 }));
 app.post('/api/vpe/club/meetings', needPerson, needVpe, wrap(async (req, res) => {
