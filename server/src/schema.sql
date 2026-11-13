@@ -327,5 +327,9 @@ create table if not exists login_failures (
 );
 create index if not exists login_failures_key_idx on login_failures(key, at);
 
--- the club that the agenda template was made for keeps its own number
+-- the club that the agenda template was made for keeps its own number. If an older duplicate Champions club
+-- grabbed it, hand it to the Champions club that actually has the most meetings.
+update clubs set tm_number=null where tm_number='04647453' and name ilike 'champions toastmasters%'
+  and (select count(*) from meetings m where m.club_id=clubs.id) <
+      (select max(n) from (select count(*) n from clubs c join meetings m on m.club_id=c.id where c.name ilike 'champions toastmasters%' group by c.id) t);
 update clubs set tm_number='04647453' where id = (select c.id from clubs c where c.tm_number is null and c.name ilike 'champions toastmasters%' order by (select count(*) from meetings m where m.club_id=c.id) desc, c.id limit 1) and not exists (select 1 from clubs c2 where c2.tm_number='04647453');

@@ -165,3 +165,18 @@ test('the club number is set in the club settings, shown on the agenda, and uniq
   assert.equal((await call('GET', '/api/account', vpe)).json.club.number, '');
   assert.equal((await put({})).status, 200, 'saving without a number leaves it alone');
 });
+
+test('schema moves the Champions club number to the Champions club with the most meetings', async () => {
+  const a = (await q(`insert into clubs(name,tm_number) values('Champions Toastmasters dup','04647453') returning id`))[0].id;
+  const b = (await q(`insert into clubs(name) values('Champions Toastmasters real') returning id`))[0].id;
+  await q(`insert into meetings(club_id,number,date) values ($1,1,'2031-01-01'),($1,2,'2031-01-08')`, [b]);
+  const fs = await import('node:fs');
+  const sql = fs.readFileSync(new URL('../src/schema.sql', import.meta.url), 'utf8');
+  const stmts = sql.slice(sql.indexOf('-- the club that the agenda template'));
+  for (const st of stmts.split(/;\s*\n/).map((x) => x.replace(/^--.*$/gm, '').trim()).filter(Boolean)) await q(st);
+  const top = (await q(`select c.id from clubs c where c.name ilike 'champions toastmasters%' order by (select count(*) from meetings m where m.club_id=c.id) desc, c.id limit 1`))[0].id;
+  const got = (await q(`select id from clubs where tm_number='04647453'`)).map((r) => r.id);
+  assert.deepEqual(got, [top]);
+  assert.ok(!got.includes(a), 'the duplicate with fewer meetings gave the number up');
+  await q('delete from meetings where club_id=$1', [b]); await q('delete from clubs where id in ($1,$2)', [a, b]);
+});

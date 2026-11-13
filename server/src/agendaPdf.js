@@ -153,19 +153,25 @@ export async function renderAgendaPdf(ag, ctx) {
   const cx = 369.5;
   const dateW = width(F.bi, 11, plan.date);
   draw(safe(F.bi, plan.date), cx - dateW / 2, 752.6, F.bi, 11, BLACK);
-  const pieces = [];
-  const add = (label, text) => { pieces.push({ s: label, f: F.b, c: BLUE }); (' ' + text).split(/(?<= )/).forEach((w) => pieces.push({ s: w, f: F.i, c: BLACK })); };
-  if (plan.theme) add('Theme:', plan.theme);
-  if (plan.quote) add(plan.theme ? '  Quotation:' : 'Quotation:', plan.quote);
-  const lines = [[]]; let lw = 0;
-  for (const pc of pieces) {
-    const w = width(pc.f, 10, pc.s);
-    if (lw + w > 372 && lines[lines.length - 1].length && pc.f === F.i && lines.length < 2) { lines.push([]); lw = 0; if (!pc.s.trim()) continue; }
-    lines[lines.length - 1].push(pc); lw += w;
-  }
-  lines.slice(0, 2).forEach((ln, i) => {
-    let x = cx - ln.reduce((a, pc) => a + width(pc.f, 10, pc.s), 0) / 2;
-    for (const pc of ln) { draw(safe(pc.f, pc.s), x, 741 - i * 11.5, pc.f, 10, pc.c); x += width(pc.f, 10, pc.s); }
+  // theme on its own line, quotation on its own line (wrapping to a second only when it is long)
+  const wrapIt = (label, text, size) => {
+    const out = [[]]; let lw = 0;
+    const parts = [{ s: label, f: F.b, c: BLUE }, ...(' ' + text).split(/(?<= )/).map((w) => ({ s: w, f: F.i, c: BLACK }))];
+    for (const pc of parts) {
+      const w = width(pc.f, size, pc.s);
+      if (lw + w > 372 && out[out.length - 1].length && pc.f === F.i) { out.push([]); lw = 0; if (!pc.s.trim()) continue; }
+      out[out.length - 1].push(pc); lw += w;
+    }
+    return out;
+  };
+  let size = 10, lines = [];
+  const build = () => { lines = []; if (plan.theme) lines.push(...wrapIt('Theme:', plan.theme, size)); if (plan.quote) lines.push(...wrapIt('Quotation:', plan.quote, size)); };
+  build();
+  if (lines.length > 2) { size = 8.5; build(); }
+  const lead = size === 10 ? 11 : 9, top = size === 10 ? 741 : 742.5;
+  lines.slice(0, 3).forEach((ln, i) => {
+    let x = cx - ln.reduce((a, pc) => a + width(pc.f, size, pc.s), 0) / 2;
+    for (const pc of ln) { draw(safe(pc.f, pc.s), x, top - i * lead, pc.f, size, pc.c); x += width(pc.f, size, pc.s); }
   });
 
   // the six role takers, each shrunk to fit its box
@@ -174,9 +180,14 @@ export async function renderAgendaPdf(ag, ctx) {
     if (!name) return;
     // 9 pt on one line, or on two when it is long. Only a name too long even for two lines is made a little smaller.
     let size = 9, ls = nameLines(F.r, size, name, max);
-    while (size > 7 && ls.some((l) => l.endsWith('…'))) { size -= 0.5; ls = nameLines(F.r, size, name, max); }
+    if (ls.length > 1) { size = 7.5; ls = nameLines(F.r, size, name, max); }
+    while (size > 6.5 && ls.some((l) => l.endsWith('…'))) { size -= 0.5; ls = nameLines(F.r, size, name, max); }
     if (ls.length === 1) draw(ls[0], x, y, F.r, size, BLACK);
-    else ls.forEach((l, i) => draw(l, x, y + 3.4 - i * (size * 0.93), F.r, size, BLACK));
+    else {
+      // two lines centred in the row with clear space above and below
+      const lead = size * 0.95, mid = y + 3.1 - (y < 680 ? 7 : y < 700 ? 3 : 1.5), first = mid - (0.7 * size - lead) / 2;
+      ls.forEach((l, i) => draw(l, x, first - i * lead, F.r, size, BLACK));
+    }
   });
 
   // next meeting date, centred in its grey box, with a raised ordinal
