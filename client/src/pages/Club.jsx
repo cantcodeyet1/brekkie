@@ -114,6 +114,7 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
   const [f, setF] = useState({ email: '', current: '', password: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
   useEffect(() => { if (data) setF((x) => ({ ...x, email: data.email, path_name: data.path_name, path_level: data.path_level })); }, [data]);
   const save = async () => {
     setBusy(true); setErr('');
@@ -132,10 +133,21 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
             <h3>Sign in</h3>
             <label className="fl" htmlFor="a-email">Email</label>
             <input id="a-email" className="inp" type="email" value={f.email} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} autoComplete="email" />
-            {data.has_password && <><label className="fl" htmlFor="a-cur">Current password <i>(only to change it)</i></label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF((s) => ({ ...s, current: e.target.value }))} autoComplete="current-password" /></>}
-            {data.has_password ? <p className="fl" style={{ marginBottom: 0 }}>New password <i>(optional)</i></p> : null}
-            <PwPair id="a-pw" value={f.password} again={f.again || ''} onChange={(e) => setF((s) => ({ ...s, password: e.target.value }))} onAgain={(e) => setF((s) => ({ ...s, again: e.target.value }))} />
-            <p className="ac-note">{data.has_password ? 'Leave the password boxes empty to keep your current one.' : 'Add a password so you can sign in with your email.'}</p>
+            {data.has_password && !pwOpen && (
+              <div className="ac-pw">
+                <span className="ac-pwl"><small>Password</small><b>••••••••</b></span>
+                <button type="button" className="ac-chg" onClick={() => setPwOpen(true)}>Change password</button>
+              </div>
+            )}
+            {(!data.has_password || pwOpen) && (
+              <div className="ac-pwbox">
+                {data.has_password && <div className="ac-pwh"><small>Change password</small><button type="button" className="lnk" onClick={() => { setPwOpen(false); setF((x) => ({ ...x, current: '', password: '', again: '' })); }}>Cancel</button></div>}
+                {data.has_password && <><label className="fl" htmlFor="a-cur">Current password</label><input id="a-cur" className="inp" type="password" value={f.current} onChange={(e) => setF((s) => ({ ...s, current: e.target.value }))} autoComplete="current-password" /></>}
+                {data.has_password && <p className="fl" style={{ marginBottom: 0 }}>New password</p>}
+                <PwPair id="a-pw" value={f.password} again={f.again || ''} onChange={(e) => setF((s) => ({ ...s, password: e.target.value }))} onAgain={(e) => setF((s) => ({ ...s, again: e.target.value }))} />
+                {!data.has_password && <p className="ac-note">Add a password so you can sign in with your email.</p>}
+              </div>
+            )}
           </section>
 
           {showPath && <section className="ac-sec">
@@ -144,13 +156,21 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
             <p className="ac-note">Fills in your path and level when you are down to speak. You can still change it for any speech.</p>
           </section>}
 
-          {portal && <Link to="/m" className="ac-admin" onClick={onClose}>{I.home} My member page</Link>}
-          {vpe && <Link to="/v" className="ac-admin" onClick={onClose}>{I.back} Back to the VPE view</Link>}
-          {admin && <Link to="/admin" className="ac-admin" onClick={onClose}>{I.chart} Open the super admin page</Link>}
-          {onSignOut && <button type="button" className="ac-out" onClick={onSignOut}>{I.out} Sign out</button>}
+          {(portal || vpe || admin) && (
+            <div className="ac-links">
+              {portal && <Link to="/m" onClick={onClose}>{I.home} My member page</Link>}
+              {vpe && <Link to="/v" onClick={onClose}>{I.back} Back to the VPE view</Link>}
+              {admin && <Link to="/admin" onClick={onClose}>{I.chart} Super admin</Link>}
+            </div>
+          )}
 
           {err && <p className="err">{err}</p>}
-          <div className="row2"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && !pwGood(f.password, f.again || '')) || (data.has_password && !!f.password && !pwGood(f.password, f.again || ''))}>{busy ? 'Saving…' : 'Save'}</Btn></div>
+          <div className="ac-foot">
+            {onSignOut && <button type="button" className="ac-out2" onClick={onSignOut}>{I.out}<span>Sign out</span></button>}
+            <span className="ac-fg" />
+            <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
+            <Btn onClick={save} disabled={busy || !f.email.trim() || (!data.has_password && !pwGood(f.password, f.again || '')) || (data.has_password && !!f.password && !pwGood(f.password, f.again || ''))}>{busy ? 'Saving…' : 'Save'}</Btn>
+          </div>
         </div>
       )}
     </Modal>

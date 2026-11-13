@@ -3199,3 +3199,44 @@ button.pc-part:hover{border-color:#B8C2C8}
 .pc-part.pick{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
 /* the note box can be dragged taller from its bottom-right corner */
 textarea.inp.jbody{resize:vertical;min-height:140px;max-height:80vh}
+
+/* sidebar: the name card opens the account, sign out is one quiet row */
+.side .me-btn{width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:8px;margin:-4px -8px 0;border-radius:16px;transition:background .15s}
+.side .me-btn:hover{background:rgba(255,255,255,.10)}
+.side .me-btn b{color:#fff}
+.side .me-id small{color:rgba(255,255,255,.6)}
+.side .me-out{display:flex;align-items:center;gap:8px;width:100%;margin-top:6px;padding:8px 10px;border:0;border-radius:12px;background:none;color:rgba(255,255,255,.72);font:600 13px var(--head);cursor:pointer}
+.side .me-out:hover{background:rgba(255,255,255,.10);color:#fff}
+.side .me-out svg{width:16px;height:16px}
+
+/* account window */
+.ac-pw{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:12px 14px;border-radius:16px;background:#F5F5F7}
+.ac-pwl small{display:block;font:700 11px var(--head);letter-spacing:.08em;text-transform:uppercase;color:#8A979C}
+.ac-pwl b{font:700 15px var(--head);letter-spacing:.12em;color:#3A3A3F}
+.ac-chg{border:0;background:#fff;color:var(--blue);font:600 13px var(--head);padding:8px 14px;border-radius:999px;cursor:pointer;box-shadow:0 0 0 1px #E1E5E8 inset}
+.ac-chg:hover{background:#E8F1F6}
+.ac-pwbox{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:14px;border-radius:16px;background:#F5F5F7}
+.ac-pwbox .inp{background:#fff}
+.ac-pwh{display:flex;align-items:center;justify-content:space-between}
+.ac-pwh small{font:700 11px var(--head);letter-spacing:.08em;text-transform:uppercase;color:#8A979C}
+.ac-links{display:flex;flex-wrap:wrap;gap:8px;padding:14px 0 4px;border-top:1px solid #EEF0F2}
+.ac-links a{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px 0 11px;border-radius:999px;background:#E8F1F6;color:var(--blue);font:600 13.5px var(--head);text-decoration:none}
+.ac-links a:hover{background:#DCEAF2}
+.ac-links a svg{width:16px;height:16px}
+.ac-foot{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #EEF0F2}
+.ac-foot .ac-fg{flex:1}
+.ac-out2{display:inline-flex;align-items:center;gap:7px;border:0;background:none;color:#8A3A44;font:600 13.5px var(--head);cursor:pointer;padding:8px 10px;margin-left:-10px;border-radius:999px}
+.ac-out2:hover{background:#FBF3F4}
+.ac-out2 svg{width:16px;height:16px}
+.ac .ac-foot .btn{flex:0 0 auto;width:auto;padding:0 20px}
+@media (max-width:420px){.ac-out2 span{display:none}.ac-out2{padding:8px}}
+
+/* long names run onto a second line at the same size instead of being cut off with "..." */
+.selbtn .v,.selbtn .v .nm{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.25}
+.cal-who .selbtn{height:auto;min-height:38px}
+.dv-nl,.pf-n{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.25}
+.rtbl td,.rtbl th{overflow-wrap:anywhere}
+.app.desk .side .me b{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.25}
+.side .me-id>span:not(.av){padding-right:0}
+.side .me-id .role-tag{position:static;display:inline-block;margin:0 7px 0 0;padding:1px 8px;font-size:10px}
+.side .me-id small{display:flex;align-items:center}

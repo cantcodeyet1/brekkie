@@ -78,13 +78,12 @@ export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide,
                 ? <div className="sl" key={i}>{it.label}</div>
                 : <NavLink key={it.to} to={it.to} end={it.end} className={({ isActive }) => (isActive ? 'on' : '')} style={{ textDecoration: 'none' }}>{it.icon}{it.label}</NavLink>)}
               <div className="me">
-                <div className="me-id"><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b></span>{tag && <em className="role-tag">{tag}</em>}</div>
+                {onAccount
+                  ? <button type="button" className="me-id me-btn" onClick={onAccount} aria-label={`Your account, ${who}`}><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b><small>{tag && <em className="role-tag">{tag}</em>}Your account</small></span></button>
+                  : <div className="me-id"><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b></span>{tag && <em className="role-tag">{tag}</em>}</div>}
                 {views?.length > 0 && <div className="me-views">{views.map((v) => <Link key={v.to} to={v.to}>{v.icon}{v.label}</Link>)}</div>}
                 {sub && <div className="clubpill" title={sub}>{sub}</div>}
-                <div className="me-act">
-                  {onAccount && <button type="button" onClick={onAccount}>Account</button>}
-                  {onSignOut && <button type="button" onClick={onSignOut}>{I.out}Sign out</button>}
-                </div>
+                {onSignOut && <button type="button" className="me-out" onClick={onSignOut}>{I.out}<span>Sign out</span></button>}
               </div>
             </aside>
           )}
