@@ -128,3 +128,55 @@ test('the agenda title follows the last completed level unless the VPE typed the
   await q(`insert into member_levels(person_id, path, level) values ($1,'Presentation Mastery',4)`, [pid]);
   assert.equal(await title(), 'PM4');
 });
+
+test('the evaluator part of a project can be scheduled: it takes an evaluator slot and counts as the Evaluator requirement', async () => {
+  await q('delete from member_enh where person_id=$1', [pid]);
+  await q('delete from member_levels where person_id=$1', [pid]);
+  await call('PATCH', `/api/vpe/people/${pid}`, { path_name: 'Presentation Mastery', path_level: 1 });
+  const [pj] = await q(`select p.id from projects p where p.name='Evaluation and Feedback'`);
+  const [m] = await q(`select m.id, to_char(m.date,'YYYY-MM-DD') as d from meetings m where exists (select 1 from meeting_roles r where r.meeting_id=m.id and r.role_key='evaluator' and r.person_id is null) order by m.date desc limit 1`);
+  const r = await call('POST', `/api/vpe/people/${pid}/plans`, { project_id: pj.id, part: 3, date: m.d });
+  assert.equal(r.status, 200, r.text);
+  assert.ok(r.json.roster, 'on an evaluator slot');
+  const [slot] = await q(`select role_key, project_id, part from meeting_roles where meeting_id=$1 and person_id=$2 and role_key='evaluator'`, [m.id, pid]);
+  assert.equal(slot.project_id, pj.id); assert.equal(slot.part, 3);
+  const lv = (await call('GET', `/api/vpe/people/${pid}/path`)).json.levels.find((l) => l.level === 1);
+  assert.ok(lv.enh.items.some((i) => i.id === 'b' && i.entries.length === 1), 'the Level 1 Evaluator requirement is scheduled too');
+});
+
+test('the Evaluator requirement and the project evaluator part follow each other: schedule, tick off, undo', async () => {
+  const reset = async () => { await q('delete from member_enh where person_id=$1', [pid]); await q('delete from member_levels where person_id=$1', [pid]); await q('delete from member_projects where person_id=$1', [pid]); await q('delete from speech_plans where person_id=$1', [pid]); await q('update meeting_roles set person_id=null where person_id=$1', [pid]); };
+  await reset();
+  await call('PATCH', `/api/vpe/people/${pid}`, { path_name: 'Presentation Mastery', path_level: 1 });
+  const [pj] = await q(`select id from projects where name='Evaluation and Feedback'`);
+  const lvl = async () => (await call('GET', `/api/vpe/people/${pid}/path`)).json.levels.find((l) => l.level === 1);
+  const part = async () => (await lvl()).projects.find((p) => p.id === pj.id).parts[2];
+  const ev = async () => (await lvl()).enh.items.find((i) => i.id === 'b');
+  // scheduling the requirement elsewhere schedules the project part
+  const add = await call('POST', `/api/vpe/people/${pid}/enh`, { level: 1, kind: 'role', item: 'evaluator', date: '2099-03-03', venue: 'Sunrise Toastmasters' });
+  assert.equal(add.status, 200, add.text);
+  assert.ok((await part()).sched, 'the project part is scheduled too');
+  // ticking the requirement off marks the part done, undo reverses it
+  assert.equal((await call('POST', `/api/vpe/enh/${add.json.id}/complete`, {})).status, 200);
+  assert.ok((await part()).done, 'part done');
+  await call('POST', `/api/vpe/enh/${add.json.id}/complete`, { done: false });
+  assert.ok(!(await part()).done, 'part undone');
+  // marking the part done ticks the requirement
+  await call('POST', `/api/vpe/people/${pid}/projects`, { project_id: pj.id, part: 3 });
+  assert.equal((await ev()).state, 'done', 'requirement done');
+  await call('POST', `/api/vpe/people/${pid}/projects`, { project_id: pj.id, part: 3, done: false });
+  assert.notEqual((await ev()).state, 'done', 'requirement undone');
+  await reset();
+});
+
+test('an Evaluator requirement placed on a meeting roster carries the project part with it', async () => {
+  await q('delete from member_enh where person_id=$1', [pid]); await q('delete from member_levels where person_id=$1', [pid]); await q('delete from member_projects where person_id=$1', [pid]); await q('delete from speech_plans where person_id=$1', [pid]);
+  await q('update meeting_roles set person_id=null where person_id=$1', [pid]);
+  await call('PATCH', `/api/vpe/people/${pid}`, { path_name: 'Presentation Mastery', path_level: 1 });
+  const [m] = await q(`select to_char(m.date,'YYYY-MM-DD') as d, m.id from meetings m where exists (select 1 from meeting_roles r where r.meeting_id=m.id and r.role_key='evaluator' and r.person_id is null) order by m.date desc limit 1`);
+  assert.equal((await call('POST', `/api/vpe/people/${pid}/enh`, { level: 1, kind: 'role', item: 'evaluator', date: m.d })).status, 200);
+  const [slot] = await q(`select project_id, part from meeting_roles where meeting_id=$1 and person_id=$2 and role_key='evaluator'`, [m.id, pid]);
+  assert.ok(slot.project_id && slot.part === 3, 'the slot is for the Evaluation and Feedback evaluator part');
+  await q('update meeting_roles set person_id=null, project_id=null where meeting_id=$1 and person_id=$2', [m.id, pid]);
+  await q('delete from member_enh where person_id=$1', [pid]);
+});

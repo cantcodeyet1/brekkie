@@ -92,13 +92,13 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
               : <span key={x.n} className={'pc-part' + state} title={tip}>{inner}</span>;
           })}</span>}
           {!cur.done && cur.sched && <small className="pc-when">{multi ? `${cur.label}: ` : ''}{cur.sched.date < today ? 'Was scheduled' : 'Scheduled'} {fmtDate(cur.sched.date, { weekday: 'short', day: 'numeric', month: 'short' })}{cur.sched.venue ? ` at ${cur.sched.venue}` : ''}</small>}
-          {evalPart && !cur.done && !cur.sched && <small className="pc-when">Given from an evaluator slot on the roster. Mark it done once they have evaluated.</small>}
+          {evalPart && !cur.done && !cur.sched && <small className="pc-when">Given from an evaluator slot on the roster: schedule it on a meeting date, then mark it done once they have evaluated.</small>}
         </span>
         <span className="pc-a">
           {cur.done
             ? <><small>{multi ? `${cur.label}: ` : ''}{cur.done.source === 'prior' ? (cur.done.date ? `Logged ${fmtDate(cur.done.date, { day: 'numeric', month: 'short' })}` : 'Before Brekkie') : cur.done.source === 'evaluation' ? `Evaluated, meeting ${cur.done.meeting}` : fmtDate(cur.done.date, { day: 'numeric', month: 'short' })}{cur.done.venue ? ` at ${cur.done.venue}` : ''}</small>{!mine && cur.done.source === 'manual' && <button type="button" className="lnk" onClick={() => mark(p, false, multi ? pn : undefined)} disabled={busy === p.id}>Undo</button>}</>
             : <>
-                {canPlan && !cur.sched && !evalPart && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code, ...(multi ? { part: pn } : {}) })}>Schedule{multi ? ` ${cur.label.toLowerCase()}` : ''}</button>}
+                {canPlan && !cur.sched && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code, ...(multi ? { part: pn } : {}) })}>Schedule{multi ? ` ${cur.label.toLowerCase()}` : ''}</button>}
                 {canPlan && cur.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(cur.sched.plan)}>Unschedule</button>}
                 {canPlan && !mine && cur.sched?.role && <button type="button" className="lnk" onClick={() => unslot(cur.sched.role)}>Unschedule</button>}
               {!mine && <>

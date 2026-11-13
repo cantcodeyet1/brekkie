@@ -1083,18 +1083,22 @@ async function placeRole(clubId, personId, date, key) {
 async function placeSpeech(club, person, date, { project_id, part, title }) {
   const [m] = await q('select id, number from meetings where club_id=$1 and date=$2', [club, date]);
   if (!m) return null;
+  // the "serve as an evaluator" part of a project is given from an evaluator slot, not a speech slot
+  let key = 'speaker';
   if (project_id) {
     const [pj] = await q('select parts from projects where id=$1', [project_id]);
-    if ((pj?.parts || [])[(part || 1) - 1]?.kind === 'evaluator') return null;   // that part is given from an evaluator slot
+    if ((pj?.parts || [])[(part || 1) - 1]?.kind === 'evaluator') key = 'evaluator';
   }
-  const rows = await q(`select id, label, person_id, project_id, part from meeting_roles where meeting_id=$1 and role_key='speaker' order by position`, [m.id]);
+  const rows = await q(`select id, label, person_id, project_id, part from meeting_roles where meeting_id=$1 and role_key=$2 order by position`, [m.id, key]);
   const dup = rows.find((r) => r.person_id === person.id && r.project_id === (project_id || null) && r.part === (part || 1));
   if (dup) return { meeting: m.number, label: dup.label };
-  const free = rows.find((r) => !r.person_id) || await addSlot(m.id, 'speaker');
+  const free = rows.find((r) => !r.person_id) || await addSlot(m.id, key);
   let lvl = null;
   if (project_id && person.path_name) lvl = (await q('select level from path_projects where path=$1 and project_id=$2', [person.path_name, project_id]))[0]?.level ?? null;
   await q('update meeting_roles set person_id=$1, project_id=$2, part=$3, speech_title=$4, path_name=$5, path_level=$6, token=$7 where id=$8',
-    [person.id, project_id || null, project_id ? part || 1 : 1, title || '', project_id ? person.path_name : null, lvl, token(), free.id]);
+    [person.id, project_id || null, project_id ? part || 1 : 1, key === 'evaluator' ? '' : title || '', project_id ? person.path_name : null, lvl, token(), free.id]);
+  // an evaluator slot also counts towards the level's Evaluator requirement
+  if (key === 'evaluator') await syncEnh({ id: free.id, role_key: 'evaluator' }, person.id);
   return { meeting: m.number, label: free.label };
 }
 /** someone put on (or taken off) a roster role: the plan for the previous person goes, and the new person gets one if their level still asks for the role */
@@ -1109,6 +1113,47 @@ async function syncEnh(role, personId) {
   if (!lv.enh.items.some((i) => i.kind === 'role' && i.options.some((o) => o.key === item) && i.entries.length < i.need)) return;
   const [m] = await q(`select ${DATE('m.date')} as d, m.club_id from meetings m join meeting_roles r on r.meeting_id=m.id where r.id=$1`, [role.id]);
   await q('insert into member_enh(club_id, person_id, level, kind, item, date, role_id) values ($1,$2,$3,$4,$5,$6,$7)', [m.club_id, p.id, prog.current, 'role', item, m.d, role.id]);
+}
+/* the Evaluator requirement and the "serve as an evaluator" part of a project are one thing done once: scheduling, ticking off or undoing either does the other */
+async function evalPartOf(p, level, want) {
+  const lv = (await pathProgress(p)).levels.find((l) => l.level === level);
+  for (const pr of lv?.projects || []) for (const pt of pr.parts || []) {
+    if (pt.kind !== 'evaluator') continue;
+    if (want === 'open' ? !pt.done && !pt.sched : want === 'notdone' ? !pt.done : pt.done?.source === 'manual') return { project_id: pr.id, part: pt.n };
+  }
+  return null;
+}
+/** a project's evaluator part was scheduled elsewhere, marked done or undone: the level's Evaluator requirement follows */
+async function pairEnh(p, pid, part, { date, venue = '', done = false, undo = false }) {
+  if (!appliesTo(p.path_name)) return;
+  const [pj] = await q('select parts from projects where id=$1', [pid]);
+  if ((pj?.parts || [])[(part || 1) - 1]?.kind !== 'evaluator') return;
+  const [pp] = await q('select level from path_projects where path=$1 and project_id=$2', [p.path_name, pid]);
+  if (!pp) return;
+  const mine = await q(`select id, done, role_id from member_enh where person_id=$1 and level=$2 and kind='role' and item='evaluator' order by date desc, id desc`, [p.id, pp.level]);
+  if (undo) { const e = mine.find((x) => x.done && !x.role_id); if (e) await q('update member_enh set done=false where id=$1', [e.id]); return; }
+  const planned = mine.find((x) => !x.done);
+  if (planned) { if (done) await q('update member_enh set done=true where id=$1', [planned.id]); return; }
+  const lv = (await pathProgress(p)).levels.find((l) => l.level === pp.level);
+  if (!lv?.enh?.applies || lv.enh.waived || !lv.enh.items.some((i) => i.kind === 'role' && i.options.some((o) => o.key === 'evaluator') && i.entries.length < i.need)) return;
+  await q('insert into member_enh(club_id, person_id, level, kind, item, date, venue, done) values ($1,$2,$3,$4,$5,$6,$7,$8)', [p.club_id, p.id, pp.level, 'role', 'evaluator', date || new Date().toISOString().slice(0, 10), venue, done]);
+}
+/** the Evaluator requirement was scheduled or ticked off: the level's open evaluator part follows */
+async function pairPart(p, level, { date, venue = '', roleId = null, done = false, undo = false, plan = true }) {
+  if (undo) {
+    const ev = await evalPartOf(p, level, 'manual');
+    if (ev) { await q('delete from member_projects where person_id=$1 and project_id=$2 and part=$3', [p.id, ev.project_id, ev.part]); await q('update speech_plans set done=false where person_id=$1 and project_id=$2 and part=$3', [p.id, ev.project_id, ev.part]); }
+    return;
+  }
+  const ev = await evalPartOf(p, level, done ? 'notdone' : 'open');
+  if (!ev) return;
+  if (done) {
+    await q('insert into member_projects(person_id, project_id, part, done_at, venue) values ($1,$2,$3,$4::date,$5) on conflict (person_id, project_id, part) do update set done_at=excluded.done_at', [p.id, ev.project_id, ev.part, date, venue]);
+    await q('update speech_plans set done=true where person_id=$1 and project_id=$2 and part=$3', [p.id, ev.project_id, ev.part]);
+  } else if (roleId) {
+    const [r] = await q('select path_level from path_projects where path=$1 and project_id=$2', [p.path_name, ev.project_id]);
+    await q('update meeting_roles set project_id=$1, part=$2, path_name=$3, path_level=$4 where id=$5', [ev.project_id, ev.part, p.path_name, r?.level ?? level, roleId]);
+  } else if (plan) await q('insert into speech_plans(club_id, person_id, project_id, title, date, venue, part) values ($1,$2,$3,$4,$5,$6,$7)', [p.club_id, p.id, ev.project_id, '', date, venue, ev.part]);
 }
 const unplace = (roleId, personId) => (roleId ? q('update meeting_roles set person_id=null, token=$3 where id=$1 and person_id=$2 and submitted_at is null', [roleId, personId, token()]) : null);
 
@@ -1130,6 +1175,7 @@ app.post('/api/vpe/people/:id/enh', needPerson, needVpe, wrap(async (req, res) =
   let roster = null;
   if (kind === 'role' && !venue && ROLES[item].slot) roster = await placeRole(p.club_id, p.id, when, ROLES[item].slot);
   const [row] = await q('insert into member_enh(club_id, person_id, level, kind, item, date, venue, done, role_id) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id', [p.club_id, p.id, level, kind, item, when, venue, done, roster?.role_id || null]);
+  if (kind === 'role' && item === 'evaluator') await pairPart(p, level, { date: when, venue, roleId: roster?.role_id || null, done, plan: roster?.status !== 'taken' });
   res.json({ ok: true, id: row.id, roster });
 }));
 async function enhRow(req, res) {
@@ -1158,7 +1204,12 @@ app.delete('/api/vpe/enh/:id', needPerson, needVpe, wrap(async (req, res) => {
 }));
 app.post('/api/vpe/enh/:id/complete', needPerson, needVpe, wrap(async (req, res) => {
   const e = await enhRow(req, res); if (!e) return;
-  await q('update member_enh set done=$2 where id=$1', [e.id, req.body?.done !== false]);
+  const on = req.body?.done !== false;
+  await q('update member_enh set done=$2 where id=$1', [e.id, on]);
+  if (e.kind === 'role' && e.item === 'evaluator') {
+    const [p] = await q('select * from people where id=$1', [e.person_id]);
+    await pairPart(p, e.level, { date: e.d, venue: e.venue, done: on, undo: !on });
+  }
   res.json({ ok: true });
 }));
 /* a level's requirements were already met before Brekkie: they all count, without listing each one */
@@ -1184,7 +1235,9 @@ async function planRows(club, where = '', args = []) {
 async function enhRows(club, where = '', args = []) {
   const rows = await q(`select e.id, e.person_id, p.name as person, p.path_name as path, e.level, e.kind, e.item, ${DATE('e.date')} as date, e.venue, (e.done or r.submitted_at is not null) as done
     from member_enh e join people p on p.id=e.person_id left join meeting_roles r on r.id=e.role_id
-    where e.club_id=$1 and e.kind<>'waive' ${where} order by e.date, e.id`, [club, ...args]);
+    where e.club_id=$1 and e.kind<>'waive'
+      and not (e.item='evaluator' and exists (select 1 from speech_plans sp join projects pj on pj.id=sp.project_id where sp.person_id=e.person_id and sp.date=e.date and pj.parts->(sp.part-1)->>'kind'='evaluator'))
+      ${where} order by e.date, e.id`, [club, ...args]);
   return rows.map((e) => ({ kind: 'enh', key: `e${e.id}`, id: e.id, person_id: e.person_id, person: e.person, project: itemLabel(e.kind, e.item), enh_kind: e.kind, level: e.level, path: e.path, title: '', date: e.date, venue: e.venue, done: e.done }));
 }
 app.get('/api/vpe/dashboard', needPerson, needVpe, wrap(async (req, res) => {
@@ -1255,6 +1308,7 @@ async function addPlan(req, res, person) {
     if (roster) return res.json({ ok: true, roster });
   }
   await q('insert into speech_plans(club_id, person_id, project_id, title, date, venue, part) values ($1,$2,$3,$4,$5,$6,$7)', [person.club_id, person.id, pid, title, date, venue, pid ? part : 1]);
+  if (pid) await pairEnh(person, pid, part, { date, venue });
   res.json({ ok: true });
 }
 app.post('/api/me/plans', needPerson, needVpe, wrap(async (req, res) => addPlan(req, res, req.person)));
@@ -1299,6 +1353,7 @@ app.post('/api/vpe/plans/:id/complete', needPerson, needVpe, wrap(async (req, re
   const nx = s.project_id ? null : (await pathProgress(p)).next, pid = s.project_id || nx?.id, part = s.project_id ? s.part : nx?.part || 1;
   if (pid) await q('insert into member_projects(person_id, project_id, part, done_at) values ($1,$2,$3,$4::date) on conflict (person_id, project_id, part) do update set done_at=excluded.done_at', [p.id, pid, part, s.d]);
   await q('update speech_plans set done=true where id=$1', [s.id]);
+  if (pid) await pairEnh(p, pid, part, { date: s.d, venue: s.venue, done: true });
   res.json({ ok: true, marked: !!pid });
 }));
 
@@ -1316,6 +1371,7 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
     if (ev) return bad(res, 'This one was delivered and evaluated at a meeting, so it stays done', 409);
     await q('delete from member_projects where person_id=$1 and project_id=$2 and part = any($3)', [p.id, pid, only]);
     await q('update speech_plans set done=false where person_id=$1 and project_id=$2 and part = any($3)', [p.id, pid, only]);
+    for (const part of only) await pairEnh(p, pid, part, { undo: true });
   } else {
     const d = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : null;
     // a speech given at another club keeps the club's name: from the plan that was scheduled, or typed in when marking it done
@@ -1323,6 +1379,7 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
     const venue = String(req.body.venue ?? pl?.venue ?? '').trim().slice(0, 80);
     for (const part of only) await q('insert into member_projects(person_id, project_id, part, done_at, venue) values ($1,$2,$3,coalesce($4::date, current_date),$5) on conflict (person_id, project_id, part) do update set done_at=excluded.done_at, venue=excluded.venue', [p.id, pid, part, d, venue]);
     await q('update speech_plans set done=true where person_id=$1 and project_id=$2 and part = any($3)', [p.id, pid, only]);
+    for (const part of only) await pairEnh(p, pid, part, { date: d, venue, done: true });
   }
   res.json(await pathProgress(p));
 }));
