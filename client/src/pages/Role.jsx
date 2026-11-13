@@ -495,8 +495,11 @@ function AhSheet({ sheet, setSheet, people, addGuest, mode }) {
   };
   const pick = usePickPerson(sheet, setSheet, { counts: {}, comment: '' });
   const inc = (i, k, d) => setSheet((s) => ({ ...s, rows: s.rows.map((r, j) => (j === i ? { ...r, counts: { ...r.counts, [k]: Math.max(0, (r.counts[k] || 0) + d) } } : r)) }));
-  // counting happens while you listen, so the counter is on the Script tab too, above the script
-  const counter = (<>
+  return (
+    <Modes mode={mode}
+      script={<ScriptDoc k="ah_counter" />}
+      report={<AhReport sheet={sheet} people={people} />}
+      form={<>
         <div className="lab" style={{ marginTop: 4 }}>Words you’re counting</div>
         <div className="pill-row" style={{ marginTop: 0 }}>
           {sheet.fillers.map((f) => <span className="chip" key={f.k}>{f.l}{f.custom && <button type="button" className="xx" onClick={() => setSheet((s) => ({ ...s, fillers: s.fillers.filter((x) => x.k !== f.k) }))} aria-label={`Remove ${f.l}`}>{I.close}</button>}</span>)}
@@ -520,8 +523,8 @@ function AhSheet({ sheet, setSheet, people, addGuest, mode }) {
             <TA label="Comment" value={r.comment} onChange={(v) => upd(i, { comment: v })} placeholder={`Anything to tell ${subjectName(people, r.subject_id) || 'them'}? (optional)`} />
           </Block>
         ))}
-      </>);
-  return <Modes mode={mode} script={<>{counter}<ScriptDoc k="ah_counter" /></>} report={<AhReport sheet={sheet} people={people} />} form={counter} />;
+      </>} />
+  );
 }
 
 /* ───────── Timer ───────── */
