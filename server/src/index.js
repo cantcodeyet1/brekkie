@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { initDb, q, tx } from './db.js';
 import { seedIfEmpty } from './seed.js';
 import { loadHist, progressFor, summary } from './progress.js';
+import { readAgendaTemplate } from './agendaRead.js';
 import { EXTRAS, STD_BLOCKS, buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda, pickConfig } from './agenda.js';
 import { agendaFits, renderAgendaPdf } from './agendaPdf.js';
 import { buildRoleReport, hasOfficialReport } from './roleReport.js';
@@ -29,6 +30,7 @@ app.use(cors());
 // health answers before start-up finishes and says whether the database is reachable (never the connection string)
 app.get('/api/health', (_req, res) => boot().then(() => res.json({ ok: true }), (e) => res.status(503).json({ ok: false, db: String(e.code || e.name || 'error'), why: String(e.message || '').replace(/postgres(ql)?:\/\/\S+/gi, '').slice(0, 120) })));
 app.use((_req, _res, next) => { boot().then(() => next(), next); });
+app.use('/api/agenda-template', express.json({ limit: '6mb' }));   // an agenda file arrives as base64
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/eval-forms', express.static(EVAL_FORMS, { index: false, maxAge: '1d' }));   // the blank official forms
 
@@ -260,6 +262,31 @@ app.post('/api/admin/people/:id/reset', needPerson, needSuper, wrap(async (req, 
   res.json({ token: t, kind: p.password_hash ? 'reset' : 'invite', name: p.name, phone: p.phone, days: p.password_hash ? 3 : 7 });
 }));
 
+/* a club's own agenda: read from the file it uploads (nothing is saved here: the VPE reviews it first), then applied */
+app.post('/api/agenda-template/read', wrap(async (req, res) => {
+  if (limited(req.ip)) return bad(res, 'Too many tries. Wait a minute and try again.', 429);
+  const data = String(req.body?.data || '').replace(/^data:[^,]*,/, '');
+  if (!data) return bad(res, 'Choose a file');
+  const buf = Buffer.from(data, 'base64');
+  if (buf.length > 3.2 * 1024 * 1024) return bad(res, 'That file is too big. Use one under 3 MB.');
+  try { res.json(await readAgendaTemplate(buf, String(req.body?.name || ''))); }
+  catch (e) { bad(res, e.message || 'We could not read that file', e.status || 400); }
+}));
+/** put a reviewed agenda template on a club: its details for the page, and the running order (and start time) every new agenda starts from */
+async function applyTemplate(run, clubId, t) {
+  if (!t || typeof t !== 'object') return;
+  const prof = cleanProfile(t.profile);
+  if (prof) await run('update clubs set agenda_profile=$1 where id=$2', [JSON.stringify(prof), clubId]);
+  const [c] = await run('select agenda_default from clubs where id=$1', [clubId]);
+  let cur = {}; try { cur = c?.agenda_default ? JSON.parse(c.agenda_default) : {}; } catch { cur = {}; }
+  const next = pickConfig({ ...cur, ...(Array.isArray(t.blocks) && t.blocks.length ? { blocks: t.blocks } : {}), ...(/^\d{4}$/.test(t.start || '') ? { start: t.start } : {}) });
+  if (Object.keys(next).length) await run('update clubs set agenda_default=$1 where id=$2', [JSON.stringify(next), clubId]);
+}
+app.post('/api/vpe/club/agenda-template', needPerson, needVpe, wrap(async (req, res) => {
+  await applyTemplate(q, req.person.club_id, req.body);
+  res.json({ ok: true });
+}));
+
 /* the wizard: a new club, its VPE, and its first year of meetings */
 app.post('/api/clubs', wrap(async (req, res) => {
   const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = normEmail(req.body.email);
@@ -278,6 +305,7 @@ app.post('/api/clubs', wrap(async (req, res) => {
     const [club] = await t('insert into clubs(name,pattern,join_code,tm_number) values ($1,$2,$3,$4) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code, tmNum]);
     const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(newPw(req.body.password))]);
     const made = await generateMeetings(t, club, { months: 12, firstNumber: number });
+    await applyTemplate(t, club.id, req.body.club?.agenda);
     let added = 0;
     for (const m of (Array.isArray(req.body.members) ? req.body.members : []).slice(0, 300)) {
       const r = await upsertMember(t, club.id, m);
@@ -290,8 +318,8 @@ app.post('/api/clubs', wrap(async (req, res) => {
 
 /* the signed-in person's account, and their club's details */
 app.get('/api/account', needPerson, wrap(async (req, res) => {
-  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time, tm_number from clubs where id=$1', [req.person.club_id]);
-  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, number: c.tm_number || '', join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '' } });
+  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time, tm_number, agenda_profile from clubs where id=$1', [req.person.club_id]);
+  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, number: c.tm_number || '', join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '', agenda_profile: req.person.is_vpe ? c.agenda_profile || null : undefined } });
 }));
 /* the club at a glance, for the VPE's Club page */
 app.get('/api/vpe/club/summary', needPerson, needVpe, wrap(async (req, res) => {

@@ -5,6 +5,7 @@ import { Avatar, Btn, ErrorMsg, I, SkPage, SkRows, Modal, Page, PathPick, Select
 import { PwPair, pwGood } from './Landing.jsx';
 import { BulkInvite } from './Vpe.jsx';
 import { PatternFields, datesFor, fmtDate, newPattern } from './Wizard.jsx';
+import AgendaTemplate from './AgendaTemplate.jsx';
 
 /* ───────── the VPE's club page: at a glance, invite, meeting pattern, visitor access ───────── */
 export default function Club() {
@@ -21,7 +22,8 @@ export default function Club() {
   const ppl = useApi('/vpe/people');
   const sess = useApi('/session');
   const [bulk, setBulk] = useState(false);
-  useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setTm(data.club.number || ''); setGd(data.club.guest_days || 30); } }, [data]);
+  const [agenda, setAgenda] = useState(undefined);
+  useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setTm(data.club.number || ''); setGd(data.club.guest_days || 30); setAgenda((a) => (a === undefined ? (data.club.agenda_profile ? { profile: data.club.agenda_profile, blocks: [], start: '' } : null) : a)); } }, [data]);
   if (loading || !pat) return <Page title="Club" root wide full><SkPage stats={3} rows={4} pill={false} /></Page>;
   if (error) return <Page title="Club" root wide full><ErrorMsg error={error} /></Page>;
 
@@ -29,6 +31,14 @@ export default function Club() {
   const save = async () => {
     setBusy('save'); setErr('');
     try { await api('/vpe/club', { method: 'PUT', body: body() }); toast('Saved'); reload(); } catch (e) { setErr(e.message); } finally { setBusy(''); }
+  };
+  const saveAgenda = async () => {
+    setBusy('agenda'); setErr('');
+    try {
+      if (agenda) await api('/vpe/club/agenda-template', { method: 'POST', body: agenda });
+      else await api('/vpe/club', { method: 'PUT', body: { ...body(), agenda_profile: null } });
+      toast(agenda ? 'Agenda details saved' : 'Back to the standard agenda page'); reload();
+    } catch (e) { setErr(e.message); } finally { setBusy(''); }
   };
   const make = async () => {
     setBusy('make'); setErr('');
@@ -79,6 +89,14 @@ export default function Club() {
               <label className="fl" htmlFor="c-gd">Visitor access</label>
               <div className="cl-gd"><Select value={gd} onChange={(v) => setGd(Number(v))} options={[[7, '1 week'], [14, '2 weeks'], [30, '30 days'], [60, '60 days'], [90, '90 days']].map(([value, label]) => ({ value, label }))} /></div>
               <div className="cl-btns"><Btn onClick={save} disabled={busy === 'save'}>{busy === 'save' ? 'Saving…' : 'Save settings'}</Btn></div>
+            </div>
+          </section>
+
+          <section className="cl-sec">
+            <div className="cl-l"><h2>Your agenda</h2><p>Upload the agenda your club already uses and Brekkie reads your club details and running order from it. Your agenda page then shows your own name, area, mission and officers.</p></div>
+            <div className="cl-r">
+              <AgendaTemplate value={agenda || null} onChange={setAgenda} />
+              {(agenda || data.club.agenda_profile) && <div className="cl-btns"><Btn onClick={saveAgenda} disabled={busy === 'agenda'}>{busy === 'agenda' ? 'Saving…' : agenda ? 'Save agenda details' : 'Use the standard page'}</Btn></div>}
             </div>
           </section>
 

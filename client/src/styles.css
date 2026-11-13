@@ -3325,3 +3325,15 @@ button.it-go{background:none;border:0;padding:0;cursor:pointer}
 .dv-ok{width:14px;height:14px}
 .dv-ok svg,.dv-tf.pill-done .dv-ok svg{width:9px;height:9px}
 .fl-hint{display:block;margin:5px 2px 0;color:var(--mute);font-size:12.5px}
+
+/* a club's own agenda template */
+.at{display:block}
+.at-btns{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:6px 0 10px}
+.at-ta{min-height:96px;resize:vertical;font:inherit;line-height:1.45}
+.at-offs{display:grid;gap:8px;margin-bottom:8px}
+.at-off{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1fr) 28px;gap:8px;align-items:center}
+.at-x{border:0;background:none;color:#6B7780;font-size:18px;line-height:1;cursor:pointer;padding:4px;border-radius:6px}
+.at-x:hover{color:#B3261E;background:#F6F8F9}
+.at-ro{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.at-ro span{background:#EEF3F6;color:#1F3B4D;border-radius:999px;padding:4px 10px;font-size:13px}
+@media (max-width:640px){.at-off{grid-template-columns:1fr 1fr 28px}.at-off input:nth-child(3){grid-column:1 / 3;grid-row:2}}
