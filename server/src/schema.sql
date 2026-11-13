@@ -359,3 +359,8 @@ alter table people alter column credential_manual set default false;
 
 -- a club's own details for the agenda page (area line, mission, officers): when set, the agenda is drawn on the plain page instead of the Champions one
 alter table clubs add column if not exists agenda_profile jsonb;
+
+-- a club's own Word agenda, kept as uploaded and filled for each meeting
+alter table clubs add column if not exists agenda_template bytea;
+alter table clubs add column if not exists agenda_template_name text;
+alter table clubs add column if not exists agenda_template_checks jsonb;

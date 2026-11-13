@@ -19,7 +19,8 @@ export default function AgendaTemplate({ value, onChange, onFound }) {
     try {
       const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = no; r.readAsDataURL(f); });
       const r = await api('/agenda-template/read', { method: 'POST', body: { name: f.name, data } });
-      onChange({ profile: r.profile, blocks: r.blocks, start: r.start });
+      // the Word file is kept only when it can be filled; a PDF is read for the details only
+      onChange({ profile: r.profile, blocks: r.blocks, start: r.start, template: r.template, note: r.note, pdf: /\.pdf$/i.test(f.name), file: r.template?.usable ? { name: f.name, data } : undefined });
       onFound?.(r.club);
     } catch (e) { setErr(e.message || 'We could not read that file'); } finally { setBusy(false); if (file.current) file.current.value = ''; }
   };
@@ -32,16 +33,25 @@ export default function AgendaTemplate({ value, onChange, onFound }) {
       <div className="at">
         <input ref={file} type="file" hidden accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => read(e.target.files?.[0])} />
         <div className="at-btns">
-          <Btn onClick={() => file.current?.click()} disabled={busy}>{busy ? 'Reading your agenda…' : 'Upload your agenda'}</Btn>
+          <Btn onClick={() => file.current?.click()} disabled={busy}>{busy ? 'Reading your agenda…' : 'Upload your Word agenda'}</Btn>
           <button type="button" className="lnk" onClick={() => onChange(BLANK)}>Enter the details by hand</button>
         </div>
-        <p className="fine">A Word file or a PDF. We read the club details and the usual running order, and you check them before anything is kept. The date, theme and who is speaking are ignored.</p>
+        <p className="fine">Upload the Word file your club uses (a past agenda is fine). Brekkie keeps it as your template and fills it in for each meeting, so it looks just like yours. You check what we found before anything is kept. A PDF works too, but only for your club details.</p>
         {err && <p className="err">{err}</p>}
       </div>
     );
   }
   return (
     <div className="at">
+      {value.template && (
+        <div className="at-tpl">
+          <p className="fl" style={{ marginBottom: 6 }}>{value.template.usable ? 'Your Word file will be your agenda' : 'We could not use this file as a template'}</p>
+          <div className="at-ro">{value.template.parts.map((x) => <span key={x.key} className={x.found ? 'ok' : 'miss'}>{x.found ? I.check : null}{x.label}</span>)}</div>
+          <p className="fine">{value.template.usable ? 'Anything marked in grey was not found, so it stays exactly as it is in your file. Download the Word agenda for any meeting to see it filled in.' : 'We could not find the running order and the role table, so only your club details will be used.'}</p>
+        </div>
+      )}
+      {value.pdf && <p className="fine">A PDF cannot be used as a template. Upload the Word version of your agenda to use your own layout.</p>}
+      {value.note && <p className="fine">{value.note}</p>}
       <label className="fl" htmlFor="at-region">Area, division and district</label>
       <input id="at-region" className="inp" value={p.region} maxLength={80} placeholder="e.g. Area 4, Division C, District 129" onChange={(e) => setP({ region: e.target.value })} />
       <label className="fl" htmlFor="at-mission">Club mission</label>

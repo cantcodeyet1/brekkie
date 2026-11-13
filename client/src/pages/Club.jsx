@@ -40,6 +40,10 @@ export default function Club() {
       toast(agenda ? 'Agenda details saved' : 'Back to the standard agenda page'); reload();
     } catch (e) { setErr(e.message); } finally { setBusy(''); }
   };
+  const removeTemplate = async () => {
+    setBusy('agenda'); setErr('');
+    try { await api('/vpe/club/agenda-template', { method: 'POST', body: { remove_template: true } }); toast('Back to the standard agenda'); reload(); } catch (e) { setErr(e.message); } finally { setBusy(''); }
+  };
   const make = async () => {
     setBusy('make'); setErr('');
     try { await api('/vpe/club', { method: 'PUT', body: body() }); const r = await api('/vpe/club/meetings', { method: 'POST', body: { firstNumber: num } }); toast(r.made ? `Created ${r.made} meetings` : 'You already have meetings for the next year'); reload(); sum.reload && sum.reload(); }
@@ -93,8 +97,15 @@ export default function Club() {
           </section>
 
           <section className="cl-sec">
-            <div className="cl-l"><h2>Your agenda</h2><p>Upload the agenda your club already uses and Brekkie reads your club details and running order from it. Your agenda page then shows your own name, area, mission and officers.</p></div>
+            <div className="cl-l"><h2>Your agenda</h2><p>Upload the Word agenda your club already uses. Brekkie keeps it as your template and fills it in for every meeting, so the Word file you download is yours.</p></div>
             <div className="cl-r">
+              {data.club.agenda_template && !agenda?.file && (
+                <div className="at-tpl">
+                  <p className="fl" style={{ marginBottom: 6 }}>Using your Word file: {data.club.agenda_template.name}</p>
+                  <div className="at-ro">{data.club.agenda_template.parts.map((x) => <span key={x.key} className={x.found ? 'ok' : 'miss'}>{x.found ? I.check : null}{x.label}</span>)}</div>
+                  <button type="button" className="lnk" onClick={removeTemplate}>Stop using this file</button>
+                </div>
+              )}
               <AgendaTemplate value={agenda || null} onChange={setAgenda} />
               {(agenda || data.club.agenda_profile) && <div className="cl-btns"><Btn onClick={saveAgenda} disabled={busy === 'agenda'}>{busy === 'agenda' ? 'Saving…' : agenda ? 'Save agenda details' : 'Use the standard page'}</Btn></div>}
             </div>

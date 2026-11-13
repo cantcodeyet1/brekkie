@@ -209,36 +209,36 @@ export function planOf(ag, ctx) {
 }
 
 /* ───────── fill the template ───────── */
-const ordinal = (n) => (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
-const elems = (node, tag) => Array.from(node.getElementsByTagName(tag));
+export const ordinal = (n) => (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
+export const elems = (node, tag) => Array.from(node.getElementsByTagName(tag));
 
-function setTextNode(t, text) {
+export function setTextNode(t, text) {
   while (t.firstChild) t.removeChild(t.firstChild);
   t.appendChild(t.ownerDocument.createTextNode(text));
   t.setAttribute('xml:space', 'preserve');
 }
-function setRunText(run, text) {
+export function setRunText(run, text) {
   let t = elems(run, 'w:t')[0];
   if (!t) { t = run.ownerDocument.createElement('w:t'); run.appendChild(t); }
   while (t.firstChild) t.removeChild(t.firstChild);
   t.appendChild(run.ownerDocument.createTextNode(text));
   t.setAttribute('xml:space', 'preserve');
 }
-const runsOf = (p) => elems(p, 'w:r');
+export const runsOf = (p) => elems(p, 'w:r');
 /** Put `text` in the paragraph's first text run and empty the rest, keeping the first run's formatting. */
-function setPara(p, text) {
+export function setPara(p, text) {
   const runs = runsOf(p);
   if (!runs.length) return;
   const first = runs.find((r) => elems(r, 'w:t').length) || runs[0];
   runs.forEach((r) => { if (r !== first && elems(r, 'w:t').length) setRunText(r, ''); });
   setRunText(first, text);
 }
-const cellsOf = (tr) => elems(tr, 'w:tc').filter((tc) => tc.parentNode === tr);
-const rowsOf = (tbl) => elems(tbl, 'w:tr').filter((tr) => tr.parentNode === tbl);
-const parasOf = (tc) => elems(tc, 'w:p');
+export const cellsOf = (tr) => elems(tr, 'w:tc').filter((tc) => tc.parentNode === tr);
+export const rowsOf = (tbl) => elems(tbl, 'w:tr').filter((tr) => tr.parentNode === tbl);
+export const parasOf = (tc) => elems(tc, 'w:p');
 
 /** Drop the bold, colour and size from a cloned paragraph so a second line reads as a quieter note under the title. */
-function quiet(p) {
+export function quiet(p) {
   elems(p, 'w:rPr').forEach((rp) => {
     elems(rp, 'w:b').forEach((x) => rp.removeChild(x));
     elems(rp, 'w:color').forEach((x) => rp.removeChild(x));

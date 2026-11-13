@@ -9,6 +9,7 @@ import { initDb, q, tx } from './db.js';
 import { seedIfEmpty } from './seed.js';
 import { loadHist, progressFor, summary } from './progress.js';
 import { readAgendaTemplate } from './agendaRead.js';
+import { checkDocx, fillDocx } from './agendaDocx.js';
 import { EXTRAS, STD_BLOCKS, buildDocx, defaultAgenda, diffAgenda, loadContext, mergeAgenda, pickConfig } from './agenda.js';
 import { agendaFits, renderAgendaPdf } from './agendaPdf.js';
 import { buildRoleReport, hasOfficialReport } from './roleReport.js';
@@ -30,7 +31,7 @@ app.use(cors());
 // health answers before start-up finishes and says whether the database is reachable (never the connection string)
 app.get('/api/health', (_req, res) => boot().then(() => res.json({ ok: true }), (e) => res.status(503).json({ ok: false, db: String(e.code || e.name || 'error'), why: String(e.message || '').replace(/postgres(ql)?:\/\/\S+/gi, '').slice(0, 120) })));
 app.use((_req, _res, next) => { boot().then(() => next(), next); });
-app.use('/api/agenda-template', express.json({ limit: '6mb' }));   // an agenda file arrives as base64
+app.use(['/api/agenda-template', '/api/vpe/club/agenda-template', '/api/clubs'], express.json({ limit: '6mb' }));   // an agenda file arrives as base64
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/eval-forms', express.static(EVAL_FORMS, { index: false, maxAge: '1d' }));   // the blank official forms
 
@@ -269,12 +270,28 @@ app.post('/api/agenda-template/read', wrap(async (req, res) => {
   if (!data) return bad(res, 'Choose a file');
   const buf = Buffer.from(data, 'base64');
   if (buf.length > 3.2 * 1024 * 1024) return bad(res, 'That file is too big. Use one under 3 MB.');
-  try { res.json(await readAgendaTemplate(buf, String(req.body?.name || ''))); }
-  catch (e) { bad(res, e.message || 'We could not read that file', e.status || 400); }
+  const fname = String(req.body?.name || ''), isDocx = /\.docx$/i.test(fname);
+  // a Word file is checked for the parts Brekkie can fill (it becomes the club's own template); the club details are read out of it as well
+  let template = null;
+  if (isDocx) { try { template = await checkDocx(buf); } catch { return bad(res, 'That does not look like a Word file we can open'); } }
+  try { res.json({ ...(await readAgendaTemplate(buf, fname)), template }); }
+  catch (e) {
+    if (template?.usable) return res.json({ club: { name: '', number: '' }, profile: { region: '', mission: '', officers: [] }, blocks: [], start: '', template, note: 'We could not read the club details out of your file this time, but your template works. You can add the details by hand.' });
+    bad(res, e.message || 'We could not read that file', e.status || 400);
+  }
 }));
 /** put a reviewed agenda template on a club: its details for the page, and the running order (and start time) every new agenda starts from */
 async function applyTemplate(run, clubId, t) {
   if (!t || typeof t !== 'object') return;
+  if (t.remove_template) await run('update clubs set agenda_template=null, agenda_template_name=null, agenda_template_checks=null where id=$1', [clubId]);
+  // the Word file itself: kept only when it can be filled, so a club never ends up with a template that does nothing
+  if (t.file?.data && /\.docx$/i.test(t.file.name || '')) {
+    const buf = Buffer.from(String(t.file.data).replace(/^data:[^,]*,/, ''), 'base64');
+    if (buf.length > 3.2 * 1024 * 1024) throw Object.assign(new Error('That file is too big. Use one under 3 MB.'), { status: 400 });
+    const chk = await checkDocx(buf).catch(() => ({ usable: false }));
+    if (!chk.usable) throw Object.assign(new Error('We could not find the running order and role table in that Word file, so it cannot be used as your template.'), { status: 400 });
+    await run('update clubs set agenda_template=$1, agenda_template_name=$2, agenda_template_checks=$3 where id=$4', [buf, String(t.file.name).slice(0, 120), JSON.stringify(chk.parts), clubId]);
+  }
   const prof = cleanProfile(t.profile);
   if (prof) await run('update clubs set agenda_profile=$1 where id=$2', [JSON.stringify(prof), clubId]);
   const [c] = await run('select agenda_default from clubs where id=$1', [clubId]);
@@ -318,8 +335,8 @@ app.post('/api/clubs', wrap(async (req, res) => {
 
 /* the signed-in person's account, and their club's details */
 app.get('/api/account', needPerson, wrap(async (req, res) => {
-  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time, tm_number, agenda_profile from clubs where id=$1', [req.person.club_id]);
-  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, number: c.tm_number || '', join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '', agenda_profile: req.person.is_vpe ? c.agenda_profile || null : undefined } });
+  const [c] = await q('select name, join_code, pattern, guest_days, venue, meeting_time, tm_number, agenda_profile, agenda_template_name, agenda_template_checks from clubs where id=$1', [req.person.club_id]);
+  res.json({ name: req.person.name, email: req.person.email || '', path_name: req.person.path_name || null, path_level: req.person.path_level ?? null, has_password: !!req.person.password_hash, club: { name: c.name, number: c.tm_number || '', join_code: req.person.is_vpe ? c.join_code : undefined, pattern: c.pattern, pattern_text: describePattern(c.pattern), guest_days: c.guest_days || 30, venue: c.venue || '', meeting_time: c.meeting_time || '', agenda_profile: req.person.is_vpe ? c.agenda_profile || null : undefined, agenda_template: req.person.is_vpe && c.agenda_template_name ? { name: c.agenda_template_name, parts: c.agenda_template_checks || [] } : undefined } });
 }));
 /* the club at a glance, for the VPE's Club page */
 app.get('/api/vpe/club/summary', needPerson, needVpe, wrap(async (req, res) => {
@@ -866,7 +883,9 @@ const fileDate = (d) => { const x = new Date(d + 'T12:00:00'); return `${String(
 const sendAgenda = (ext) => async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
   const pdf = ext === 'pdf';
-  const buf = pdf ? await renderAgendaPdf(a.merged, a.ctx) : await buildDocx(a.merged, a.ctx);
+  // a club that uploaded its own Word agenda gets that file filled in; others get the standard page
+  const [own] = pdf ? [] : await q('select agenda_template from clubs where id=$1', [req.person.club_id]);
+  const buf = pdf ? await renderAgendaPdf(a.merged, a.ctx) : own?.agenda_template ? (await fillDocx(Buffer.from(own.agenda_template), a.merged, a.ctx)).buffer : await buildDocx(a.merged, a.ctx);
   const [club] = await q('select name from clubs where id=$1', [req.person.club_id]);
   const title = `${String(club?.name || '').replace(/\s+club$/i, '').trim()} Agenda ${fileDate(a.ctx.m.date)}`.trim();
   const plain = title.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w .()-]/g, '').trim() || 'Agenda';
@@ -1609,7 +1628,7 @@ if (fs.existsSync(dist)) {
   app.use(express.static(dist));
   app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
-app.use((err, _req, res, _next) => { if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') return res.status(err.status || 400).json({ error: err.type === 'entity.too.large' ? 'That is too large' : 'That request was not valid JSON' }); console.error(err); res.status(500).json({ error: 'Something went wrong' }); });
+app.use((err, _req, res, _next) => { if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') return res.status(err.status || 400).json({ error: err.type === 'entity.too.large' ? 'That is too large' : 'That request was not valid JSON' }); if (err.status >= 400 && err.status < 500 && err.expose !== false && err.message) return res.status(err.status).json({ error: err.message }); console.error(err); res.status(500).json({ error: 'Something went wrong' }); });
 
 // Start-up work (schema, pathways, demo data). A hosted function waits on `ready` before it answers.
 // A failed start (a dropped connection, say) is not remembered: the next request tries again instead of

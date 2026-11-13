@@ -81,3 +81,30 @@ test('a file goes in and a reviewable profile and running order come out (model 
     await assert.rejects(readAgendaTemplate(buf, 'agenda.docx'), /by hand/);
   } finally { globalThis.fetch = real; delete process.env.GROQ_API_KEY; }
 });
+
+test('a club\'s own Word file: checked at upload, kept, and filled for each meeting', async () => {
+  const fs = await import('node:fs');
+  const { checkDocx, fillDocx } = await import('../src/agendaDocx.js');
+  const file = fs.readFileSync(new URL('../templates/agenda.docx', import.meta.url));
+  const chk = await checkDocx(file);
+  assert.equal(chk.usable, true);
+  assert.deepEqual(chk.parts.filter((p) => !p.found).map((p) => p.key), [], 'every part of this template is recognised');
+  assert.equal((await checkDocx(Buffer.from(await new JSZip().file('word/document.xml', '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Hello there, nothing like an agenda</w:t></w:r></w:p></w:body></w:document>').generateAsync({ type: 'nodebuffer' })))).usable, false);
+  // save it on the club, then download the Word agenda for a meeting
+  const data = file.toString('base64');
+  assert.equal((await call('POST', '/api/vpe/club/agenda-template', { file: { name: 'our agenda.docx', data } }, vpe)).status, 200);
+  const acc = (await call('GET', '/api/account', null, vpe)).json;
+  assert.equal(acc.club.agenda_template.name, 'our agenda.docx');
+  const bad = await call('POST', '/api/vpe/club/agenda-template', { file: { name: 'x.docx', data: Buffer.from('not a zip').toString('base64') } }, vpe);
+  assert.ok(bad.status >= 400 && bad.status < 500);
+  const [m] = await q('select id from meetings where club_id=(select club_id from people where token=$1) order by date limit 1', [vpe]);
+  await q(`update meetings set theme='Boundless Test Theme' where id=$1`, [m.id]);
+  const r = await fetch(`${base}/api/vpe/meetings/${m.id}/agenda.docx`, { headers: { 'x-token': vpe } });
+  assert.equal(r.status, 200);
+  const out = await JSZip.loadAsync(Buffer.from(await r.arrayBuffer()));
+  assert.match(await out.file('word/document.xml').async('string'), /Boundless Test Theme/);
+  const f = await fillDocx(file, { start: '1800', buffer: 3, gap: 1, next_meeting: '2031-03-18', roles: { tmod: 'Zed' }, blocks: [], speeches: [], reports: { items: [] } }, { clubNumber: '1', m: { date: '2031-03-04', theme: 'T' } });
+  assert.ok(f.found.date && f.found.roles);
+  assert.equal((await call('POST', '/api/vpe/club/agenda-template', { remove_template: true }, vpe)).status, 200);
+  assert.equal((await call('GET', '/api/account', null, vpe)).json.club.agenda_template, undefined);
+});
