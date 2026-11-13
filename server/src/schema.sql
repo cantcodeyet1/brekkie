@@ -333,3 +333,26 @@ update clubs set tm_number=null where tm_number='04647453' and name ilike 'champ
   and (select count(*) from meetings m where m.club_id=clubs.id) <
       (select max(n) from (select count(*) n from clubs c join meetings m on m.club_id=c.id where c.name ilike 'champions toastmasters%' group by c.id) t);
 update clubs set tm_number='04647453' where id = (select c.id from clubs c where c.tm_number is null and c.name ilike 'champions toastmasters%' order by (select count(*) from meetings m where m.club_id=c.id) desc, c.id limit 1) and not exists (select 1 from clubs c2 where c2.tm_number='04647453');
+
+-- Pathways enhancements: the meeting roles and Education Series presentations a level asks for, besides its projects.
+-- A row is planned until done is set (or the roster slot it is linked to submits). kind 'waive' says a level's requirements were met before Brekkie.
+create table if not exists member_enh (
+  id serial primary key,
+  club_id int not null references clubs(id) on delete cascade,
+  person_id int not null references people(id) on delete cascade,
+  level int not null,
+  kind text not null,
+  item text not null default '',
+  date date,
+  venue text not null default '',
+  done boolean not null default false,
+  role_id int references meeting_roles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists member_enh_person_idx on member_enh(person_id, level);
+create index if not exists member_enh_club_idx on member_enh(club_id, date);
+
+-- the agenda title follows a member's last completed level (PM1, EH5...) unless the VPE typed their own
+alter table people add column if not exists credential_manual boolean;
+update people set credential_manual = (coalesce(credential,'') not in ('','TM') and credential !~ '^[A-Z]{2}[1-5]$') where credential_manual is null;
+alter table people alter column credential_manual set default false;

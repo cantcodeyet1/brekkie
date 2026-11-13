@@ -12,6 +12,7 @@ export const I = {
   back: <Ic w={22} s={2} d="M15 5l-7 7 7 7" />, chev: <Ic w={18} s={2} d="M9 5l7 7-7 7" />, down: <Ic w={16} s={2} d="M6 9l6 6 6-6" />,
   plus: <Ic w={18} s={2} d="M12 5v14M5 12h14" />, minus: <Ic w={16} s={2.2} d="M5 12h14" />, close: <Ic w={14} s={2} d="M6 6l12 12M18 6L6 18" />,
   check: <Ic w={17} s={2.4} d="M5 12.5l4.5 4.5L19 7.5" />,
+  warn: <Ic w={15} s={2.2}><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17.2h.01" /></Ic>,
   copy: <Ic w={17}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 012-2h9" /></Ic>,
   eye: <Ic w={22} s={1.8}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></Ic>,
   eyeoff: <Ic w={22} s={1.8}><path d="M3 3l18 18M10.6 5.1A10 10 0 0112 5c6.4 0 10 7 10 7a17 17 0 01-3.2 4M6.5 6.6A17 17 0 002 12s3.6 7 10 7a9.8 9.8 0 004.4-1" /><path d="M9.9 9.9a3 3 0 004.2 4.2" /></Ic>,

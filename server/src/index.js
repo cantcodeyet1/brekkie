@@ -18,6 +18,7 @@ import { validWord, wordDetails } from './words.js';
 import { ensurePathways } from './pathways.js';
 import { applyFormText } from './formtext.js';
 import { forecastMember, goalsFrom, programYear } from './dcp.js';
+import { LEVELS, ROLES, appliesTo, itemLabel, layOver, slotsFor, validItem } from './enhancements.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // The demo picker lists every member's sign-in token, so it must never exist on a real database: it is off whenever DATABASE_URL is set
@@ -166,8 +167,8 @@ async function upsertMember(run, clubId, m) {
   let [p] = email ? await run('select * from people where club_id=$1 and lower(email)=$2', [clubId, email]) : [];
   if (!p) [p] = await run(`select * from people where club_id=$1 and lower(name)=lower($2) and kind='member' and status<>'inactive'`, [clubId, name]);
   let made = false;
-  if (p) await run('update people set phone=coalesce($1, phone), credential=case when $2<>\'\' then $2 else credential end where id=$3', [phone, cred, p.id]);
-  else { [p] = await run(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [clubId, name, email || null, token(), cred, phone]); made = true; }
+  if (p) await run('update people set phone=coalesce($1, phone), credential=case when $2<>\'\' then $2 else credential end, credential_manual=case when $2<>\'\' then $4 else credential_manual end where id=$3', [phone, cred, p.id, !isPathCode(cred) && cred !== 'TM']);
+  else { [p] = await run(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [clubId, name, email || null, token(), cred, phone]); made = true; if (cred) await run('update people set credential_manual=$2 where id=$1', [p.id, !isPathCode(cred) && cred !== 'TM']); }
   const path = String(m.path_name || '').trim();
   if (path && (await run('select 1 as x from path_projects where path=$1 limit 1', [path])).length) await setLevelsDone(run, p.id, path, m.levels_done, m.levels_this_year);
   return { id: p.id, name: p.name, made };
@@ -741,24 +742,25 @@ app.get('/api/vpe/roster', needPerson, wrap(async (req, res) => {
   });
 }));
 
+// a new speaker or evaluator row at the end of its group on a meeting
+const addSlot = (meetingId, key) => tx(async (t) => {
+  const same = await t('select id, position from meeting_roles where meeting_id=$1 and role_key=$2 order by position', [meetingId, key]);
+  const n = same.length + 1, pos = (same.at(-1)?.position ?? 99) + 1;
+  await t('update meeting_roles set position = position + 1 where meeting_id=$1 and position >= $2', [meetingId, pos]);
+  const label = key === 'speaker' ? `Speaker ${n}` : `Speech Evaluator ${n}`;
+  let target = null;
+  if (key === 'evaluator') target = (await t(`select id from meeting_roles where meeting_id=$1 and role_key='speaker' and label=$2`, [meetingId, `Speaker ${n}`]))[0]?.id ?? null;
+  const [r] = await t('insert into meeting_roles(meeting_id,role_key,label,position,target_role_id,token) values ($1,$2,$3,$4,$5,$6) returning id, label', [meetingId, key, label, pos, target, token()]);
+  if (key === 'speaker') await t(`update meeting_roles set target_role_id=$1 where meeting_id=$2 and role_key='evaluator' and label=$3 and target_role_id is null`, [r.id, meetingId, `Speech Evaluator ${n}`]);
+  return r;
+});
 // add a speaker or evaluator row to a meeting (the roster adds it to every meeting on screen)
 app.post('/api/vpe/meetings/:id/roles', needPerson, needVpe, wrap(async (req, res) => {
   const key = req.body?.role_key;
   if (!['speaker', 'evaluator'].includes(key)) return bad(res, 'Only speaker and evaluator rows can be added');
   const [m] = await q('select id from meetings where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
   if (!m) return bad(res, 'Not found', 404);
-  const out = await tx(async (t) => {
-    const same = await t('select id, position from meeting_roles where meeting_id=$1 and role_key=$2 order by position', [m.id, key]);
-    const n = same.length + 1, pos = (same.at(-1)?.position ?? 99) + 1;
-    await t('update meeting_roles set position = position + 1 where meeting_id=$1 and position >= $2', [m.id, pos]);
-    const label = key === 'speaker' ? `Speaker ${n}` : `Speech Evaluator ${n}`;
-    let target = null;
-    if (key === 'evaluator') target = (await t(`select id from meeting_roles where meeting_id=$1 and role_key='speaker' and label=$2`, [m.id, `Speaker ${n}`]))[0]?.id ?? null;
-    const [r] = await t('insert into meeting_roles(meeting_id,role_key,label,position,target_role_id,token) values ($1,$2,$3,$4,$5,$6) returning id', [m.id, key, label, pos, target, token()]);
-    if (key === 'speaker') await t(`update meeting_roles set target_role_id=$1 where meeting_id=$2 and role_key='evaluator' and label=$3 and target_role_id is null`, [r.id, m.id, `Speech Evaluator ${n}`]);
-    return r;
-  });
-  res.json(out);
+  res.json(await addSlot(m.id, key));
 }));
 app.delete('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
   const r = await q(`delete from meeting_roles where id=$1 and role_key in ('speaker','evaluator') and submitted_at is null
@@ -781,6 +783,7 @@ function publicBase(req) {
   return `${req.protocol}://${ip || name}${port ? ':' + port : ''}`;
 }
 async function agendaFor(req, res, startOverride) {
+  await syncCredentials(req.person.club_id);
   const ctx = await loadContext(req.params.id, req.person.club_id);
   if (!ctx) { bad(res, 'Not found', 404); return null; }
   const def = defaultAgenda(ctx, startOverride ?? ctx.m.agenda?.start);
@@ -942,6 +945,8 @@ app.patch('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
   const tk = next.person_id !== r.person_id ? token() : r.token;
   await q('update meeting_roles set person_id=$1, project_id=$2, speech_title=$3, target_role_id=$4, token=$5, path_name=$6, path_level=$7, part=$9 where id=$8',
     [next.person_id, next.project_id, next.speech_title, next.target_role_id, tk, next.path_name ?? null, next.path_level ?? null, r.id, next.project_id ? next.part ?? 1 : 1]);
+  // a role put on the roster counts towards the member's level requirements, and one taken off stops counting
+  if (r.role_key !== 'speaker' && next.person_id !== r.person_id) await syncEnh(r, next.person_id);
   // what the VPE sets on a speaker slot is remembered for next time
   if (r.role_key === 'speaker' && next.person_id && ('path_name' in b || 'path_level' in b) && next.path_name) await q('update people set path_name=$1, path_level=$2 where id=$3', [next.path_name, next.path_level ?? null, next.person_id]);
   res.json({ ok: true, token: tk, path_name: next.path_name ?? null, path_level: next.path_level ?? null, project_id: next.project_id, part: next.project_id ? next.part ?? 1 : 1 });
@@ -954,6 +959,14 @@ app.post('/api/vpe/roles/:id/regenerate', needPerson, needVpe, wrap(async (req, 
 
 /* Where a member is on their path: the catalog level by level, what is finished (marked by the VPE, or an evaluated
    speech), the level they are on and the project to give them next. */
+/** the two letters Toastmasters uses for each path: Presentation Mastery is PM, so a finished Level 3 reads PM3 */
+const PATH_CODES = { 'Dynamic Leadership': 'DL', 'Engaging Humor': 'EH', 'Motivational Strategies': 'MS', 'Persuasive Influence': 'PI', 'Presentation Mastery': 'PM', 'Visionary Communication': 'VC',
+  'Effective Coaching': 'EC', 'Innovative Planning': 'IP', 'Leadership Development': 'LD', 'Strategic Relationships': 'SR', 'Team Collaboration': 'TC' };
+const isPathCode = (c) => /^[A-Z]{2}[1-5]$/.test(c || '');
+/** keep the agenda title in step with the last completed level, for a member whose title the VPE has not typed in */
+async function syncCredentials(club) {
+  for (const p of await q(`select * from people where club_id=$1 and kind='member' and path_name is not null and credential_manual=false`, [club])) await pathProgress(p);
+}
 async function pathProgress(person) {
   const path = person.path_name;
   if (!path) return { path: null, levels: [], current: null, next: null, level_complete: false };
@@ -969,13 +982,16 @@ async function pathProgress(person) {
   // when each part is scheduled: a slot on a coming meeting, or a speech the member planned (here or elsewhere)
   const sched = new Map();
   const when = [
-    ...(await q(`select r.project_id, r.part, ${DATE('m.date')} as date, '' as venue, null::int as plan from meeting_roles r join meetings m on m.id=r.meeting_id where r.person_id=$1 and r.project_id is not null`, [person.id])),
-    ...(await q(`select project_id, part, ${DATE('date')} as date, venue, id as plan from speech_plans where person_id=$1 and project_id is not null and not done`, [person.id])),
+    ...(await q(`select r.project_id, r.part, ${DATE('m.date')} as date, '' as venue, null::int as plan, r.id as role from meeting_roles r join meetings m on m.id=r.meeting_id where r.person_id=$1 and r.project_id is not null`, [person.id])),
+    ...(await q(`select project_id, part, ${DATE('date')} as date, venue, id as plan, null::int as role from speech_plans where person_id=$1 and project_id is not null and not done`, [person.id])),
   ].sort((a, b) => a.date.localeCompare(b.date));
   const now = new Date().toISOString().slice(0, 10);
-  for (const w of when.filter((x) => x.date >= now)) if (!sched.has(K(w.project_id, w.part))) sched.set(K(w.project_id, w.part), { date: w.date, venue: w.venue, plan: w.plan });
-  for (const w of when.filter((x) => x.date < now).reverse()) if (!sched.has(K(w.project_id, w.part))) sched.set(K(w.project_id, w.part), { date: w.date, venue: w.venue, plan: w.plan });
+  for (const w of when.filter((x) => x.date >= now)) if (!sched.has(K(w.project_id, w.part))) sched.set(K(w.project_id, w.part), { date: w.date, venue: w.venue, plan: w.plan, role: w.role });
+  for (const w of when.filter((x) => x.date < now).reverse()) if (!sched.has(K(w.project_id, w.part))) sched.set(K(w.project_id, w.part), { date: w.date, venue: w.venue, plan: w.plan, role: w.role });
   const prior = new Map((await q(`select level, ${DATE('done_on')} as d from member_levels where person_id=$1 and path=$2`, [person.id, path])).map((x) => [x.level, x.d]));
+  // roles and Education Series presentations, by level. One that is linked to a roster slot counts as done once that slot has submitted.
+  const enhRows = appliesTo(path) ? await q(`select e.id, e.level, e.kind, e.item, ${DATE('e.date')} as date, e.venue, e.role_id, (e.done or r.submitted_at is not null) as done
+    from member_enh e left join meeting_roles r on r.id=e.role_id where e.person_id=$1 order by e.date, e.id`, [person.id]) : [];
   const levels = [];
   for (const r of rows) {
     let lv = levels.find((x) => x.level === r.level); if (!lv) levels.push(lv = { level: r.level, title: r.level_title, choose: r.choose, all: [] });
@@ -1001,7 +1017,9 @@ async function pathProgress(person) {
     lv.to_pick = lv.prior ? 0 : Math.max(0, (lv.choose || 0) - sel.length);
     lv.required_total = req.length; lv.required_done = req.filter((p) => p.done).length;
     lv.electives_done = lv.prior ? Math.max(el.filter((p) => p.done).length, lv.choose || 0) : el.filter((p) => p.done).length;
-    lv.complete = lv.prior || (lv.required_done === lv.required_total && lv.electives_done >= (lv.choose || 0));
+    lv.enh = layOver(path, lv.level, enhRows.filter((x) => x.level === lv.level), lv.prior || enhRows.some((x) => x.level === lv.level && x.kind === 'waive'));
+    lv.projects_complete = lv.prior || (lv.required_done === lv.required_total && lv.electives_done >= (lv.choose || 0));
+    lv.complete = lv.projects_complete && lv.enh.complete;
     delete lv.all;
   }
   const first = levels.find((l) => !l.complete) || levels[levels.length - 1];
@@ -1015,6 +1033,12 @@ async function pathProgress(person) {
   if (cl) {
     const n = cl.projects.find((p) => p.kind === 'required' && !p.done) || (cl.electives_done < (cl.choose || 0) ? cl.projects.find((p) => p.kind === 'elective' && !p.done) : null);
     if (n) next = { id: n.id, name: n.name, code: n.code, kind: n.kind, level: cl.level, part: n.next_part || 1, part_kind: n.next_part_kind || 'speech', parts: n.parts?.length || 1 };
+  }
+  // the agenda title: the path and the highest level finished, or TM before any. Only for a row that says it is automatic.
+  if (person.credential_manual === false && person.id) {
+    const top = levels.filter((l) => l.complete).map((l) => l.level).sort((a, b) => b - a)[0];
+    const want = top && PATH_CODES[path] ? `${PATH_CODES[path]}${top}` : 'TM';
+    if (want !== (person.credential || '')) { await q('update people set credential=$1 where id=$2', [want, person.id]); person.credential = want; }
   }
   return { path, levels, current, next, level_complete: !!cl?.complete, has_next_level: levels.some((l) => l.level > current) };
 }
@@ -1041,6 +1065,111 @@ app.get('/api/vpe/people/:id/path', needPerson, needVpe, wrap(async (req, res) =
   res.json(await pathProgress(p));
 }));
 app.get('/api/me/path', needPerson, wrap(async (req, res) => res.json(await pathProgress(req.person))));
+
+/* ───────── roster placement: scheduling someone at this club on a meeting date puts them on that meeting's roster ───────── */
+async function placeRole(clubId, personId, date, key) {
+  const [m] = await q('select id, number from meetings where club_id=$1 and date=$2', [clubId, date]);
+  if (!m) return { status: 'no_meeting' };
+  const rows = await q(`select r.id, r.label, r.person_id, p.name as by from meeting_roles r left join people p on p.id=r.person_id where r.meeting_id=$1 and r.role_key=$2 order by r.position`, [m.id, key]);
+  const mine = rows.find((r) => r.person_id === personId);
+  if (mine) return { status: 'placed', role_id: mine.id, label: mine.label, meeting: m.number };
+  let free = rows.find((r) => !r.person_id);
+  if (!free && key === 'evaluator') free = await addSlot(m.id, 'evaluator');
+  if (!free) return { status: 'taken', label: rows[0]?.label, by: rows[0]?.by, meeting: m.number };
+  await q('update meeting_roles set person_id=$1, token=$2 where id=$3', [personId, token(), free.id]);
+  return { status: 'placed', role_id: free.id, label: free.label, meeting: m.number };
+}
+/** a speech at this club on a meeting date takes a free speaker slot (one is added when all are taken) */
+async function placeSpeech(club, person, date, { project_id, part, title }) {
+  const [m] = await q('select id, number from meetings where club_id=$1 and date=$2', [club, date]);
+  if (!m) return null;
+  if (project_id) {
+    const [pj] = await q('select parts from projects where id=$1', [project_id]);
+    if ((pj?.parts || [])[(part || 1) - 1]?.kind === 'evaluator') return null;   // that part is given from an evaluator slot
+  }
+  const rows = await q(`select id, label, person_id, project_id, part from meeting_roles where meeting_id=$1 and role_key='speaker' order by position`, [m.id]);
+  const dup = rows.find((r) => r.person_id === person.id && r.project_id === (project_id || null) && r.part === (part || 1));
+  if (dup) return { meeting: m.number, label: dup.label };
+  const free = rows.find((r) => !r.person_id) || await addSlot(m.id, 'speaker');
+  let lvl = null;
+  if (project_id && person.path_name) lvl = (await q('select level from path_projects where path=$1 and project_id=$2', [person.path_name, project_id]))[0]?.level ?? null;
+  await q('update meeting_roles set person_id=$1, project_id=$2, part=$3, speech_title=$4, path_name=$5, path_level=$6, token=$7 where id=$8',
+    [person.id, project_id || null, project_id ? part || 1 : 1, title || '', project_id ? person.path_name : null, lvl, token(), free.id]);
+  return { meeting: m.number, label: free.label };
+}
+/** someone put on (or taken off) a roster role: the plan for the previous person goes, and the new person gets one if their level still asks for the role */
+async function syncEnh(role, personId) {
+  await q('delete from member_enh where role_id=$1 and not done', [role.id]);
+  const item = Object.keys(ROLES).find((k) => ROLES[k].slot === role.role_key);
+  if (!personId || !item) return;
+  const [p] = await q('select * from people where id=$1', [personId]);
+  if (!appliesTo(p?.path_name)) return;
+  const prog = await pathProgress(p), lv = prog.levels.find((l) => l.level === prog.current);
+  if (!lv?.enh?.applies || lv.enh.waived) return;
+  if (!lv.enh.items.some((i) => i.kind === 'role' && i.options.some((o) => o.key === item) && i.entries.length < i.need)) return;
+  const [m] = await q(`select ${DATE('m.date')} as d, m.club_id from meetings m join meeting_roles r on r.meeting_id=m.id where r.id=$1`, [role.id]);
+  await q('insert into member_enh(club_id, person_id, level, kind, item, date, role_id) values ($1,$2,$3,$4,$5,$6,$7)', [m.club_id, p.id, prog.current, 'role', item, m.d, role.id]);
+}
+const unplace = (roleId, personId) => (roleId ? q('update meeting_roles set person_id=null, token=$3 where id=$1 and person_id=$2 and submitted_at is null', [roleId, personId, token()]) : null);
+
+/* ───────── Pathways enhancements: roles and Education Series presentations a level asks for ───────── */
+async function enhPerson(req, res) {
+  const [p] = await q('select * from people where id=$1 and club_id=$2', [req.params.id, req.person.club_id]);
+  if (!p) { bad(res, 'Not found', 404); return null; }
+  if (!appliesTo(p.path_name)) { bad(res, 'Requirements apply to the six current paths only'); return null; }
+  return p;
+}
+/* plan a role or presentation (here or at another club), or record one already done */
+app.post('/api/vpe/people/:id/enh', needPerson, needVpe, wrap(async (req, res) => {
+  const p = await enhPerson(req, res); if (!p) return;
+  const b = req.body || {}, kind = b.kind === 'series' ? 'series' : 'role', level = parseInt(b.level, 10), item = String(b.item || '');
+  const venue = String(b.venue || '').trim().slice(0, 80), done = !!b.done;
+  if (!LEVELS[level] || !validItem(p.path_name, level, kind, item)) return bad(res, 'That is not one of the requirements for this level');
+  const when = cleanDate(b.date) || (done ? new Date().toISOString().slice(0, 10) : null);
+  if (!when) return bad(res, 'Choose a date');
+  let roster = null;
+  if (kind === 'role' && !venue && ROLES[item].slot) roster = await placeRole(p.club_id, p.id, when, ROLES[item].slot);
+  const [row] = await q('insert into member_enh(club_id, person_id, level, kind, item, date, venue, done, role_id) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id', [p.club_id, p.id, level, kind, item, when, venue, done, roster?.role_id || null]);
+  res.json({ ok: true, id: row.id, roster });
+}));
+async function enhRow(req, res) {
+  const [e] = await q(`select *, ${DATE('date')} as d from member_enh where id=$1 and club_id=$2`, [req.params.id, req.person.club_id]);
+  if (!e) bad(res, 'Not found', 404);
+  return e;
+}
+app.patch('/api/vpe/enh/:id', needPerson, needVpe, wrap(async (req, res) => {
+  const e = await enhRow(req, res); if (!e) return;
+  const b = req.body || {};
+  const date = 'date' in b ? cleanDate(b.date) : null; if ('date' in b && !date) return bad(res, 'Choose a date');
+  const venue = 'venue' in b ? String(b.venue || '').trim().slice(0, 80) : e.venue;
+  let roleId = e.role_id, roster = null;
+  if (e.kind === 'role' && ROLES[e.item]?.slot && ('date' in b || 'venue' in b) && !e.done) {
+    await unplace(e.role_id, e.person_id); roleId = null;
+    if (!venue) { roster = await placeRole(e.club_id, e.person_id, date || e.d, ROLES[e.item].slot); roleId = roster.role_id || null; }
+  }
+  await q('update member_enh set date=coalesce($2,date), venue=$3, role_id=$4 where id=$1', [e.id, date, venue, roleId]);
+  res.json({ ok: true, roster });
+}));
+app.delete('/api/vpe/enh/:id', needPerson, needVpe, wrap(async (req, res) => {
+  const e = await enhRow(req, res); if (!e) return;
+  if (!e.done) await unplace(e.role_id, e.person_id);
+  await q('delete from member_enh where id=$1', [e.id]);
+  res.json({ ok: true });
+}));
+app.post('/api/vpe/enh/:id/complete', needPerson, needVpe, wrap(async (req, res) => {
+  const e = await enhRow(req, res); if (!e) return;
+  await q('update member_enh set done=$2 where id=$1', [e.id, req.body?.done !== false]);
+  res.json({ ok: true });
+}));
+/* a level's requirements were already met before Brekkie: they all count, without listing each one */
+app.post('/api/vpe/people/:id/enh/waive', needPerson, needVpe, wrap(async (req, res) => {
+  const p = await enhPerson(req, res); if (!p) return;
+  const level = parseInt(req.body?.level, 10);
+  if (!LEVELS[level]) return bad(res, 'Unknown level');
+  await q(`delete from member_enh where person_id=$1 and level=$2 and kind='waive'`, [p.id, level]);
+  if (req.body?.on !== false) await q(`insert into member_enh(club_id, person_id, level, kind, done) values ($1,$2,$3,'waive',true)`, [p.club_id, p.id, level]);
+  res.json({ ok: true });
+}));
 /* ───────── Dashboard: the first six DCP goals, a forecast per member, and upcoming speeches ───────── */
 const cleanDate = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s : null);
 async function planRows(club, where = '', args = []) {
@@ -1050,6 +1179,13 @@ async function planRows(club, where = '', args = []) {
     from speech_plans s join people p on p.id=s.person_id left join projects pr on pr.id=s.project_id
     left join path_projects pp on pp.project_id=s.project_id and pp.path=p.path_name
     where s.club_id=$1 ${where} order by s.date, s.id`, [club, ...args]);
+}
+/* planned roles and Education Series presentations, shaped like speeches so the calendar and dashboard can list them */
+async function enhRows(club, where = '', args = []) {
+  const rows = await q(`select e.id, e.person_id, p.name as person, p.path_name as path, e.level, e.kind, e.item, ${DATE('e.date')} as date, e.venue, (e.done or r.submitted_at is not null) as done
+    from member_enh e join people p on p.id=e.person_id left join meeting_roles r on r.id=e.role_id
+    where e.club_id=$1 and e.kind<>'waive' ${where} order by e.date, e.id`, [club, ...args]);
+  return rows.map((e) => ({ kind: 'enh', key: `e${e.id}`, id: e.id, person_id: e.person_id, person: e.person, project: itemLabel(e.kind, e.item), enh_kind: e.kind, level: e.level, path: e.path, title: '', date: e.date, venue: e.venue, done: e.done }));
 }
 app.get('/api/vpe/dashboard', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id, today = new Date().toISOString().slice(0, 10);
@@ -1068,6 +1204,7 @@ app.get('/api/vpe/dashboard', needPerson, needVpe, wrap(async (req, res) => {
   const upcoming = [
     ...roles.map((r) => ({ kind: 'club', person_id: r.person_id, person: people.find((p) => p.id === r.person_id)?.name, project: r.project, title: r.speech_title, date: r.date, venue: '', meeting: r.number })),
     ...plans.map((s) => ({ kind: 'plan', id: s.id, person_id: s.person_id, person: s.person, project: s.project, title: s.title, date: s.date, venue: s.venue })),
+    ...(await enhRows(club, 'and e.date >= current_date and not (e.done or r.submitted_at is not null)')),
   ].filter((u) => u.person).sort((a, b) => a.date.localeCompare(b.date));
   const past = await planRows(club, 'and s.date < current_date and not s.done');
   res.json({ today, year, years, goals, members, upcoming, past });
@@ -1084,11 +1221,13 @@ app.get('/api/vpe/calendar', needPerson, needVpe, wrap(async (req, res) => {
     left join path_projects pp on pp.project_id=r.project_id and pp.path=coalesce(r.path_name, p.path_name)
     where m.club_id=$1 and r.role_key='speaker' and m.date between $2 and $3 order by m.date`, [club, from, to]);
   const plans = await planRows(club, 'and s.date between $2 and $3', [from, to]);
-  const pending = await planRows(club, 'and s.date < current_date and not s.done');
+  const pending = [...await planRows(club, 'and s.date < current_date and not s.done'), ...await enhRows(club, 'and e.date < current_date and not (e.done or r.submitted_at is not null)')];
+  const enhs = await enhRows(club, 'and e.date between $2 and $3', [from, to]);
   res.json({
     today: new Date().toISOString().slice(0, 10), meetings, pending,
     speeches: [
       ...roles.map((r) => ({ kind: 'club', key: `r${r.id}`, id: r.id, person_id: r.person_id, person: r.person, project_id: r.project_id, project: r.project, code: r.code, level: r.level, path: r.path, length: r.length, title: r.title, date: r.date, venue: '', meeting: r.number, meeting_id: r.meeting_id, done: !!r.done, part: r.part, nparts: r.nparts, part_label: r.part_label })),
+      ...enhs,
       ...plans.map((s) => ({ kind: 'plan', key: `p${s.id}`, id: s.id, person_id: s.person_id, person: s.person, project_id: s.project_id, project: s.project, code: s.code, level: s.level, path: s.path, length: s.length, title: s.title, date: s.date, venue: s.venue, done: s.done, part: s.part, nparts: s.nparts, part_label: s.part_label })),
     ],
   });
@@ -1110,6 +1249,11 @@ async function addPlan(req, res, person) {
     }
   }
   const part = Math.max(1, Math.min(9, parseInt(req.body.part, 10) || 1));
+  // at this club on a meeting date: they go on that meeting's roster as a speaker, and the slot is the schedule
+  if (!venue) {
+    const roster = await placeSpeech(person.club_id, person, date, { project_id: pid, part, title });
+    if (roster) return res.json({ ok: true, roster });
+  }
   await q('insert into speech_plans(club_id, person_id, project_id, title, date, venue, part) values ($1,$2,$3,$4,$5,$6,$7)', [person.club_id, person.id, pid, title, date, venue, pid ? part : 1]);
   res.json({ ok: true });
 }
@@ -1138,6 +1282,13 @@ app.patch('/api/me/plans/:id', needPerson, needVpe, wrap(async (req, res) => {
   const title = 'title' in b ? String(b.title || '').trim().slice(0, 120) : s.title;
   const part = 'part' in b ? Math.max(1, Math.min(9, parseInt(b.part, 10) || 1)) : ('project_id' in b ? 1 : s.part);
   await q('update speech_plans set date=coalesce($2,date), project_id=$3, venue=$4, title=$5, part=$6 where id=$1', [s.id, date, pid, venue, title, pid ? part : 1]);
+  // moved to a meeting date at this club: they go on that meeting's roster, and the slot replaces the plan
+  if (!venue) {
+    const [pp] = await q('select * from people where id=$1', [s.person_id]);
+    const on = date || (await q(`select ${DATE('date')} as d from speech_plans where id=$1`, [s.id]))[0].d;
+    const roster = await placeSpeech(s.club_id, pp, on, { project_id: pid, part: pid ? part : 1, title });
+    if (roster) { await q('delete from speech_plans where id=$1', [s.id]); return res.json({ ok: true, roster }); }
+  }
   res.json({ ok: true });
 }));
 /* a planned speech that has happened: the project is marked done on its date, and the plan goes away */
@@ -1178,7 +1329,8 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
 
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const people = await q(`select id,name,email,credential,path_name,path_level,join_requested_at,kind,status,is_vpe,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
+  await syncCredentials(club);
+  const people = await q(`select id,name,email,credential,credential_manual,path_name,path_level,join_requested_at,kind,status,is_vpe,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
   // plain counts that can be checked by hand
   const counts = async (sql) => Object.fromEntries((await q(sql, [club])).map((r) => [r.pid, r.n]));
   const speeches = await counts(`select e.speaker_id as pid, count(*)::int as n from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=$1 group by e.speaker_id`);
@@ -1197,6 +1349,7 @@ app.post('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const clean = String(name || '').trim();
   if (clean.length < 2) return bad(res, 'Enter a name');
   const [p] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,credential,phone) values ($1,$2,$3,'member','active',$4,'vpe',$5,$6) returning *`, [req.person.club_id, clean, email || null, token(), cred, phone]);
+  if (cred) await q('update people set credential_manual=$2 where id=$1', [p.id, !isPathCode(cred) && cred !== 'TM']);
   if (req.body.path_name) await upsertMember(q, req.person.club_id, { name: clean, email, path_name: req.body.path_name, levels_done: req.body.levels_done, levels_this_year: req.body.levels_this_year });
   res.json(pub(p));
 }));
@@ -1229,7 +1382,9 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   const b = req.body;
   let { name, email, kind, status, credential, phone } = p;
   if ('phone' in b) phone = String(b.phone || '').trim().slice(0, 30) || null;
-  if ('credential' in b) credential = String(b.credential || '').trim().slice(0, 20);
+  let manual = p.credential_manual;
+  // typing a title of their own keeps it; clearing it hands it back to the last completed level. Re-sending what is already there changes nothing.
+  if ('credential' in b) { credential = String(b.credential || '').trim().slice(0, 20); if (credential !== (p.credential || '')) manual = credential !== ''; }
   if (typeof b.name === 'string' && b.name.trim().length > 1) name = b.name.trim();
   if ('email' in b) {
     const e = normEmail(b.email);
@@ -1241,7 +1396,7 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   if ('levels_done' in b && (b.path_name || p.path_name)) await setLevelsDone(q, p.id, b.path_name || p.path_name, b.levels_done, b.levels_this_year);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
-  await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,phone=$8,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential, phone]);
+  await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,phone=$8,credential_manual=$9,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential, phone, !!manual]);
   res.json({ ok: true });
 }));
 app.post('/api/vpe/people/:id/extend', needPerson, needVpe, wrap(async (req, res) => {
@@ -1275,7 +1430,8 @@ async function givenFor(pid) {
 /* one member: what they have delivered, the roles they have done, the feedback they have given and received */
 app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
-  const [p] = await q(`select id,name,email,phone,credential,path_name,path_level,kind,status,is_vpe,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
+  await syncCredentials(club);
+  const [p] = await q(`select id,name,email,phone,credential,credential_manual,path_name,path_level,kind,status,is_vpe,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
   if (!p) return bad(res, 'Not found', 404);
   const hist = await loadHist(club);
   const projects = hist.evals.filter((e) => e.pid === p.id).reverse().map((e) => ({ id: e.id, title: e.title, project: e.project, path: e.path, level: e.level, date: e.date, number: e.number, by: e.by, work: e.work }));

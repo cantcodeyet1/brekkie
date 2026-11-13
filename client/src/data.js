@@ -69,3 +69,12 @@ export const partOf = (proj, n) => {
     purpose: [...(proj.purpose || []), ...(pt.purpose || [])], notes: pt.notes || proj.notes, about: pt.about?.length ? pt.about : proj.about,
   };
 };
+
+/** how a member is greeted in a message: TM, or DTM, never a path code like PM3 or EH1 (those are for the agenda) */
+export function greetTitle(credential) {
+  const t = String(credential || '').trim();
+  if (!t) return '';
+  if (/\bDTM\b/.test(t)) return 'DTM';
+  if (/\b[A-Z]{2}[1-5]\b/.test(t) || t === 'TM') return 'TM';
+  return t;
+}

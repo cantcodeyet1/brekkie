@@ -114,6 +114,38 @@ export function PlanModal({ people, meId, preset, initialDate, onClose, onSaved 
   );
 }
 
+/* move something that is already scheduled: another date, or another club */
+function ReschedModal({ m, it, onClose, onSaved }) {
+  const toast = useToast();
+  const [date, setDate] = useState(it.date || '');
+  const [where, setWhere] = useState(it.venue ? 'there' : 'here');
+  const [venue, setVenue] = useState(it.venue || '');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (!date) return toast('Choose a date');
+    if (where === 'there' && !venue.trim()) return toast('Enter the club name');
+    setBusy(true);
+    const body = { date, venue: where === 'there' ? venue : '' };
+    try {
+      await api(it.enh_id ? `/vpe/enh/${it.enh_id}` : `/me/plans/${it.plan}`, { method: 'PATCH', body });
+      toast('Rescheduled'); onSaved();
+    } catch (e) { toast(e.message); setBusy(false); }
+  };
+  return (
+    <Modal title="Reschedule" onClose={onClose}>
+      <div className="pm">
+        <p className="rq-lead"><b>{m.name}</b> · {it.code ? `${it.code} ` : ''}{it.name}</p>
+        <div className="pm-row">
+          <label className="pmf"><span className="fl">Date</span><DatePick value={date} onChange={setDate} /></label>
+          <div className="pmf"><span className="fl">Where</span><Seg value={where} onChange={setWhere} options={[['here', 'This club'], ['there', 'Another club']]} /></div>
+        </div>
+        {where === 'there' && <label className="pmf"><span className="fl">Club name</span><input className="inp" value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="For example, Sunrise Toastmasters" maxLength={80} /></label>}
+        <div className="pm-btns"><Btn kind="ghost" onClick={onClose}>Cancel</Btn><Btn onClick={save} disabled={busy}>Save</Btn></div>
+      </div>
+    </Modal>
+  );
+}
+
 /* a row for one planned or scheduled speech */
 export function SpeechRow({ s, who = true, onRemove }) {
   const d = new Date(s.date + 'T12:00:00');
@@ -137,30 +169,31 @@ const GROUPS = [
   { key: 'l45', title: 'Level 4 or 5 awards', levels: [4, 5], goals: [5, 6] },
 ];
 const SHOW_UPCOMING = false;   // the upcoming speeches list is switched off for now
-const RANK = { done: 0, forecast: 1, open: 2 };
+const RANK = { done: 0, forecast: 1, overdue: 2, open: 3 };
 const short = (iso) => fmtDate(iso, { day: 'numeric', month: 'short' });
 
 /* where a date falls in the program year, 0 to 1 */
 const at = (iso, y) => Math.min(1, Math.max(0, (new Date(iso) - new Date(y.start)) / (new Date(y.end) - new Date(y.start))));
 
 /* one member at one level: a tight row that opens to every project in it, with its date or a button to schedule it */
-function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
+function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo, onResched }) {
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
   const [pick, setPick] = useState(null);   // the project whose details are showing
-  const when = e.state === 'done' ? `Earned ${short(e.date)}` : e.state === 'forecast' ? `Completes ${short(e.date)}${e.date > d.year.end ? ' (next year)' : ''}` : e.due ? `${e.due} to confirm` : `${e.unscheduled} to schedule`;
-  const can = e.items.length > 0;   // finished levels open too, to look back at what was done and when
+  const when = e.state === 'done' ? `Earned ${short(e.date)}` : e.state === 'forecast' ? `Completes ${short(e.date)}${e.date > d.year.end ? ' (next year)' : ''}` : e.state === 'overdue' ? `${e.due} not marked done` : `${e.unscheduled} to schedule`;
+  const can = e.items.length > 0;
+  const toPath = `/v/members/${m.id}?level=${lv}&req=1`;   // finished levels open too, to look back at what was done and when
   return (
     <li className={'dv-row lv-' + e.state + (open ? ' is-open' : '')}>
       <div role="button" tabIndex={can ? 0 : -1} className="dv-h" aria-expanded={can ? open : undefined} aria-disabled={!can} onClick={() => can && setOpen(!open)}
         onKeyDown={(e) => { if (can && (e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); setOpen(!open); } }}>
         <span className="dv-rk" title={rank ? `Number ${rank} to finish towards the goal` : undefined}>{rank || ''}</span>
         <span className="dv-n"><Link className="dv-nl" to={`/v/members/${m.id}`} onClick={(e) => e.stopPropagation()} title={`Open ${m.name}`}><b>{m.name}</b></Link>{lv > 3 && <small title={lv === 5 ? 'Path completion' : undefined}>{`Level ${lv}`}</small>}</span>
-        <span className="dv-seg" aria-label={`${e.done} of ${e.total} projects done`}>
+        <span className="dv-seg" aria-label={`${e.done} of ${e.total} done${e.requirements ? `, including ${e.requirements_done} of ${e.requirements} roles and presentations` : ''}`}>
           {Array.from({ length: e.total }, (_, i) => <i key={i} className={i < e.done ? 'on' : ''} />)}
           <small>{e.done} of {e.total}</small>
         </span>
-        <span className={'dv-when w-' + (e.due ? 'due' : e.state)}>{when}</span>
+        <span className={'dv-when w-' + e.state}>{e.state === 'overdue' && <i className="dv-warn" title="Was scheduled, but not marked done. Confirm it or move it to a new date.">{I.warn}</i>}{when}</span>
         <span className={'dv-car' + (open ? ' up' : '')}>{can && I.chev}</span>
       </div>
       {can && open && (
@@ -172,13 +205,14 @@ function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
             const where = it.state === 'done' ? (it.source === 'evaluation' ? `This club, meeting ${it.meeting}` : it.venue || 'This club') : (it.state === 'sched' || it.state === 'due') ? (it.venue || 'This club') : '';
             return (
               <li key={i} className="it-wrap">
-                <div role="button" tabIndex={0} aria-expanded={it.id ? shown : undefined} className={'it it-' + it.state + (shown ? ' it-on' : '')} onClick={() => (it.id ? setPick(shown ? null : i) : nav(`/v/members/${m.id}?level=${lv}`))}
-                  onKeyDown={(ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === ev.currentTarget) { ev.preventDefault(); it.id ? setPick(shown ? null : i) : nav(`/v/members/${m.id}?level=${lv}`); } }}>
+                <div role="button" tabIndex={0} aria-expanded={it.id ? shown : undefined} className={'it it-' + it.state + (shown ? ' it-on' : '')} onClick={() => (it.id ? setPick(shown ? null : i) : nav(it.kind === 'enh' ? toPath : `/v/members/${m.id}?level=${lv}`))}
+                  onKeyDown={(ev) => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === ev.currentTarget) { ev.preventDefault(); it.id ? setPick(shown ? null : i) : nav(it.kind === 'enh' ? toPath : `/v/members/${m.id}?level=${lv}`); } }}>
                   <span className="it-s" aria-hidden="true">{it.state === 'done' ? I.check : ''}</span>
-                  <span className="it-t"><b>{it.code || 'Elective'}</b><span>{it.id ? it.name : 'Choose an elective'}</span></span>
+                  <span className="it-t"><b>{it.kind === 'enh' ? (it.enh_kind === 'series' ? 'Talk' : 'Role') : it.code || 'Elective'}</b><span>{it.id || it.kind === 'enh' ? it.name : 'Choose an elective'}</span></span>
                   <span className="it-d">
-                    {it.state === 'done' ? <><em>{it.source === 'prior' ? (it.date ? <>Logged {short(it.date)}</> : 'Done before Brekkie') : <>Done {short(it.date)}</>}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{it.source === 'manual' && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
+                    {it.state === 'done' ? <><em>{it.source === 'prior' ? (it.date ? <>Logged {short(it.date)}</> : 'Done before Brekkie') : <>Done {short(it.date)}</>}{it.source === 'evaluation' ? ` · meeting ${it.meeting}` : it.venue ? ` · ${it.venue}` : ''}</em>{(it.source === 'manual' || it.enh_id) && <button type="button" className="ghost" onClick={stop(() => onUndo(m, it))}>Undo</button>}</>
                       : it.state === 'sched' || it.state === 'due' ? <><em>{it.state === 'due' ? 'Was ' : ''}{short(it.date)}{it.venue ? ` · ${it.venue}` : ''}</em><button type="button" className={it.state === 'due' ? 'go' : ''} onClick={stop(() => onDone(m, it, lv))}>{I.check} Mark done</button></>
+                      : it.kind === 'enh' ? <Link to={toPath} onClick={(ev) => ev.stopPropagation()}>Schedule</Link>
                       : it.id ? <button type="button" onClick={stop(() => onSchedule(m, it))}>Schedule</button>
                       : <Link to={`/v/members/${m.id}?level=${lv}`} onClick={(ev) => ev.stopPropagation()}>Choose</Link>}
                   </span>
@@ -191,7 +225,9 @@ function Row({ m, lv, e, d, rank, onSchedule, onDone, onUndo }) {
                     {where && <div><dt>Where</dt><dd>{where}</dd></div>}
                     {it.length && <div><dt>Length</dt><dd>{it.length}</dd></div>}
                     {it.kind && <div><dt>Type</dt><dd>{it.kind === 'required' ? 'Required' : 'Elective'}</dd></div>}
-                    <Link className="it-go" to={`/v/members/${m.id}`}>Open {m.name.split(' ')[0]}'s page {I.chev}</Link>
+                    {(it.state === 'sched' || it.state === 'due') && (it.plan || it.enh_id)
+                      ? <button type="button" className="it-go" onClick={() => onResched(m, it)}>{I.cal} Reschedule</button>
+                      : <Link className="it-go" to={`/v/members/${m.id}`}>Open {m.name.split(' ')[0]}'s page {I.chev}</Link>}
                   </dl>
                 )}
               </li>
@@ -238,6 +274,7 @@ export default function Dashboard() {
   const toast = useToast();
   const { data: d, error, reload } = useApi('/vpe/dashboard');
   const [plan, setPlan] = useState(null);
+  const [resched, setResched] = useState(null);
   const [adding, setAdding] = useState(false);
   const [pick, setPick] = useState(null);
   const [all, setAll] = useState(false);
@@ -253,19 +290,21 @@ export default function Dashboard() {
     const rows = d.members.flatMap((m) => g.levels.filter((lv) => m.levels[lv] && m.levels[lv].state !== 'earlier').map((lv) => ({ m, lv, e: m.levels[lv], rank: rank.get(`${m.id}-${lv}`) || 0 })))
       .sort((a, b) => (RANK[a.e.state] - RANK[b.e.state]) || (a.e.date || '').localeCompare(b.e.date || '') || (a.e.unscheduled - b.e.unscheduled));
     const earlier = d.members.filter((m) => g.levels.some((lv) => m.levels[lv]?.state === 'earlier')).length;
-    return { ...g, gs, need, have, status, date, rows, earlier };
+    const overdue = gs.flatMap((x) => x.overdue || []).filter((o, i, all) => all.findIndex((y) => y.id === o.id && y.level === o.level) === i);
+    return { ...g, gs, need, have, status, date, rows, earlier, overdue };
   });
   const sel = groups.find((g) => g.key === pick) || groups.find((g) => g.status !== 'done') || groups[0];
   const rows = all ? sel.rows : sel.rows.slice(0, 8);
   /* done on the date it was scheduled for (never in the future) */
   const markDone = async (m, it, lv) => {
     try {
+      if (it.enh_id) { await api(`/vpe/enh/${it.enh_id}/complete`, { method: 'POST', body: {} }); toast(`${it.name} done for ${m.name.split(' ')[0]}`); return reload(); }
       const r = await api(`/vpe/people/${m.id}/projects`, { method: 'POST', body: { project_id: it.id, done: true, date: it.date <= d.today ? it.date : d.today } });
       const l = r.levels.find((x) => x.level === lv);
       toast(l?.complete ? `${m.name} finished Level ${lv}` : `${it.code || it.name} done for ${m.name.split(' ')[0]}`); reload();
     } catch (e) { toast(e.message); }
   };
-  const undo = async (m, it) => { try { await api(`/vpe/people/${m.id}/projects`, { method: 'POST', body: { project_id: it.id, done: false } }); toast('Marked as not done'); reload(); } catch (e) { toast(e.message); } };
+  const undo = async (m, it) => { try { if (it.enh_id) await api(`/vpe/enh/${it.enh_id}/complete`, { method: 'POST', body: { done: false } }); else await api(`/vpe/people/${m.id}/projects`, { method: 'POST', body: { project_id: it.id, done: false } }); toast('Marked as not done'); reload(); } catch (e) { toast(e.message); } };
   const call = async (fn, msg) => { try { await fn(); toast(msg); reload(); } catch (e) { toast(e.message); } };
   return (
     <Page root wide full>
@@ -284,7 +323,8 @@ export default function Dashboard() {
             <button type="button" key={g.key} role="tab" aria-selected={g.key === sel.key} className={'dv-tab st-' + g.status + (g.key === sel.key ? ' sel' : '')} onClick={() => { setPick(g.key); setAll(false); }}>
               <span className="dv-tl">{g.title.replace(' awards', '')}</span>
               <span className="dv-tn">{g.have}<em> of {g.need}</em></span>
-              <span className="dv-tf">{g.status === 'done' ? 'Goal met' : g.status === 'short' ? 'Not enough scheduled yet' : <>On track for <b>{longDate(g.date)}</b>{g.status === 'late' ? ' (after 30 June)' : ''}</>}</span>
+              <span className={'dv-tf pill-' + g.status}>{g.status === 'done' ? <><i className="dv-ok">{I.check}</i>Goal met</> : g.status === 'short' ? <><i className="pdot" />Not enough scheduled yet</> : <>{I.clock}<span>{g.status === 'late' ? 'Late: ' : 'On track for '}<b>{longDate(g.date)}</b>{g.status === 'late' ? ' (after 30 June)' : ''}</span></>}</span>
+              {g.overdue?.length > 0 && <span className="dv-tw" title={g.overdue.map((o) => `${o.name}, Level ${o.level}`).join(', ')}>{I.warn}{g.overdue.length} not marked done</span>}
             </button>
           ))}
         </div>
@@ -293,7 +333,7 @@ export default function Dashboard() {
           <span>Numbers show the order they finish</span>
         </div>
         {!sel.rows.length && <p className="dt-empty dv-empty">Nobody is working on this level yet. Set a path for more members and they show up here.</p>}
-        <ul className="dv-rows">{rows.map((r) => <Row key={r.m.id + '-' + r.lv} {...r} d={d} onSchedule={(m, it) => setPlan({ person: m.id, name: m.name, project: it.id, label: it.code })} onDone={markDone} onUndo={undo} />)}</ul>
+        <ul className="dv-rows">{rows.map((r) => <Row key={r.m.id + '-' + r.lv} {...r} d={d} onSchedule={(m, it) => setPlan({ person: m.id, name: m.name, project: it.id, label: it.code })} onDone={markDone} onUndo={undo} onResched={(m, it) => setResched({ m, it })} />)}</ul>
         {sel.rows.length > 8 && <button type="button" className="dv-more" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${sel.rows.length}`}</button>}
       </div>
 
@@ -319,6 +359,7 @@ export default function Dashboard() {
         )}
       </section>
       )}
+      {resched && <ReschedModal m={resched.m} it={resched.it} onClose={() => setResched(null)} onSaved={() => { setResched(null); reload(); }} />}
       {plan && <PlanModal preset={plan} onClose={() => setPlan(null)} onSaved={() => { setPlan(null); reload(); }} />}
       {adding && <PlanModal people={d.members} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); reload(); }} />}
       </div>

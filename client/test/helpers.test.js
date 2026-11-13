@@ -91,3 +91,12 @@ describe('evalFormUrl', () => {
     expect(evalFormUrl({}, 1)).toBeNull();
   });
 });
+
+import { greetTitle } from '../src/data.js';
+test('a WhatsApp greeting says TM or DTM, never a path code', () => {
+  expect(greetTitle('PM3')).toBe('TM');
+  expect(greetTitle('EH1, DL2')).toBe('TM');
+  expect(greetTitle('DTM')).toBe('DTM');
+  expect(greetTitle('TM')).toBe('TM');
+  expect(greetTitle('')).toBe('');
+});

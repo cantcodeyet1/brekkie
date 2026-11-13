@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { fmtDate } from '../data.js';
 import { Btn, I, SkPath, PathPick, Select, useToast } from '../ui.jsx';
 import { PlanModal } from './Dashboard.jsx';
+import Requirements from './Requirements.jsx';
 
 /* Where a member is on their path: the path and a timeline of levels. The detail (next project, what is finished,
    electives) stays folded away until the VPE opens it. The VPE marks a project done, because being on the agenda
@@ -29,6 +30,8 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
   const [busy, setBusy] = useState(null);
   const [plan, setPlan] = useState(null);
   const unplan = (id) => call(id, () => api(`/me/plans/${id}`, { method: 'DELETE' }), 'Unscheduled');
+  // a speech scheduled at this club on a meeting date is a roster slot: unscheduling empties the slot
+  const unslot = (id) => call(id, () => api(`/vpe/roles/${id}`, { method: 'PATCH', body: { person_id: null, project_id: null, speech_title: '' } }), 'Taken off the roster');
   const [open, setOpen] = useState(!!want);
   const [edit, setEditRaw] = useState(false);
   const setEdit = setEditRaw;
@@ -97,6 +100,7 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
             : <>
                 {canPlan && !cur.sched && !evalPart && <button type="button" className="pc-sch" onClick={() => setPlan({ person: person.id, name: person.name, project: p.id, label: p.code, ...(multi ? { part: pn } : {}) })}>Schedule{multi ? ` ${cur.label.toLowerCase()}` : ''}</button>}
                 {canPlan && cur.sched?.plan && <button type="button" className="lnk" onClick={() => unplan(cur.sched.plan)}>Unschedule</button>}
+                {canPlan && !mine && cur.sched?.role && <button type="button" className="lnk" onClick={() => unslot(cur.sched.role)}>Unschedule</button>}
               {!mine && <>
                 {p.kind === 'elective' && <button type="button" className="lnk" onClick={() => elective(p.id, false)} disabled={busy === p.id}>Remove</button>}
                 <Btn sm kind={isNext ? '' : 'ghost'} onClick={() => mark(p, true, multi ? pn : undefined, cur.sched)} disabled={busy === p.id}>{isNext && I.check} Mark done{multi ? ` ${cur.label.toLowerCase()}` : ''}</Btn>
@@ -114,11 +118,11 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
       <ol className="pc-steps" aria-label="Levels">
         {d.levels.map((l) => (
           <li key={l.level} className={(l.complete ? 'is-done ' : '') + (l.level === d.current ? 'cur' : '')}>
-            <button type="button" className={(l.complete ? 'is-done ' : '') + (l.level === d.current ? 'is-now ' : '') + (l.level === lv?.level ? 'is-view' : '')} onClick={() => { setView(l.level); setOpen(true); }} aria-label={`Level ${l.level}, ${l.required_done} of ${l.required_total} done${l.complete ? ', complete' : ''}`}>
+            <button type="button" className={(l.complete ? 'is-done ' : '') + (l.level === d.current ? 'is-now ' : '') + (l.level === lv?.level ? 'is-view' : '')} onClick={() => { setView(l.level); setOpen(true); }} aria-label={`Level ${l.level}, ${l.required_done} of ${l.required_total} projects done${l.enh?.applies ? `, ${l.enh.done} of ${l.enh.total} requirements done` : ''}${l.complete ? ', complete' : ''}`}>
               {l.complete ? I.check : l.level}
             </button>
             <span>Level {l.level}</span>
-            <small>{l.required_done}/{l.required_total}</small>
+            <small>{l.required_done}/{l.required_total}{l.enh?.applies ? ` + ${l.enh.done}/${l.enh.total}` : ''}</small>
           </li>
         ))}
       </ol>
@@ -127,7 +131,7 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
         <>
           <button type="button" className="pc-tog" aria-expanded={open} onClick={() => setOpen(!open)}>
             <span><b>Level {lv.level}</b>{lv.title ? ` · ${lv.title}` : ''}</span>
-            <span className="pc-sum">{(() => { const left = lv.required_total - lv.required_done + Math.max(0, (lv.choose || 0) - lv.electives_done); return lv.complete || left <= 0 ? 'Level complete' : `${left} project${left === 1 ? '' : 's'} to go`; })()}</span>
+            <span className="pc-sum">{(() => { const left = lv.required_total - lv.required_done + Math.max(0, (lv.choose || 0) - lv.electives_done), rq = lv.enh?.applies ? lv.enh.total - lv.enh.done : 0; if (lv.complete) return 'Level complete'; const bits = [left > 0 && `${left} project${left === 1 ? '' : 's'}`, rq > 0 && `${rq} requirement${rq === 1 ? '' : 's'}`].filter(Boolean); return bits.length ? `${bits.join(' and ')} to go` : 'Level complete'; })()}</span>
             <span className={'pc-car' + (open ? ' up' : '')}>{I.chev}</span>
           </button>
 
@@ -135,6 +139,7 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
             <div className="pc-more">
               <div className="pc-bar" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100"><i style={{ width: pct + '%' }} /></div>
 
+              {lv.enh?.applies && <div className="pc-sec"><b>Path projects</b></div>}
               <ul className="pc-list">{reqs.map(row)}</ul>
 
               {lv.choose > 0 && (
@@ -149,6 +154,7 @@ export default function PathCard({ person, mine = false, initial = null, canPlan
                   {mine && lv.to_pick > 0 && <p className="pc-empty" style={{ margin: '6px 2px' }}>Your VPE will add your {lv.to_pick === 1 ? 'elective' : 'electives'} once you have chosen.</p>}
                 </>
               )}
+              <Requirements lv={lv} person={person} mine={mine} canPlan={canPlan} reload={prog.reload} />
             </div>
           )}
         </>

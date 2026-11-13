@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
-import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFormUrl, fmtDate, longDate, mean, mmss, sum } from '../data.js';
+import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFormUrl, fmtDate, greetTitle, longDate, mean, mmss, sum } from '../data.js';
 import PathCard from './PathCard.jsx';
 import RosterImport, { PathDone } from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
@@ -259,14 +259,14 @@ You will be evaluating ${sp.name}${talk ? `, speaking on ${talk}` : ''}. Please 
     return '';
   };
   const speakerMsg = (r, kind) => {
-    const who = personOf(r.person_id), title = who?.credential ? `${who.credential} ` : '';
+    const who = personOf(r.person_id), title = greetTitle(who?.credential) ? `${greetTitle(who.credential)} ` : '';
     const sender = people.find((p) => p.is_vpe)?.name;
     const evs = evalsOf(r), talk = talkOf(r);
     const theme = m.theme ? ` The theme for the evening is "${m.theme}".` : '';
     const pair = evs.length
       ? `Your speech evaluator is ${evs.map((e) => e.name).join(' and ')}. Please get in touch with them before the meeting: tell them what you are working on and what you would like feedback on. You can reach ${evs.length > 1 ? evs.map((e) => `${e.name}: ${reach(e)}`).join('; ') : `them: ${reach(evs[0])}`}.`
       : 'Your speech evaluator has not been chosen yet. Their name and contact details will show on your link as soon as they are.';
-    return `Hello ${title}${r.person},
+    return `Hello ${title}${r.person.split(' ')[0]},
 
 ${kind === 'remind' ? 'A gentle reminder that you are speaking' : 'Thank you for agreeing to speak'} at our club meeting on ${fmtDate(m.date)}${talk ? `, with ${talk}` : ''}.${theme}
 
@@ -284,7 +284,7 @@ VPE, Champions Toastmasters Club`;
   };
   const msg = (r, kind = 'send') => {
     if (r.role_key === 'speaker') return speakerMsg(r, kind);
-    const who = people.find((p) => p.id === r.person_id), title = who?.credential ? `${who.credential} ` : '';
+    const who = people.find((p) => p.id === r.person_id), title = greetTitle(who?.credential) ? `${greetTitle(who.credential)} ` : '';
     const sender = people.find((p) => p.is_vpe)?.name;
     const theme = m.theme ? ` The theme for the evening is "${m.theme}".` : '';
     const word = r.role_key === 'grammarian' && m.word ? `
@@ -295,7 +295,7 @@ The word of the day is "${m.word}". Please introduce it at the start of the meet
 
 A gentle reminder to fill in your notes on Brekkie when you have a moment. The people you observed benefit most from hearing your feedback while the meeting is still fresh, and it helps every member keep growing in their Pathways journey.`
       : `Thank you for agreeing to serve as ${r.label} at our club meeting on ${fmtDate(m.date)}.${theme}`;
-    return `Hello ${title}${r.person},
+    return `Hello ${title}${r.person.split(' ')[0]},
 
 I trust this message finds you well.
 
@@ -901,6 +901,7 @@ function EditPerson({ person, onClose, onSaved }) {
       <label className="fl">Email</label><input className="inp" type="email" autoComplete="off" name="edit-email" data-bwignore="true" value={f.email} onChange={set('email')} placeholder="name@mail.com" />
       <label className="fl">Phone</label><input className="inp" type="tel" autoComplete="off" name="edit-phone" data-bwignore="true" value={f.phone} onChange={set('phone')} placeholder="+263 7…" maxLength={30} />
       <label className="fl">Toastmasters title on the agenda</label><input className="inp" value={f.credential} onChange={set('credential')} placeholder="TM, DTM, ACB…" maxLength={20} />
+      {person.kind !== 'guest' && <small className="fl-hint">{person.credential_manual ? 'Set by you, so it stays. Clear it to follow their last completed level again.' : 'Follows their last completed level (PM1, EH5…). Type your own to keep it.'}</small>}
       {person.kind !== 'guest' && <>
         <label className="fl">Pathways path and current level</label>
         <PathDone path={pd.path_name} done={pd.levels_done} thisYear={pd.levels_this_year} onChange={(v) => { setPd(v); setPdTouched(true); }} />
@@ -960,7 +961,7 @@ export function VpePerson() {
           <div className="pmeta">
             <span>{p.email || 'No email'}</span>
             <span>{p.phone || 'No phone'}</span>
-            <span>Agenda title: {p.credential || 'none'}</span>
+            <span>Agenda title: {p.credential || 'none'}{p.kind !== 'guest' && p.path_name && !p.credential_manual ? ' (automatic)' : ''}</span>
           </div>
         </div>
         <Link className="jlink" to={`/v/members/${p.id}/journal`}>{I.pencil}<span>Journal</span>{data.journal_count > 0 && <em>{data.journal_count}</em>}{I.chev}</Link>

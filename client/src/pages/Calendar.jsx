@@ -24,11 +24,11 @@ function Chip({ s, today, onOpen }) {
   const st = stateOf(s, today);
   const drag = s.kind === 'plan' && !s.done;
   return (
-    <button type="button" className={'cal-c ' + st + (s.venue ? ' away' : '')} onClick={(e) => { e.stopPropagation(); onOpen(s); }}
+    <button type="button" className={'cal-c ' + st + (s.venue ? ' away' : '') + (s.kind === 'enh' ? ' enh' : '')} onClick={(e) => { e.stopPropagation(); onOpen(s); }}
       draggable={drag} onDragStart={drag ? (e) => { e.dataTransfer.setData('text/plain', String(s.id)); e.dataTransfer.effectAllowed = 'move'; } : undefined}
       title={`${s.person}${s.project ? `, ${s.project}` : ''}${s.venue ? `, at ${s.venue}` : ''}`}>
       <span className="cal-st">{st === 'k-done' ? I.check : null}</span>
-      <b>{first(s.person)}</b>{s.venue ? <em>{s.venue}</em> : null}
+      <b>{first(s.person)}</b>{s.venue ? <em>{s.venue}</em> : s.kind === 'enh' ? <em>{s.project}</em> : null}
     </button>
   );
 }
@@ -85,6 +85,7 @@ function SpeechModal({ s, today, onClose, onChanged, onEdit }) {
   const st = stateOf(s, today);
   const call = async (fn, msg, stay) => { try { await fn(); toast(msg); onChanged(); if (!stay) onClose(); } catch (e) { toast(e.message); } };
   const row = (k, v) => v ? <div className="sd-r"><span>{k}</span><b>{v}</b></div> : null;
+  const enh = s.kind === 'enh';
   return (
     <Modal title={s.person} onClose={onClose}>
       <div className="sd">
@@ -92,14 +93,17 @@ function SpeechModal({ s, today, onClose, onChanged, onEdit }) {
           <span className={'sd-st ' + st}>{st === 'k-done' && I.check} {STATE_TEXT[st]}</span>
           {!s.done && (
             <span className="sd-ic">
-              <button type="button" className="sp-x" onClick={() => onEdit(s)} aria-label="Edit this speech" title="Edit">{I.pencil}</button>
-              <button type="button" className="sp-x" onClick={() => call(() => (s.kind === 'club' ? api(`/vpe/roles/${s.id}`, { method: 'PATCH', body: { person_id: null } }) : api(`/me/plans/${s.id}`, { method: 'DELETE' })), s.kind === 'club' ? 'Removed from the roster' : 'Removed')} aria-label={s.kind === 'club' ? 'Remove from the roster' : 'Remove this speech'} title={s.kind === 'club' ? 'Remove from the roster' : 'Remove'}>{I.bin}</button>
+              {!enh && <button type="button" className="sp-x" onClick={() => onEdit(s)} aria-label="Edit this speech" title="Edit">{I.pencil}</button>}
+              {enh && <button type="button" className="sp-x" onClick={() => call(() => api(`/vpe/enh/${s.id}`, { method: 'DELETE' }), 'Removed')} aria-label="Remove this" title="Remove">{I.bin}</button>}
+              {!enh && <button type="button" className="sp-x" onClick={() => call(() => (s.kind === 'club' ? api(`/vpe/roles/${s.id}`, { method: 'PATCH', body: { person_id: null } }) : api(`/me/plans/${s.id}`, { method: 'DELETE' })), s.kind === 'club' ? 'Removed from the roster' : 'Removed')} aria-label={s.kind === 'club' ? 'Remove from the roster' : 'Remove this speech'} title={s.kind === 'club' ? 'Remove from the roster' : 'Remove'}>{I.bin}</button>}
             </span>
           )}
         </div>
-        {row('Project', s.project ? `${s.code ? `${s.code} · ` : ''}${s.project}${s.nparts > 1 ? ` · Part ${s.part}${s.part_label ? `, ${s.part_label}` : ''}` : ''}` : 'No project chosen')}
-        {row('Level', s.level ? `Level ${s.level}${s.path ? ` · ${s.path}` : ''}` : s.path)}
-        {row('Speech title', s.title)}
+        {enh && row(s.enh_kind === 'series' ? 'Presentation' : 'Role', s.project)}
+        {enh && row('Level', `Level ${s.level}${s.path ? ` · ${s.path}` : ''}`)}
+        {!enh && row('Project', s.project ? `${s.code ? `${s.code} · ` : ''}${s.project}${s.nparts > 1 ? ` · Part ${s.part}${s.part_label ? `, ${s.part_label}` : ''}` : ''}` : 'No project chosen')}
+        {!enh && row('Level', s.level ? `Level ${s.level}${s.path ? ` · ${s.path}` : ''}` : s.path)}
+        {!enh && row('Speech title', s.title)}
         {row('Date', longDate(s.date))}
         {row('Where', s.venue ? s.venue : s.kind === 'club' ? `This club, meeting ${s.meeting}` : 'This club')}
         {row('Length', s.length)}
@@ -107,6 +111,8 @@ function SpeechModal({ s, today, onClose, onChanged, onEdit }) {
           <Link className="btn ghost" to={`/v/members/${s.person_id}`}>Open member</Link>
           {s.kind === 'club' && <Link className="btn ghost" to={`/v/meetings/${s.meeting_id}`}>Open meeting</Link>}
           {s.kind === 'plan' && s.done && s.project_id && <Btn kind="ghost" onClick={() => call(() => api(`/vpe/people/${s.person_id}/projects`, { method: 'POST', body: { project_id: s.project_id, done: false } }), 'Marked as not done', true)}>Undo done</Btn>}
+          {enh && !s.done && <Btn onClick={() => call(() => api(`/vpe/enh/${s.id}/complete`, { method: 'POST', body: {} }), 'Ticked off', true)}>{I.check} Tick off</Btn>}
+          {enh && s.done && <Btn kind="ghost" onClick={() => call(() => api(`/vpe/enh/${s.id}/complete`, { method: 'POST', body: { done: false } }), 'Marked as not done', true)}>Undo done</Btn>}
           {s.kind === 'plan' && !s.done && <Btn onClick={() => call(() => api(`/vpe/plans/${s.id}/complete`, { method: 'POST' }), 'Marked as done', true)}>{I.check} Mark done</Btn>}
         </div>
       </div>
@@ -235,8 +241,8 @@ export default function Calendar() {
             {d.pending.filter((s) => who === 'all' || s.person_id === who).map((s) => (
               <div key={s.id} className="sprow">
                 <span className="sp-t"><b>{s.person}</b><span>{[s.project || s.title, s.venue || 'This club', longDate(s.date)].filter(Boolean).join(' · ')}</span></span>
-                <Btn sm onClick={() => call(() => api(`/vpe/plans/${s.id}/complete`, { method: 'POST' }), 'Marked as done')}>Mark done</Btn>
-                <Btn sm kind="ghost" onClick={() => call(() => api(`/me/plans/${s.id}`, { method: 'DELETE' }), 'Removed')}>Remove</Btn>
+                <Btn sm onClick={() => call(() => api(s.kind === 'enh' ? `/vpe/enh/${s.id}/complete` : `/vpe/plans/${s.id}/complete`, { method: 'POST', body: {} }), 'Marked as done')}>Mark done</Btn>
+                <Btn sm kind="ghost" onClick={() => call(() => api(s.kind === 'enh' ? `/vpe/enh/${s.id}` : `/me/plans/${s.id}`, { method: 'DELETE' }), 'Removed')}>Remove</Btn>
               </div>
             ))}
             </div>

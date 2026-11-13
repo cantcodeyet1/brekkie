@@ -36,3 +36,16 @@ test('finishing a level moves them up to the next', () => {
   assert.equal(f[2].state, 'open');
   assert.equal(f[3], undefined);
 });
+
+test('something scheduled whose date passed without being marked done makes the level overdue, not a forecast', async () => {
+  const { goalsFrom } = await import('../src/dcp.js');
+  const past = { date: '2026-10-01', venue: '' };
+  const prog = { current: 1, levels: [level(1, [proj(1, { sched: past }), proj(2, { sched })])] };
+  const f = forecastMember(prog, { year, today }).levels;
+  assert.equal(f[1].state, 'overdue');
+  assert.equal(f[1].due, 1);
+  const goals = goalsFrom([{ id: 1, name: 'A', levels: f }], { ...year });
+  assert.equal(goals[0].have, 0);
+  assert.equal(goals[0].overdue.length, 1, 'the goal says who is held up');
+  assert.equal(goals[0].status, 'short', 'an overdue level is not counted towards the goal');
+});
