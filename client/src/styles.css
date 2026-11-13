@@ -3342,3 +3342,6 @@ button.it-go{background:none;border:0;padding:0;cursor:pointer}
 .at-ro span.ok{background:#E4F2E9;color:#1B6B3A}
 .at-ro span.ok svg{width:12px;height:12px}
 .at-ro span.miss{background:#F1F2F3;color:#7A858D}
+.rm-act{white-space:nowrap;text-align:right}
+.rm-act .x{display:inline-flex;vertical-align:middle;background:none;border:0;cursor:pointer;color:var(--mute);padding:6px}
+.rm-act .x:hover{color:var(--blue)}

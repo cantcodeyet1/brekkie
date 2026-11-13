@@ -696,7 +696,7 @@ app.get('/api/pathways', needPerson, wrap(async (_req, res) => {
 }));
 
 app.get('/api/vpe/meetings', needPerson, needVpe, wrap(async (req, res) => {
-  const rows = await q(`select m.id, m.number, ${DATE('m.date')} as date, m.theme, m.word, m.pos, m.meaning,
+  const rows = await q(`select m.id, m.number, ${DATE('m.date')} as date, m.theme, m.word, m.pos, m.meaning, m.feedback_code,
       (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.person_id is not null) as roles_filled,
       (select count(*)::int from meeting_roles r where r.meeting_id=m.id) as roles_total,
       (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.person_id is not null and r.role_key = any($2)) as fb_total,

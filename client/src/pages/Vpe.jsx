@@ -56,6 +56,7 @@ export function VpeHome() {
   const { data, error, loading, reload, setData } = useApi('/vpe/meetings');
   const desk = useDesk();
   const toast = useToast();
+  const base = useBaseUrl();
   const timers = useRef({}), pending = useRef({});
   if (loading) return <Page root wide><SkPage rows={6} avatar /></Page>;
   if (error) return <Page root wide><ErrorMsg error={error} /></Page>;
@@ -69,6 +70,8 @@ export function VpeHome() {
       try { await api(`/vpe/meetings/${m.id}`, { method: 'PATCH', body }); } catch (e) { toast(e.message); }
     }, 500);
   };
+  // the link people scan (or tap) at the meeting to write to each other: one per meeting
+  const copyRoom = async (m) => toast((await copyText(`${base}/f/${m.feedback_code}`)) ? `Room feedback link copied for No. ${m.number}` : 'Copy failed');
   const add = async () => { const m = await api('/vpe/meetings', { method: 'POST' }); toast(`Meeting ${m.number} added`); reload(); };
 
   const upcoming = data.filter((m) => m.status !== 'Done').sort((a, b) => a.number - b.number);
@@ -95,7 +98,7 @@ export function VpeHome() {
       <td className={'num ' + (m.status !== 'Done' && m.roles_filled < m.roles_total ? 'warn' : '')}>{m.roles_filled}/{m.roles_total}</td>
       <td className="num">{m.status === 'Done' ? `${m.fb_in}/${m.fb_total}` : 'n/a'}</td>
       <td><Chip kind={statusKind(m.status)}>{m.status}</Chip></td>
-      <td><Link className="x" to={`/v/meetings/${m.id}`} aria-label="Open">{I.chev}</Link></td>
+      <td className="rm-act"><button type="button" className="x" onClick={() => copyRoom(m)} title="Copy the from-the-room feedback link" aria-label={`Copy room feedback link for meeting ${m.number}`}>{I.copy}</button><Link className="x" to={`/v/meetings/${m.id}`} aria-label="Open">{I.chev}</Link></td>
     </tr>
   );
   const block = (m) => (
@@ -108,7 +111,10 @@ export function VpeHome() {
       <label className="fl">Theme</label><input className="inp" value={m.theme} placeholder="Theme" onChange={(e) => patch(m, { theme: e.target.value })} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
         <span style={{ color: 'var(--mute)', fontSize: 13.5 }}>Roles {m.roles_filled}/{m.roles_total}{m.status === 'Done' && ` · Feedback ${m.fb_in}/${m.fb_total}`} {flag(m)}</span>
-        <Link className="btn sm ghost" to={`/v/meetings/${m.id}`} style={{ textDecoration: 'none' }}>Open</Link>
+        <span style={{ display: 'flex', gap: 8 }}>
+          <Btn sm kind="ghost" onClick={() => copyRoom(m)}>{I.copy}Room link</Btn>
+          <Link className="btn sm ghost" to={`/v/meetings/${m.id}`} style={{ textDecoration: 'none' }}>Open</Link>
+        </span>
       </div>
     </div>
   );
@@ -118,7 +124,7 @@ export function VpeHome() {
       {stats}
       {desk ? (
         <table className="tbl">
-          <thead><tr><th style={{ width: 72 }}>No.</th><th style={{ width: 158 }}>Date</th><th>Theme</th><th style={{ width: 190 }}>Word of the day</th><th style={{ width: 90 }} /><th style={{ width: 70 }}>Roles</th><th style={{ width: 80 }}>Feedback</th><th style={{ width: 84 }}>Status</th><th style={{ width: 40 }} /></tr></thead>
+          <thead><tr><th style={{ width: 72 }}>No.</th><th style={{ width: 158 }}>Date</th><th>Theme</th><th style={{ width: 190 }}>Word of the day</th><th style={{ width: 90 }} /><th style={{ width: 70 }}>Roles</th><th style={{ width: 80 }}>Feedback</th><th style={{ width: 84 }}>Status</th><th style={{ width: 84 }} /></tr></thead>
           <tbody>
             <tr className="sec"><td colSpan={9}>Upcoming</td></tr>{upcoming.map(row)}
             <tr className="sec"><td colSpan={9}>Past</td></tr>{past.map(row)}
