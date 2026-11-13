@@ -38,6 +38,23 @@ function fit(font, size, s, max) {
   while (t.length > 1 && font.widthOfTextAtSize(t + '…', size) > max) t = t.slice(0, -1);
   return t.trimEnd() + '…';
 }
+/** a person's name over at most two lines at its own size, never cut short with an ellipsis unless even two lines are not enough */
+function nameLines(font, size, name, max, maxLines = 2) {
+  let rest = safe(font, name).replace(/\s+/g, ' ').trim();
+  const lines = [], w = (t) => font.widthOfTextAtSize(t, size);
+  while (rest && lines.length < maxLines) {
+    if (w(rest) <= max) { lines.push(rest); rest = ''; break; }
+    let n = rest.length; while (n > 1 && w(rest.slice(0, n)) > max) n--;
+    // break before a space or after a hyphen when there is one; a single word wider than the box is cut where it runs out
+    let cut = -1;
+    for (let i = n; i >= 1; i--) if (rest[i] === ' ' || rest[i - 1] === '-') { cut = i; break; }
+    if (cut < 1) cut = n;
+    lines.push(rest.slice(0, cut).trimEnd()); rest = rest.slice(cut).trimStart();
+  }
+  if (rest) lines[lines.length - 1] = fit(font, size, `${lines[lines.length - 1]} ${rest}`, max);
+  return lines;
+}
+
 /** words broken into lines of at most `max` points; the first line may be narrower (`first`), and lines past `limit` are cut */
 function wrap(font, size, s, max, { first = max, limit = 99 } = {}) {
   const words = safe(font, s).split(/\s+/).filter(Boolean), lines = [];
@@ -54,24 +71,27 @@ function wrap(font, size, s, max, { first = max, limit = 99 } = {}) {
 /* ───────── the running order, as a list of things to draw ───────── */
 function programme(plan, F, k) {
   const ops = [], T = (s, x, y, font, size, color, max) => ops.push({ s: max ? fit(font, size, s, max) : safe(font, s), x, y, font, size, color });
+  // a name on one line, or on up to three when it is long: returns how many lines it took
+  const N = (s, x, y, font, size, color, max, lead = LINE) => { const ls = nameLines(font, size, s, max, 3); ls.forEach((l, i) => ops.push({ s: l, x, y: y - i * lead, font, size, color })); return ls.length; };
   let y = TOP, low = TOP;
   const note = (yy) => { low = Math.min(low, yy); };
   const item = (b) => {
     T(b.time, X.time, y, F.b, 10, BLUE);
     T(b.title, X.title, y, F.b, 10, MAROON, X.min - X.title - 6);
     if (b.min) T(b.min, X.min, y, F.r, 10, BLACK);
-    if (b.owner) T(b.owner, X.who, y, F.b, 10, BLACK, X.right - X.who - 2);
+    const own = b.owner ? N(b.owner, X.who, y, F.b, 10, BLACK, X.right - X.who - 2) : 0;
     note(y);
     if (b.topic) { T(b.topic, X.title, y - TOPIC * k, F.i, 9, GREY, X.min - X.title - 6); note(y - TOPIC * k); y -= TOPIC * k; }
+    if (own > 1) { note(y - LINE * k * (own - 1)); y -= LINE * k * (own - 1) * (b.topic ? 0.5 : 1); }
     y -= ROW * k;
   };
   const reports = (b) => {
     T(b.time, X.time, y, F.b, 10, BLUE);
     T(b.title, X.title, y, F.b, 10, MAROON, X.min - X.title - 6);
     if (b.min) T(b.min, X.min, y, F.r, 10, BLACK);
-    if (b.owner) T(b.owner, X.who, y, F.b, 10, BLACK, X.right - X.who - 2);
+    const own = b.owner ? N(b.owner, X.who, y, F.b, 10, BLACK, X.right - X.who - 2) : 0;
     plan.reports.items.forEach((it, i) => { const yy = y - SUB * k * (i + 1); T(it.role, X.title, yy, F.r, 9, BLACK, 170); T(it.min, X.min, yy, F.i, 9, BLACK); note(yy); });
-    y -= (ROW + SUB * plan.reports.items.length) * k;
+    y -= (ROW + SUB * plan.reports.items.length + (own > 1 ? LINE * (own - 1) : 0)) * k;
   };
   const each = (list) => list.forEach((b) => (b.type === 'reports' ? reports(b) : item(b)));
   each(plan.before);
@@ -90,9 +110,9 @@ function programme(plan, F, k) {
       const rowH = Math.max(46.4, proj.length * LINE + 5) * Math.max(k, 0.85);
       if (i % 2) ops.push({ rect: true, x: X.c1, y: ty + 11.3 - rowH, w: X.right - X.c1, h: rowH, color: BAND });
       T(s.time, X.time, ty, F.b, 10, BLUE);
-      T(s.name, X.sp, ty + 1, F.r, 9, BLACK, X.pj - X.sp - 4);
+      N(s.name, X.sp, ty + 1, F.r, 9, BLACK, X.pj - X.sp - 4);
       proj.forEach((p, j) => T(p.s, X.pj, ty + 1 - j * LINE, p.f, 9, BLACK, X.ev - X.pj - 4));
-      T(s.evaluator, X.ev, ty + 1, F.r, 9, BLACK, X.right - X.ev - 3);
+      N(s.evaluator, X.ev, ty + 1, F.r, 9, BLACK, X.right - X.ev - 3);
       note(ty + 1 - (proj.length - 1) * LINE);
       ty -= rowH;
     });
@@ -152,8 +172,11 @@ export async function renderAgendaPdf(ag, ctx) {
   const R = plan.roles;
   [[R.tmod, 297.6, 710.5, 80], [R.ge, 479, 710.5, 83], [R.grammarian, 297.6, 693.1, 80], [R.ah, 479, 693.1, 83], [R.timer, 297.6, 675.8, 80], [R.ttm, 479, 675.8, 83]].forEach(([name, x, y, max]) => {
     if (!name) return;
-    const size = Math.max(6.5, Math.min(9, (9 * max) / width(F.r, 9, name)));
-    draw(fit(F.r, size, name, max), x, y, F.r, size, BLACK);
+    // 9 pt on one line, or on two when it is long. Only a name too long even for two lines is made a little smaller.
+    let size = 9, ls = nameLines(F.r, size, name, max);
+    while (size > 7 && ls.some((l) => l.endsWith('…'))) { size -= 0.5; ls = nameLines(F.r, size, name, max); }
+    if (ls.length === 1) draw(ls[0], x, y, F.r, size, BLACK);
+    else ls.forEach((l, i) => draw(l, x, y + 3.4 - i * (size * 0.93), F.r, size, BLACK));
   });
 
   // next meeting date, centred in its grey box, with a raised ordinal
