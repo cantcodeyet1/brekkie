@@ -436,6 +436,12 @@ VPE, Champions Toastmasters Club`;
         })()}</div>
       </Panel>
 
+      {data.meeting.feedback_code && (
+        <Panel k="room" title="From the room" hint="One link and QR code for the whole meeting. Anyone there scans it to write feedback to the people they choose.">
+          <QrCard code={data.meeting.feedback_code} meeting={data.meeting} base={base} />
+        </Panel>
+      )}
+
       <div className="pair">
         <Panel k="links" title="Role links" hint="Send each person their link. It opens their script and sheet, no sign-in."
           right={<div style={{ display: 'flex', gap: 8 }}><a className="btn sm" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(all)}>{I.send} Send all</a><Btn sm kind="ghost" onClick={() => copy(all)}>Copy all</Btn></div>}>
