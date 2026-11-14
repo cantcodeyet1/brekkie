@@ -296,6 +296,12 @@ VPE, Champions Toastmasters Club`;
     const word = r.role_key === 'grammarian' && m.word ? `
 
 The word of the day is "${m.word}". Please introduce it at the start of the meeting and listen for how members use it.` : '';
+    const analyse = r.role_key === 'ah_counter' ? `
+
+Beyond the count, please note where and why the filler words appear: for example when the speaker is searching for the next point, at the start when nervous, or between sentences. Knowing the cause helps each member fix it.`
+      : r.role_key === 'timer' ? `
+
+Beyond the times, please note why a speech went over and where the speaker could trim it, or why it came in under and where they could expand. That is the part members value most.` : '';
     const intro = kind === 'remind'
       ? `Thank you for serving as ${r.label} at our club meeting on ${fmtDate(m.date)}. It really does make the meeting.${theme}
 
@@ -305,7 +311,7 @@ A gentle reminder to fill in your notes on Brekkie when you have a moment. The m
 
 I trust this message finds you well.
 
-${intro}${kind === 'remind' ? '' : word}${pairing(r, kind)}
+${intro}${kind === 'remind' ? '' : word}${kind === 'remind' ? '' : analyse}${pairing(r, kind)}
 
 ${kind === 'remind'
     ? 'Your link is below. It opens your sheet with your notes as you left them, and you can edit and resubmit at any time.'
@@ -397,7 +403,7 @@ VPE, Champions Toastmasters Club`;
           <p className="lede" style={{ margin: 0 }}>{m.theme || 'No theme yet'}{m.word ? <> · Word of the day <b style={{ color: 'var(--ink)' }}>{m.word}</b></> : ''}</p>
         </div>
         <nav className="jump" aria-label="Sections">
-          {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received'], ...(!upcoming ? [['thanks', 'Thank you']] : [])].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
+          {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received'], ...((!upcoming || m.date <= new Date().toLocaleDateString('en-CA')) && thanked.length ? [['thanks', 'Thank you']] : [])].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
         </nav>
       </div>
 
@@ -514,7 +520,7 @@ VPE, Champions Toastmasters Club`;
             ))}
           </div>
         </Panel>
-        {!upcoming && thanked.length > 0 && (
+        {(!upcoming || m.date <= new Date().toLocaleDateString('en-CA')) && thanked.length > 0 && (
           <Panel k="thanks" title="Thank you" hint="Send everyone who had a role a thank you after the meeting, with a link to their own page.">
             <div className="list">
               {thanked.map((p) => (
