@@ -238,7 +238,7 @@ function RoleBody({ data, token }) {
           <div className="tag">Meeting {data.meeting.number} · {longDate(data.meeting.date)}</div>
           <h1>Hi {first}, {greeting(data.meeting.date, data.role.label.replace(/ \d$/, ''))}</h1>
           <p className="sub">{meta?.blurb}</p>
-          {data.me?.kind === 'guest' && <p className="rwel-note">Welcome as a visitor. Your access is temporary and your notes are kept with {data.club || 'the club'}.</p>}
+          {data.me?.kind === 'guest' && <p className="rwel-note">Welcome as a visitor{data.me.is_tm === false ? '' : ' and fellow Toastmaster'}. Your access is temporary and your notes are kept with {data.club || 'the club'}.</p>}
           {submitted && <JoinAsk data={data} token={token} dark />}
           {Sheet
             ? <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{submitted ? 'View or edit my notes' : 'Open my sheet'}</button>

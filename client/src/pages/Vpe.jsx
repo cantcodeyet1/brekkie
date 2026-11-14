@@ -329,7 +329,7 @@ VPE, Champions Toastmasters Club`;
     const visitor = p.kind === 'guest' && p.token;
     return `Hello ${title}${p.name.split(' ')[0]},
 
-Thank you for being part of our club meeting on ${fmtDate(m.date)} as ${/^[aeiou]/i.test(list) ? 'an' : 'a'} ${list}. ${visitor ? 'It was a pleasure to have you with us.' : 'It really does make the meeting.'}
+Thank you for being part of our club meeting on ${fmtDate(m.date)} as ${/^[aeiou]/i.test(list) ? 'an' : 'a'} ${list}. ${visitor ? (p.is_tm === false ? 'It was a pleasure to have you with us.' : 'It was a pleasure to have a fellow Toastmaster with us.') : 'It really does make the meeting.'}
 
 ${visitor ? 'Your own page on Brekkie has the feedback from the evening and your roles. It opens straight from this link, with no sign-in:' : 'Your own page on Brekkie has your feedback, roles and progress. Feedback from the evening appears there once it has been checked. Sign in here:'}
 
@@ -1029,7 +1029,7 @@ export function VpePerson() {
       <div className="phero">
         <Avatar name={p.name} size={84} tone={visitor ? 'gray' : undefined} />
         <div className="pi">
-          <p className="reyebrow" style={{ margin: 0 }}>{visitor ? 'Visitor, temporary access' : p.is_vpe ? 'VPE' : 'Member'}</p>
+          <p className="reyebrow" style={{ margin: 0 }}>{visitor ? `Visitor${p.is_tm === false ? ', new to Toastmasters' : ', Toastmaster'}, temporary access` : p.is_vpe ? 'VPE' : 'Member'}</p>
           <h1 className="rtitle" style={{ fontSize: 40, margin: '2px 0 6px' }}>{p.name}</h1>
           <div className="pmeta">
             <span>{p.email || 'No email'}</span>
@@ -1045,6 +1045,7 @@ export function VpePerson() {
             <div className="rmenu pset-m" role="menu" onClick={(e) => e.stopPropagation()}>
               <button type="button" role="menuitem" onClick={() => { setMenu(false); setEditing(true); }}>Edit details</button>
               {!visitor && <button type="button" role="menuitem" onClick={() => { setMenu(false); setResetting(p.has_pw ? 'reset' : 'invite'); }} disabled={!p.has_pw && false}>{p.has_pw ? 'Send reset link' : p.invited_at ? 'Resend invite' : 'Send invite'}</button>}
+              {visitor && <button type="button" role="menuitem" onClick={async () => { setMenu(false); try { await api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { is_tm: p.is_tm === false } }); toast(p.is_tm === false ? 'Marked as a Toastmaster' : 'Marked as new to Toastmasters'); reload(); } catch (e) { toast(e.message); } }}>{p.is_tm === false ? 'Mark as a Toastmaster' : 'Mark as new to Toastmasters'}</button>}
               <button type="button" role="menuitem" className="danger" onClick={() => { setMenu(false); setRemoving(true); }}>Remove {visitor ? 'visitor' : 'member'}</button>
             </div>)}
         </div>

@@ -84,7 +84,7 @@ const isSuper = (p) => !!p?.is_super && !!p.password_hash;
 const needSuper = (req, res, next) => (isSuper(req.person) ? next() : bad(res, 'Not found', 404));
 const needRole = (req, res, next) => (req.role ? next() : bad(res, 'This link is not valid', 401));
 const clubOf = (req) => req.person?.club_id ?? req.role?.club_id;
-const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status, email: p.email, is_vpe: p.is_vpe };
+const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status, email: p.email, is_vpe: p.is_vpe, is_tm: p.is_tm !== false };
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
@@ -1464,7 +1464,7 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
   await syncCredentials(club);
-  const people = await q(`select id,name,email,credential,credential_manual,path_name,path_level,join_requested_at,kind,status,is_vpe,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
+  const people = await q(`select id,name,email,credential,credential_manual,path_name,path_level,join_requested_at,kind,status,is_vpe,is_tm,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
   // plain counts that can be checked by hand
   const counts = async (sql) => Object.fromEntries((await q(sql, [club])).map((r) => [r.pid, r.n]));
   const speeches = await counts(`select e.speaker_id as pid, count(*)::int as n from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=$1 group by e.speaker_id`);
@@ -1528,6 +1528,7 @@ app.patch('/api/vpe/people/:id', needPerson, needVpe, wrap(async (req, res) => {
   }
   if ('path_name' in b) await q('update people set path_name=$1, path_level=$2 where id=$3', [b.path_name || null, b.path_name ? (Number(b.path_level) || null) : null, p.id]);
   if ('levels_done' in b && (b.path_name || p.path_name)) await setLevelsDone(q, p.id, b.path_name || p.path_name, b.levels_done, b.levels_this_year);
+  if (typeof b.is_tm === 'boolean') await q('update people set is_tm=$1 where id=$2', [b.is_tm, p.id]);
   if (b.convert) { kind = 'member'; status = 'active'; }
   else if (['active', 'temporary', 'inactive'].includes(b.status)) status = b.status === 'active' && kind === 'guest' ? 'temporary' : b.status;
   await q(`update people set name=$1,email=$2,kind=$3,status=$4,credential=$7,phone=$8,credential_manual=$9,join_requested_at = case when $5 then null else join_requested_at end, converted_at = case when $5 then now() else converted_at end, temp_until = case when $5 then null else temp_until end where id=$6`, [name, email, kind, status, !!b.convert, p.id, credential, phone, !!manual]);
@@ -1565,7 +1566,7 @@ async function givenFor(pid) {
 app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
   await syncCredentials(club);
-  const [p] = await q(`select id,name,email,phone,credential,credential_manual,path_name,path_level,kind,status,is_vpe,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
+  const [p] = await q(`select id,name,email,phone,credential,credential_manual,path_name,path_level,kind,status,is_vpe,is_tm,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
   if (!p) return bad(res, 'Not found', 404);
   const hist = await loadHist(club);
   const projects = hist.evals.filter((e) => e.pid === p.id).reverse().map((e) => ({ id: e.id, title: e.title, project: e.project, path: e.path, level: e.level, date: e.date, number: e.number, by: e.by, work: e.work }));

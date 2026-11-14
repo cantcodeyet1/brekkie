@@ -378,3 +378,5 @@ alter table clubs add column if not exists agenda_template_checks jsonb;
 -- null (not submitted), 'pending' (waiting for the VPE) or 'approved'. Everything already submitted when this was added waits for review.
 alter table meeting_roles add column if not exists review_status text;
 update meeting_roles set review_status='pending' where submitted_at is not null and review_status is null;
+-- visitors are assumed to be Toastmasters (visiting from another club) unless the VPE says they are new to Toastmasters
+alter table people add column if not exists is_tm boolean not null default true;
