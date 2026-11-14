@@ -271,6 +271,9 @@ test('room feedback: bad code 404, empty 400, valid saved, hideable, shows on pr
   const target = page.json.agenda[0]?.id ?? page.json.others[0].id;
   assert.equal((await call('POST', '/api/f/' + m.feedback_code, { body: { from_name: 'Pat', items: [{ to_person_id: target, well: '', improve: '' }] } })).status, 400);
   const ok = await call('POST', '/api/f/' + m.feedback_code, { body: { from_name: 'Pat', items: [{ to_person_id: target, well: 'Great energy', improve: 'Slow down' }, { to_person_id: 999999, well: 'ghost' }] } });
+  // feedback can also be written to the ExCo, which the VPE then sees on the meeting
+  assert.equal((await call('POST', '/api/f/' + m.feedback_code, { body: { from_name: 'A visitor', items: [{ to_exco: true, well: 'Warm welcome', improve: 'Start on time' }] } })).status, 200);
+  assert.ok((await get(`/api/vpe/meetings/${m.id}`, vpe)).json.exco.some((x) => x.well === 'Warm welcome' && x.from_name === 'A visitor'));
   assert.equal(ok.status, 200); assert.equal(ok.json.count, 1, 'unknown people are ignored');
   const prof = await get(`/api/vpe/people/${target}/profile`, vpe);
   const entry = prof.json.received.peer.find((x) => x.well === 'Great energy');
@@ -413,3 +416,4 @@ test('a submitted evaluation waits for the VPE: hidden from the speaker until ap
   assert.equal((await q('select review_status from meeting_roles where id=$1', [ev.role_id]))[0].review_status, 'pending');
   await q(`update meeting_roles set review_status='approved' where id=$1`, [ev.role_id]);
 });
+

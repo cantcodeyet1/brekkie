@@ -146,6 +146,16 @@ create table if not exists peer_feedback (
   hidden boolean not null default false,
   created_at timestamptz not null default now()
 );
+-- feedback from the room written to the club's executive committee rather than to one person
+create table if not exists exco_feedback (
+  id serial primary key,
+  meeting_id int not null references meetings(id) on delete cascade,
+  from_name text not null default '',
+  well text not null default '',
+  improve text not null default '',
+  hidden boolean not null default false,
+  created_at timestamptz not null default now()
+);
 create index if not exists peer_to_idx on peer_feedback(to_person_id);
 
 -- Agenda creation: the club's Word template is filled from these

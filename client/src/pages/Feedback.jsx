@@ -19,13 +19,14 @@ export default function Feedback() {
 
   const has = (id) => picked.some((p) => p.id === id);
   const toggle = (p) => setPicked((cur) => (has(p.id) ? cur.filter((x) => x.id !== p.id) : [...cur, { id: p.id, name: p.name, well: '', improve: '' }]));
+  const EXCO = 'exco';   // not a person: the club's executive committee
   const upd = (id, patch) => setPicked((cur) => cur.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   const ready = picked.filter((p) => p.well.trim() || p.improve.trim());
 
   const send = async () => {
     setBusy(true); setErr('');
     try {
-      const r = await api(`/f/${code}`, { method: 'POST', token: '', body: { from_name: name, items: ready.map((p) => ({ to_person_id: p.id, well: p.well, improve: p.improve })) } });
+      const r = await api(`/f/${code}`, { method: 'POST', token: '', body: { from_name: name, items: ready.map((p) => (p.id === EXCO ? { to_exco: true, well: p.well, improve: p.improve } : { to_person_id: p.id, well: p.well, improve: p.improve })) } });
       setSent(r.count); setPicked([]);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -55,16 +56,17 @@ export default function Feedback() {
         <div className="pickgrid">
           {data.agenda.map((p) => <button type="button" key={p.id} className={'pbtn' + (has(p.id) ? ' on' : '')} onClick={() => toggle(p)} aria-pressed={has(p.id)}>{p.name}<small>{p.roles.join(', ')}</small></button>)}
         </div>
+        <div style={{ marginTop: 12 }}><button type="button" className={'pbtn exco' + (has(EXCO) ? ' on' : '')} onClick={() => toggle({ id: EXCO, name: 'The ExCo' })} aria-pressed={has(EXCO)}>The ExCo<small>Feedback for the club's committee</small></button></div>
         {others.length > 0 && <div style={{ marginTop: 12 }}><Select value="" placeholder="Someone else…" options={others} onChange={(id) => toggle(data.others.find((o) => o.id === id))} /></div>}
 
         {picked.length > 0 && <div className="step">Step 3 · Write a few words</div>}
         {picked.map((p) => (
           <div className="fcard" key={p.id}>
             <div className="fh"><b>{p.name}</b><button type="button" className="x" onClick={() => toggle(p)} aria-label={`Remove ${p.name}`}>{I.close}</button></div>
-            <label className="fl blue">What did they do well?</label>
-            <textarea className="inp" value={p.well} onChange={(e) => upd(p.id, { well: e.target.value })} placeholder="Something that worked for you" />
-            <label className="fl maroon">What could they try next time?</label>
-            <textarea className="inp" style={{ marginBottom: 10 }} value={p.improve} onChange={(e) => upd(p.id, { improve: e.target.value })} placeholder="One kind, useful suggestion" />
+            <label className="fl blue">{p.id === EXCO ? 'What is the club doing well?' : 'What did they do well?'}</label>
+            <textarea className="inp" value={p.well} onChange={(e) => upd(p.id, { well: e.target.value })} placeholder={p.id === EXCO ? 'Something about the club you value' : 'Something that worked for you'} />
+            <label className="fl maroon">{p.id === EXCO ? 'What could the ExCo improve?' : 'What could they try next time?'}</label>
+            <textarea className="inp" style={{ marginBottom: 10 }} value={p.improve} onChange={(e) => upd(p.id, { improve: e.target.value })} placeholder={p.id === EXCO ? 'One kind, useful suggestion for the committee' : 'One kind, useful suggestion'} />
           </div>
         ))}
         {err && <p className="err">{err}</p>}

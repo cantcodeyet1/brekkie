@@ -770,7 +770,12 @@ app.get('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) => {
   const [fc] = await q('select feedback_code from meetings where id=$1', [m.id]);
   const peer = await q('select p.id, p.from_name, p.well, p.improve, p.hidden, t.name as to_name from peer_feedback p join people t on t.id=p.to_person_id where p.meeting_id=$1 order by p.id desc', [m.id]);
   const gefb = await q(`select rf.id, rf.well, rf.improve, tr.label as role, tp.name as to_name from role_feedback rf join meeting_roles tr on tr.id=rf.target_role_id left join people tp on tp.id=tr.person_id where rf.meeting_id=$1 order by tr.position`, [m.id]);
-  res.json({ meeting: { ...m, feedback_code: fc.feedback_code, status: !next || m.number < next.number ? 'Done' : m.number === next.number ? 'Next' : 'Planned' }, roles, peer, roleFeedback: gefb });
+  const exco = await q('select id, from_name, well, improve, hidden from exco_feedback where meeting_id=$1 order by id desc', [m.id]);
+  res.json({ exco, meeting: { ...m, feedback_code: fc.feedback_code, status: !next || m.number < next.number ? 'Done' : m.number === next.number ? 'Next' : 'Planned' }, roles, peer, roleFeedback: gefb });
+}));
+app.patch('/api/vpe/exco/:id', needPerson, needVpe, wrap(async (req, res) => {
+  const r = await q('update exco_feedback set hidden=$1 where id=$2 and meeting_id in (select id from meetings where club_id=$3) returning id', [!!req.body.hidden, req.params.id, req.person.club_id]);
+  r.length ? res.json({ ok: true }) : bad(res, 'Not found', 404);
 }));
 app.patch('/api/vpe/peer/:id', needPerson, needVpe, wrap(async (req, res) => {
   const r = await q('update peer_feedback set hidden=$1 where id=$2 and meeting_id in (select id from meetings where club_id=$3) returning id', [!!req.body.hidden, req.params.id, req.person.club_id]);
@@ -1631,6 +1636,7 @@ app.post('/api/f/:code', wrap(async (req, res) => {
   for (const it of items) {
     const well = String(it.well || '').trim().slice(0, 1500), improve = String(it.improve || '').trim().slice(0, 1500);
     if (!well && !improve) continue;
+    if (it.to_exco) { await q('insert into exco_feedback(meeting_id,from_name,well,improve) values ($1,$2,$3,$4)', [m.id, from, well, improve]); n++; continue; }
     const [p] = await q(`select id from people where id=$1 and club_id=$2 and status<>'inactive'`, [it.to_person_id, m.club_id]);
     if (!p) continue;
     await q('insert into peer_feedback(meeting_id,to_person_id,from_name,well,improve) values ($1,$2,$3,$4,$5)', [m.id, p.id, from, well, improve]); n++;

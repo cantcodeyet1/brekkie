@@ -243,6 +243,7 @@ function RoleBody({ data, token }) {
           {Sheet
             ? <button type="button" className="rwel-go" onClick={() => setView('sheet')}>{submitted ? 'View or edit my notes' : 'Open my sheet'}</button>
             : <button type="button" className="rwel-go" onClick={getAgenda} disabled={agBusy}>{agBusy ? 'Getting it…' : 'Download the agenda'}</button>}
+          {Sheet && <button type="button" className="rwel-go ghost" onClick={getAgenda} disabled={agBusy}>{agBusy ? 'Getting it…' : 'Download the agenda'}</button>}
           {err && <p className="err" style={{ color: '#ffd6d6' }}>{err}</p>}
         </div>
       </div>
@@ -286,6 +287,7 @@ function RoleBody({ data, token }) {
       )}
       {desk && <div className="rhd-go"><span className="saving">{save}</span><Btn onClick={() => setConfirm(true)}>{submitted ? 'Update my notes' : 'Submit notes'}</Btn></div>}
       </div>
+      {mode === 'script' && <div style={{ marginTop: 14 }}><DlBtn onClick={getAgenda} title="Meeting agenda" sub={agBusy ? 'Getting it…' : 'The agenda for this meeting (PDF)'} /></div>}
       <div className="swipe" onTouchStart={swipe.start} onTouchEnd={swipe.end}><Sheet {...ctx} /></div>
       {mode === 'report' && <div style={{ marginTop: 14 }}><DlBtn onClick={downloadPdf} title={pdfTitle} sub={pdfSub} /></div>}
       {err && <p className="err">{err}</p>}

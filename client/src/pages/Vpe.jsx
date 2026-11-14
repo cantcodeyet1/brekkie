@@ -299,7 +299,7 @@ The word of the day is "${m.word}". Please introduce it at the start of the meet
     const intro = kind === 'remind'
       ? `Thank you for serving as ${r.label} at our club meeting on ${fmtDate(m.date)}. It really does make the meeting.${theme}
 
-A gentle reminder to fill in your notes on Brekkie when you have a moment. The people you observed benefit most from hearing your feedback while the meeting is still fresh, and it helps every member keep growing in their Pathways journey.`
+A gentle reminder to fill in your notes on Brekkie when you have a moment. The members you observed benefit most from reviewing your written feedback while the meeting is still fresh, and it helps every member keep growing in their Pathways journey.`
       : `Thank you for agreeing to serve as ${r.label} at our club meeting on ${fmtDate(m.date)}.${theme}`;
     return `Hello ${title}${r.person.split(' ')[0]},
 
@@ -320,6 +320,27 @@ ${sender || 'Your VPE'}
 VPE, Champions Toastmasters Club`;
   };
   const copy = async (text) => { toast((await copyText(text)) ? 'Copied' : 'Copy failed'); };
+  // after the meeting: a thank-you to everyone who had a role, with a link to their own page (a visitor's link signs them straight in)
+  const thanked = [];
+  for (const r of roles) if (r.person_id && !thanked.some((x) => x.id === r.person_id)) { const p = personOf(r.person_id); if (p) thanked.push({ ...p, roles: roles.filter((x) => x.person_id === p.id).map((x) => x.label) }); }
+  const thanks = (p) => {
+    const title = greetTitle(p.credential) ? `${greetTitle(p.credential)} ` : '', sender = people.find((x) => x.is_vpe)?.name;
+    const list = p.roles.length > 1 ? `${p.roles.slice(0, -1).join(', ')} and ${p.roles[p.roles.length - 1]}` : p.roles[0];
+    const visitor = p.kind === 'guest' && p.token;
+    return `Hello ${title}${p.name.split(' ')[0]},
+
+Thank you for being part of our club meeting on ${fmtDate(m.date)} as ${/^[aeiou]/i.test(list) ? 'an' : 'a'} ${list}. ${visitor ? 'It was a pleasure to have you with us.' : 'It really does make the meeting.'}
+
+${visitor ? 'Your own page on Brekkie has the feedback from the evening and your roles. It opens straight from this link, with no sign-in:' : 'Your own page on Brekkie has your feedback, roles and progress. Feedback from the evening appears there once it has been checked. Sign in here:'}
+
+${visitor ? memberLink(base, p.token) : `${base}/m`}
+
+${visitor ? 'We would love to see you again.' : 'See you at the next meeting!'}
+
+Kind regards,
+${sender || 'Your VPE'}
+VPE, Champions Toastmasters Club`;
+  };
   const all = linkRows.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
   const resetFb = async () => {
     if (!window.confirm(`Clear everything submitted for meeting ${m.number}? Every role sheet goes back to blank and the notes, counts, timings and evaluations built from them are removed. Room comments stay. This cannot be undone.`)) return;
@@ -376,7 +397,7 @@ VPE, Champions Toastmasters Club`;
           <p className="lede" style={{ margin: 0 }}>{m.theme || 'No theme yet'}{m.word ? <> · Word of the day <b style={{ color: 'var(--ink)' }}>{m.word}</b></> : ''}</p>
         </div>
         <nav className="jump" aria-label="Sections">
-          {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received']].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
+          {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received'], ...(!upcoming ? [['thanks', 'Thank you']] : [])].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
         </nav>
       </div>
 
@@ -446,6 +467,21 @@ VPE, Champions Toastmasters Club`;
       {data.meeting.feedback_code && (
         <Panel k="room" title="From the room" hint="One link and QR code for the whole meeting. Anyone there scans it to write feedback to the people they choose.">
           <QrCard code={data.meeting.feedback_code} meeting={data.meeting} base={base} />
+          {data.exco?.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <p className="fl" style={{ marginBottom: 6 }}>For the ExCo <i>({data.exco.length})</i></p>
+              <div className="list">
+                {data.exco.map((x) => (
+                  <div className="say" key={x.id} style={x.hidden ? { opacity: 0.55 } : undefined}>
+                    <div className="who">{x.from_name || 'Anonymous'}</div>
+                    {x.well && <p className="note g"><i>Going well</i><Lines text={x.well} /></p>}
+                    {x.improve && <p className="note m"><i>Could improve</i><Lines text={x.improve} /></p>}
+                    <button type="button" className="lnk" onClick={async () => { try { await api(`/vpe/exco/${x.id}`, { method: 'PATCH', body: { hidden: !x.hidden } }); reload(); } catch (e) { toast(e.message); } }}>{x.hidden ? 'Show again' : 'Hide'}</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 
@@ -478,6 +514,19 @@ VPE, Champions Toastmasters Club`;
             ))}
           </div>
         </Panel>
+        {!upcoming && thanked.length > 0 && (
+          <Panel k="thanks" title="Thank you" hint="Send everyone who had a role a thank you after the meeting, with a link to their own page.">
+            <div className="list">
+              {thanked.map((p) => (
+                <div className="linkrow" key={p.id}>
+                  <div className="grow"><b>{p.name}</b>{p.kind === 'guest' && <GBadge />} <small>· {p.roles.join(', ')}</small></div>
+                  <Btn sm kind="ghost" onClick={async () => toast((await copyText(thanks(p))) ? 'Thank you copied' : 'Copy failed')}>{I.copy}Copy</Btn>
+                  <a className="btn sm ghost" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(thanks(p))} aria-label={`Send ${p.name} a thank you on WhatsApp`}>{I.send}</a>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
       </div>
 
       {viewing && <SubmissionViewer id={viewing} list={fb.filter((r) => r.person)} onGo={setViewing} onClose={() => setViewing(null)} remind={(r) => wa(msg(r, 'remind'))} onApprove={(rid) => review(rid)} />}
