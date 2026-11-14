@@ -4,25 +4,27 @@ import { q } from './db.js';
 const D = (c) => `to_char(${c},'YYYY-MM-DD')`;
 const CRIT = ['Clarity', 'Vocal Variety', 'Eye Contact', 'Gestures', 'Audience Awareness', 'Comfort Level', 'Interest'];
 
-export async function loadHist(clubId) {
+/** approvedOnly: what a member sees, which is only feedback the VPE has approved */
+export async function loadHist(clubId, approvedOnly = false) {
+  const ok = approvedOnly ? " and r.review_status='approved'" : '';
   const [evals, fill, time, gram, rolefb, peer] = await Promise.all([
     q(`select e.id, e.speaker_id as pid, e.title, e.ratings, e.comments, e.excelled, e.work, e.challenge, e.seconds, m.number, ${D('m.date')} as date,
          p.name as project, coalesce(e.path_level, p.level) as level, coalesce(e.path_name, p.path) as path, ev.name as by
        from evaluations e join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id
-       join meeting_roles r on r.id=e.role_id left join people ev on ev.id=r.person_id where m.club_id=$1 order by m.date`, [clubId]),
+       join meeting_roles r on r.id=e.role_id left join people ev on ev.id=r.person_id where m.club_id=$1${ok} order by m.date`, [clubId]),
     q(`select f.subject_id as pid, f.counts, f.comment, m.number, ${D('m.date')} as date, gp.name as by
        from filler_counts f join meetings m on m.id=f.meeting_id join meeting_roles r on r.id=f.role_id left join people gp on gp.id=r.person_id
-       where m.club_id=$1 order by m.date`, [clubId]),
+       where m.club_id=$1${ok} order by m.date`, [clubId]),
     q(`select t.subject_id as pid, t.seconds, t.kind, t.label, t.green, t.yellow, t.red, t.comment, pr.name as project, m.number, ${D('m.date')} as date, tp.name as by
        from timings t join meetings m on m.id=t.meeting_id join meeting_roles r on r.id=t.role_id left join people tp on tp.id=r.person_id
-       left join projects pr on pr.id=t.project_id where m.club_id=$1 and t.seconds is not null order by m.date`, [clubId]),
+       left join projects pr on pr.id=t.project_id where m.club_id=$1 and t.seconds is not null${ok} order by m.date`, [clubId]),
     q(`select g.subject_id as pid, g.used_word, g.word_uses, g.liked, g.improper, g.suggestion, m.word, m.number, ${D('m.date')} as date, gp.name as by
        from gram_notes g join meetings m on m.id=g.meeting_id join meeting_roles r on r.id=g.role_id left join people gp on gp.id=r.person_id
-       where m.club_id=$1 order by m.date`, [clubId]),
+       where m.club_id=$1${ok} order by m.date`, [clubId]),
     q(`select tr.person_id as pid, rf.well, rf.improve, tr.label as role, m.number, ${D('m.date')} as date, ap.name as by
        from role_feedback rf join meeting_roles tr on tr.id=rf.target_role_id join meetings m on m.id=rf.meeting_id
        join meeting_roles ar on ar.id=rf.author_role_id left join people ap on ap.id=ar.person_id
-       where m.club_id=$1 and tr.person_id is not null order by m.date`, [clubId]),
+       where m.club_id=$1 and tr.person_id is not null${approvedOnly ? " and ar.review_status='approved'" : ''} order by m.date`, [clubId]),
     q(`select p.to_person_id as pid, p.id, p.from_name, p.well, p.improve, m.number, ${D('m.date')} as date
        from peer_feedback p join meetings m on m.id=p.meeting_id where m.club_id=$1 and not p.hidden order by m.date`, [clubId]),
   ]);

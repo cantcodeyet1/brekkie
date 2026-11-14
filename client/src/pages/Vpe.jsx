@@ -96,7 +96,7 @@ export function VpeHome() {
       <td><input value={m.word} onChange={(e) => patch(m, { word: e.target.value })} placeholder="Word of the day" aria-label="Word" /></td>
       <td>{flag(m)}</td>
       <td className={'num ' + (m.status !== 'Done' && m.roles_filled < m.roles_total ? 'warn' : '')}>{m.roles_filled}/{m.roles_total}</td>
-      <td className="num">{m.status === 'Done' ? `${m.fb_in}/${m.fb_total}` : 'n/a'}</td>
+      <td className="num">{m.status === 'Done' ? `${m.fb_in}/${m.fb_total}` : 'n/a'}{m.status === 'Done' && m.fb_review > 0 && <Chip kind="wait" style={{ marginLeft: 8 }}>{m.fb_review} to review</Chip>}</td>
       <td><Chip kind={statusKind(m.status)}>{m.status}</Chip></td>
       <td className="rm-act"><button type="button" className="x" onClick={() => copyRoom(m)} title="Copy the from-the-room feedback link" aria-label={`Copy room feedback link for meeting ${m.number}`}>{I.copy}</button><Link className="x" to={`/v/meetings/${m.id}`} aria-label="Open">{I.chev}</Link></td>
     </tr>
@@ -110,7 +110,7 @@ export function VpeHome() {
       </div>
       <label className="fl">Theme</label><input className="inp" value={m.theme} placeholder="Theme" onChange={(e) => patch(m, { theme: e.target.value })} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <span style={{ color: 'var(--mute)', fontSize: 13.5 }}>Roles {m.roles_filled}/{m.roles_total}{m.status === 'Done' && ` · Feedback ${m.fb_in}/${m.fb_total}`} {flag(m)}</span>
+        <span style={{ color: 'var(--mute)', fontSize: 13.5 }}>Roles {m.roles_filled}/{m.roles_total}{m.status === 'Done' && ` · Feedback ${m.fb_in}/${m.fb_total}`}{m.status === 'Done' && m.fb_review > 0 && ` · ${m.fb_review} to review`} {flag(m)}</span>
         <span style={{ display: 'flex', gap: 8 }}>
           <Btn sm kind="ghost" onClick={() => copyRoom(m)}>{I.copy}Room link</Btn>
           <Link className="btn sm ghost" to={`/v/meetings/${m.id}`} style={{ textDecoration: 'none' }}>Open</Link>
@@ -325,6 +325,13 @@ VPE, Champions Toastmasters Club`;
     if (!window.confirm(`Clear everything submitted for meeting ${m.number}? Every role sheet goes back to blank and the notes, counts, timings and evaluations built from them are removed. Room comments stay. This cannot be undone.`)) return;
     try { const r = await api(`/vpe/meetings/${id}/reset-feedback`, { method: 'POST' }); toast(`Cleared ${r.sheets} ${r.sheets === 1 ? 'sheet' : 'sheets'}`); reload(); } catch (e) { toast(e.message); }
   };
+  const review = async (rid, approved = true) => {
+    try { await api(`/vpe/roles/${rid}/review`, { method: 'POST', body: { approved } }); toast(approved ? 'Approved: the member can see it now' : 'Held back for review'); reload(); } catch (e) { toast(e.message); }
+  };
+  const toReview = fb.filter((r) => r.person && r.submitted_at && r.review_status !== 'approved').length;
+  const approveAll = async () => {
+    try { const r = await api(`/vpe/meetings/${id}/approve-all`, { method: 'POST' }); toast(`Approved ${r.approved} ${r.approved === 1 ? 'sheet' : 'sheets'}`); reload(); } catch (e) { toast(e.message); }
+  };
   const upcoming = m.status !== 'Done';
   const pending = fb.filter((r) => r.person && !r.submitted_at).length;
 
@@ -456,13 +463,15 @@ VPE, Champions Toastmasters Club`;
           </div>
         </Panel>
 
-        <Panel k="recv" title="Feedback received" hint={upcoming ? 'Opens up after the meeting. Open anyone to read what they submitted.' : `${pending ? `${pending} still to come. ` : 'Everyone has submitted. '}Open anyone to read what they submitted.`}
-          right={fb.some((r) => r.submitted_at) ? <Btn sm kind="ghost" onClick={resetFb}>Reset submitted feedback</Btn> : null}>
+        <Panel k="recv" title="Feedback received" hint={upcoming ? 'Opens up after the meeting. Open anyone to read what they submitted.' : `${pending ? `${pending} still to come. ` : 'Everyone has submitted. '}Read what each person submitted, then approve it. Members only see feedback once you have approved it.`}
+          right={fb.some((r) => r.submitted_at) ? <>{toReview > 0 && <Btn sm onClick={approveAll}>{I.check}Approve all ({toReview})</Btn>}<Btn sm kind="ghost" onClick={resetFb}>Reset submitted feedback</Btn></> : null}>
           <div className="list">
             {fb.filter((r) => r.person).map((r) => (
               <div className="linkrow rowbtn" key={r.id}>
                 <button type="button" className="grow" onClick={() => setViewing(r.id)} aria-label={`Read ${r.label} feedback from ${r.person}`}><b>{r.label}</b><br /><small>{r.person}</small>{personChip(r)}</button>
-                {r.submitted_at ? <Chip kind="ok">{I.check}Submitted</Chip> : <><Chip kind="wait">Pending</Chip>
+                {r.submitted_at ? (r.review_status === 'approved'
+                  ? <><Chip kind="ok">{I.check}Approved</Chip><button type="button" className="lnk" onClick={() => review(r.id, false)}>Hold back</button></>
+                  : <><Chip kind="wait">To review</Chip><Btn sm onClick={() => review(r.id)}>Approve</Btn></>) : <><Chip kind="wait">Pending</Chip>
                   <a className="btn sm ghost" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(msg(r, 'remind'))}>Remind</a></>}
                 <button type="button" className="x" onClick={() => setViewing(r.id)} aria-label="Open">{I.chev}</button>
               </div>
@@ -471,7 +480,7 @@ VPE, Champions Toastmasters Club`;
         </Panel>
       </div>
 
-      {viewing && <SubmissionViewer id={viewing} list={fb.filter((r) => r.person)} onGo={setViewing} onClose={() => setViewing(null)} remind={(r) => wa(msg(r, 'remind'))} />}
+      {viewing && <SubmissionViewer id={viewing} list={fb.filter((r) => r.person)} onGo={setViewing} onClose={() => setViewing(null)} remind={(r) => wa(msg(r, 'remind'))} onApprove={(rid) => review(rid)} />}
     </Page>
   );
 }
@@ -575,7 +584,7 @@ export function SubmissionBody({ d, cur, error, loading, remind, flat }) {
 }
 
 /* read what a role player submitted, and step through everyone's */
-export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
+export function SubmissionViewer({ id, list, onGo, onClose, remind, mine, onApprove }) {
   const { data: d, error, loading } = useApi(mine ? `/me/given/${id}` : `/vpe/roles/${id}/submission`);
   const i = list.findIndex((r) => r.id === id), cur = list[i];
   const prev = list[i - 1], next = list[i + 1];
@@ -590,7 +599,10 @@ export function SubmissionViewer({ id, list, onGo, onClose, remind, mine }) {
           <Btn kind="ghost" sm disabled={!prev} onClick={() => onGo(prev.id)}>{I.back} {prev ? prev.label : 'Previous'}</Btn>
           <Btn kind="ghost" sm disabled={!next} onClick={() => onGo(next.id)}>{next ? next.label : 'Next'} {I.chev}</Btn>
         </div>
-        <Btn sm onClick={onClose}>Close</Btn>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onApprove && cur?.submitted_at && cur.review_status !== 'approved' && <Btn sm onClick={() => onApprove(cur.id)}>{I.check}Approve</Btn>}
+          <Btn sm kind={onApprove && cur?.review_status !== 'approved' && cur?.submitted_at ? 'ghost' : undefined} onClick={onClose}>Close</Btn>
+        </div>
       </div>
     </Modal>
   );

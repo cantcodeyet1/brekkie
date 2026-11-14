@@ -115,7 +115,7 @@ function SpeakerBody({ data, token }) {
             <p className="pt-txt">This is the form your evaluator will use{mine.project ? ` for ${mine.project}` : ''}. Read it before you speak so you know what they are listening for.</p>
             <div className="pt-acts"><a className="mh-btn mh-main" href={mine.form} target="_blank" rel="noreferrer" download>{I.dl} Evaluation form (PDF)</a></div></div>}
           <div className="mb-card pt-card"><div className="pt-lab">Your feedback</div>
-            {!got && <p className="pt-txt">{partners.length ? 'Your evaluator has not submitted it yet. It appears here as soon as they do.' : 'It appears here once your evaluator has submitted it.'}</p>}
+            {!got && <p className="pt-txt">{partners.some((x) => x.in_review) ? 'Your evaluator has submitted it. It is being checked and appears here as soon as it is approved.' : partners.length ? 'Your evaluator has not submitted it yet. It appears here as soon as they do.' : 'It appears here once your evaluator has submitted it.'}</p>}
             {got && <>
               {e.excelled && <div className="pt-fb good"><small>You excelled at</small><div><Lines text={e.excelled} /></div></div>}
               {e.work && <div className="pt-fb bad"><small>You may want to work on</small><div><Lines text={e.work} /></div></div>}

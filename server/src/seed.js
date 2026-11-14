@@ -206,7 +206,7 @@ export async function seedDemo() {
       for (const r of R) {
         if (!r.who || !['grammarian', 'ah_counter', 'timer', 'topicsmaster', 'general_evaluator', 'evaluator'].includes(r.key)) continue;
         if (n === 143 && r.key === 'timer') continue;
-        await t('update meeting_roles set submitted_at = now() - interval \'3 days\' where id=$1', [r.id]);
+        await t('update meeting_roles set submitted_at = now() - interval \'3 days\', review_status = \'approved\' where id=$1', [r.id]);
       }
     }
   });

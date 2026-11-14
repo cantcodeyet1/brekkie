@@ -364,3 +364,7 @@ alter table clubs add column if not exists agenda_profile jsonb;
 alter table clubs add column if not exists agenda_template bytea;
 alter table clubs add column if not exists agenda_template_name text;
 alter table clubs add column if not exists agenda_template_checks jsonb;
+-- what a role player submitted is reviewed by the VPE before the member it is about can see it:
+-- null (not submitted), 'pending' (waiting for the VPE) or 'approved'. Everything already submitted when this was added waits for review.
+alter table meeting_roles add column if not exists review_status text;
+update meeting_roles set review_status='pending' where submitted_at is not null and review_status is null;

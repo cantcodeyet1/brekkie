@@ -443,8 +443,9 @@ app.get('/api/role', needRole, wrap(async (req, res) => {
   if (r.role_key === 'speaker') {
     partners = await q(`select r2.id as role_id, r2.label, r2.submitted_at, ${contact} from meeting_roles r2 join people p on p.id=r2.person_id where r2.target_role_id=$1 and r2.meeting_id=$2 and p.club_id=$3 order by r2.position`, [r.id, r.meeting_id, r.club_id]);
     for (const p of partners) if (p.submitted_at) {
-      const [e] = await q('select id, ratings, comments, excelled, work, challenge from evaluations where role_id=$1', [p.role_id]);
+      const [e] = await q(`select e.id, e.ratings, e.comments, e.excelled, e.work, e.challenge from evaluations e join meeting_roles r on r.id=e.role_id where e.role_id=$1 and r.review_status='approved'`, [p.role_id]);
       p.evaluation = e || null;
+      p.in_review = !e;   // submitted, and waiting for the VPE to approve it
     }
     const [pr] = r.project_id ? await q('select name, level, path from projects where id=$1', [r.project_id]) : [];
     const res0 = pr && EVAL_RESOURCES[pr.name];
@@ -491,11 +492,13 @@ app.post('/api/role/join-request', needRole, joinRequest);
 app.post('/api/me/join-request', needPerson, joinRequest);
 app.put('/api/role/sheet', needRole, wrap(async (req, res) => {
   await saveSheet(req.role, req.body || {});
+  // changing something already approved sends it back to the VPE
+  if (req.role.review_status === 'approved' && JSON.stringify(req.body || {}) !== JSON.stringify(req.role.sheet || {})) await q(`update meeting_roles set review_status='pending' where id=$1`, [req.role.id]);
   res.json({ ok: true, saved_at: new Date().toISOString() });
 }));
 app.post('/api/role/submit', needRole, wrap(async (req, res) => {
   if (req.body && Object.keys(req.body).length) await saveSheet(req.role, req.body);
-  await q('update meeting_roles set submitted_at=now() where id=$1', [req.role.id]);
+  await q(`update meeting_roles set submitted_at=now(), review_status='pending' where id=$1`, [req.role.id]);   // the VPE reviews it before anyone it is about can see it
   res.json({ ok: true });
 }));
 
@@ -573,7 +576,7 @@ async function myMeetings(me, hist) {
 }
 
 app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
-  const me = req.person, hist = await loadHist(me.club_id);
+  const me = req.person, hist = await loadHist(me.club_id, true);
   const prog = progressFor(me.id, hist);
   const meetings = await myMeetings(me, hist);
   const up = await q(`select r.label, r.role_key, r.token, r.submitted_at, r.part, pr.name as project, m.id as meeting_id, m.number, ${DATE('m.date')} as date
@@ -598,32 +601,32 @@ app.get('/api/me/given/:id', needPerson, wrap(async (req, res, next) => {
   if (!r) return bad(res, 'Not found', 404);
   next();
 }), (req, res, next) => submissionHandler(req, res, next));
-app.get('/api/me/meetings', needPerson, wrap(async (req, res) => res.json(await myMeetings(req.person, await loadHist(req.person.club_id)))));
+app.get('/api/me/meetings', needPerson, wrap(async (req, res) => res.json(await myMeetings(req.person, await loadHist(req.person.club_id, true)))));
 app.get('/api/me/meetings/:number', needPerson, wrap(async (req, res) => {
   const me = req.person, n = +req.params.number;
   const [m] = await q(`select id, number, ${DATE('date')} as date, theme, word from meetings where club_id=$1 and number=$2`, [me.club_id, n]);
   if (!m) return bad(res, 'Not found', 404);
-  const hist = await loadHist(me.club_id);
+  const hist = await loadHist(me.club_id, true);
   const mine = (rows) => rows.filter((r) => r.pid === me.id && r.number === n);
   const roles = await q('select id, label, role_key from meeting_roles where meeting_id=$1 and person_id=$2 order by position', [m.id, me.id]);
   const roleFb = await q(`select rf.well, rf.improve, tr.label as role, ap.name as by from role_feedback rf join meeting_roles tr on tr.id=rf.target_role_id
-    join meeting_roles ar on ar.id=rf.author_role_id left join people ap on ap.id=ar.person_id where rf.meeting_id=$1 and tr.person_id=$2`, [m.id, me.id]);
+    join meeting_roles ar on ar.id=rf.author_role_id left join people ap on ap.id=ar.person_id where rf.meeting_id=$1 and tr.person_id=$2 and ar.review_status='approved'`, [m.id, me.id]);
   const peer = await q('select from_name, well, improve from peer_feedback where meeting_id=$1 and to_person_id=$2 and not hidden order by id', [m.id, me.id]);
   res.json({ meeting: m, roles, roleFeedback: roleFb, peer, speech: mine(hist.evals)[0] || null, gram: mine(hist.gram), ah: mine(hist.fill), time: mine(hist.time) });
 }));
 app.get('/api/me/room', needPerson, wrap(async (req, res) => {
-  const hist = await loadHist(req.person.club_id);
+  const hist = await loadHist(req.person.club_id, true);
   res.json(hist.peer.filter((r) => r.pid === req.person.id).sort((a, b) => b.date.localeCompare(a.date)));
 }));
 
 app.get('/api/me/history/:key', needPerson, wrap(async (req, res) => {
   const k = { gram: 'gram', ah: 'fill', time: 'time' }[req.params.key];
   if (!k) return bad(res, 'Unknown history', 404);
-  const hist = await loadHist(req.person.club_id);
+  const hist = await loadHist(req.person.club_id, true);
   res.json(hist[k].filter((r) => r.pid === req.person.id).sort((a, b) => b.date.localeCompare(a.date)));
 }));
 app.get('/api/me/evaluations', needPerson, wrap(async (req, res) => {
-  const hist = await loadHist(req.person.club_id);
+  const hist = await loadHist(req.person.club_id, true);
   res.json(hist.evals.filter((r) => r.pid === req.person.id).sort((a, b) => b.date.localeCompare(a.date)));
 }));
 app.get('/api/me/evaluations/:id', needPerson, wrap(async (req, res) => evalDetail(req, res, req.person.id)));
@@ -655,16 +658,16 @@ app.get('/api/role/received-evaluation.pdf', needRole, wrap(async (req, res) => 
   const [e] = await q(`select e.*, ${DATE('m.date')} as date, p.name as project, sp.name as member, ev.name as by
     from evaluations e join meeting_roles er on er.id=e.role_id join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id
     join people sp on sp.id=e.speaker_id left join people ev on ev.id=er.person_id
-    where er.target_role_id=$1 and er.meeting_id=$2 and er.submitted_at is not null order by e.id limit 1`, [r.id, r.meeting_id]);
+    where er.target_role_id=$1 and er.meeting_id=$2 and er.submitted_at is not null and er.review_status='approved' order by e.id limit 1`, [r.id, r.meeting_id]);
   if (!e) return bad(res, 'Your evaluation is not in yet', 404);
   await sendEvalForm(res, { project: e.project, part: e.part, fileName: formName(e.member, e.date),
     data: { member: e.member, evaluator: e.by, date: longDate(e.date), title: e.title, excelled: e.excelled, work: e.work, challenge: e.challenge, ratings: e.ratings, comments: e.comments } });
 }));
 async function evalFormFor(req, res, onlyMe) {
-  const [e] = await q(`select e.*, ${DATE('m.date')} as date, m.club_id, p.name as project, sp.name as member, ev.name as by
+  const [e] = await q(`select e.*, ${DATE('m.date')} as date, m.club_id, p.name as project, sp.name as member, ev.name as by, r.review_status
     from evaluations e join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id join people sp on sp.id=e.speaker_id
     join meeting_roles r on r.id=e.role_id left join people ev on ev.id=r.person_id where e.id=$1`, [req.params.id]);
-  if (!e || e.club_id !== req.person.club_id || (onlyMe && e.speaker_id !== onlyMe)) return bad(res, 'Not found', 404);
+  if (!e || e.club_id !== req.person.club_id || (onlyMe && (e.speaker_id !== onlyMe || e.review_status !== 'approved'))) return bad(res, 'Not found', 404);
   await sendEvalForm(res, { project: e.project, part: e.part, fileName: formName(e.member, e.date),
     data: { member: e.member, evaluator: e.by, date: longDate(e.date), title: e.title, excelled: e.excelled, work: e.work, challenge: e.challenge, ratings: e.ratings, comments: e.comments } });
 }
@@ -672,10 +675,10 @@ app.get('/api/me/evaluations/:id/form.pdf', needPerson, wrap((req, res) => evalF
 app.get('/api/vpe/evaluations/:id/form.pdf', needPerson, needVpe, wrap((req, res) => evalFormFor(req, res, null)));
 async function evalDetail(req, res, onlyMe) {
   const [e] = await q(`select e.*, ${DATE('m.date')} as date, m.number, m.club_id, p.name as project, coalesce(e.path_level, p.level) as level, coalesce(e.path_name, p.path) as path, p.form_title, p.length_text, p.purpose, p.notes, p.about, p.green, p.yellow, p.red,
-      sp.name as member, ev.name as by
+      sp.name as member, ev.name as by, r.review_status
     from evaluations e join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id join people sp on sp.id=e.speaker_id
     join meeting_roles r on r.id=e.role_id left join people ev on ev.id=r.person_id where e.id=$1`, [req.params.id]);
-  if (!e || e.club_id !== req.person.club_id || (onlyMe && e.speaker_id !== onlyMe)) return bad(res, 'Not found', 404);
+  if (!e || e.club_id !== req.person.club_id || (onlyMe && (e.speaker_id !== onlyMe || e.review_status !== 'approved'))) return bad(res, 'Not found', 404);
   res.json(e);
 }
 
@@ -700,7 +703,8 @@ app.get('/api/vpe/meetings', needPerson, needVpe, wrap(async (req, res) => {
       (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.person_id is not null) as roles_filled,
       (select count(*)::int from meeting_roles r where r.meeting_id=m.id) as roles_total,
       (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.person_id is not null and r.role_key = any($2)) as fb_total,
-      (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.submitted_at is not null) as fb_in
+      (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.submitted_at is not null) as fb_in,
+      (select count(*)::int from meeting_roles r where r.meeting_id=m.id and r.review_status='pending') as fb_review
     from meetings m where m.club_id=$1 order by m.number desc`, [req.person.club_id, FEEDBACK_KEYS]);
   const [next] = await nextMeeting(req.person.club_id);
   res.json(rows.map((m) => ({ ...m, status: !next || m.number < next.number ? 'Done' : m.number === next.number ? 'Next' : 'Planned' })));
@@ -741,7 +745,7 @@ app.post('/api/vpe/meetings/:id/reset-feedback', needPerson, needVpe, wrap(async
   await tx(async (t) => {
     sheets = (await t(`select count(*)::int as n from meeting_roles where meeting_id=$1 and (submitted_at is not null or sheet <> '{}'::jsonb)`, [m.id]))[0].n;
     for (const tbl of ['gram_notes', 'filler_counts', 'timings', 'evaluations', 'role_feedback']) await t(`delete from ${tbl} where meeting_id=$1`, [m.id]);
-    await t(`update meeting_roles set sheet='{}'::jsonb, submitted_at=null where meeting_id=$1`, [m.id]);
+    await t(`update meeting_roles set sheet='{}'::jsonb, submitted_at=null, review_status=null where meeting_id=$1`, [m.id]);
   });
   res.json({ ok: true, number: m.number, sheets });
 }));
@@ -759,7 +763,7 @@ app.patch('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) =>
 app.get('/api/vpe/meetings/:id', needPerson, needVpe, wrap(async (req, res) => {
   const [m] = await q(`select id, number, ${DATE('date')} as date, theme, theme_quote, theme_quote_by, word, pos, pron, meaning, example, synonyms, origin from meetings where id=$1 and club_id=$2`, [req.params.id, req.person.club_id]);
   if (!m) return bad(res, 'Not found', 404);
-  const roles = await q(`select r.id, r.role_key, r.label, r.position, r.person_id, r.project_id, r.part, r.path_name, r.path_level, r.speech_title, r.target_role_id, r.token, r.submitted_at,
+  const roles = await q(`select r.id, r.role_key, r.label, r.position, r.person_id, r.project_id, r.part, r.path_name, r.path_level, r.speech_title, r.target_role_id, r.token, r.submitted_at, r.review_status,
       p.name as person, p.kind as person_kind, p.status as person_status
     from meeting_roles r left join people p on p.id=r.person_id where r.meeting_id=$1 order by r.position`, [m.id]);
   const [next] = await nextMeeting(req.person.club_id);
@@ -907,15 +911,27 @@ app.post('/api/vpe/word-details', needPerson, needVpe, wrap(async (req, res) => 
   catch (e) { bad(res, [404, 502].includes(e.status) ? e.message : 'Could not look that word up just now. Try again, or type the details in.', e.status || 502); }
 }));
 
+/* ───────── review: nothing a role player submits reaches the member it is about until the VPE approves it ───────── */
+app.post('/api/vpe/roles/:id/review', needPerson, needVpe, wrap(async (req, res) => {
+  const to = req.body?.approved === false ? 'pending' : 'approved';
+  const r = await q(`update meeting_roles set review_status=$1 where id=$2 and submitted_at is not null and meeting_id in (select id from meetings where club_id=$3) returning id`, [to, req.params.id, req.person.club_id]);
+  if (!r.length) return bad(res, 'Not found', 404);
+  res.json({ ok: true, review_status: to });
+}));
+app.post('/api/vpe/meetings/:id/approve-all', needPerson, needVpe, wrap(async (req, res) => {
+  const r = await q(`update meeting_roles set review_status='approved' where meeting_id=$1 and review_status='pending' and meeting_id in (select id from meetings where club_id=$2) returning id`, [req.params.id, req.person.club_id]);
+  res.json({ ok: true, approved: r.length });
+}));
+
 /* ───────── what a role player submitted, for the VPE to read through ───────── */
 const submissionHandler = wrap(async (req, res) => {
-  const [r] = await q(`select r.id, r.role_key, r.label, r.sheet, r.submitted_at, r.meeting_id, m.club_id, m.number, ${DATE('m.date')} as date, p.name as person
+  const [r] = await q(`select r.id, r.role_key, r.label, r.sheet, r.submitted_at, r.review_status, r.meeting_id, m.club_id, m.number, ${DATE('m.date')} as date, p.name as person
     from meeting_roles r join meetings m on m.id=r.meeting_id left join people p on p.id=r.person_id where r.id=$1 and m.club_id=$2`, [req.params.id, req.person.club_id]);
   if (!r) return bad(res, 'Not found', 404);
   const people = await q('select id, name from people where club_id=$1', [r.club_id]);
   const nm = (id) => people.find((x) => x.id === id)?.name || 'Someone';
   const sheet = r.sheet || {};
-  const out = { role: { id: r.id, key: r.role_key, label: r.label, person: r.person, submitted_at: r.submitted_at, meeting: r.number, date: r.date } };
+  const out = { role: { id: r.id, key: r.role_key, label: r.label, person: r.person, submitted_at: r.submitted_at, review_status: r.review_status, meeting: r.number, date: r.date } };
   if (r.role_key === 'grammarian') out.rows = (await q('select s.name, g.used_word as used, g.word_uses as uses, g.liked, g.improper, g.suggestion from gram_notes g join people s on s.id=g.subject_id where g.role_id=$1 order by g.id', [r.id]));
   else if (r.role_key === 'ah_counter') out.rows = (await q('select s.name, f.counts, f.comment from filler_counts f join people s on s.id=f.subject_id where f.role_id=$1 order by f.id', [r.id]));
   else if (r.role_key === 'timer') out.rows = (await q(`select s.name, t.label, t.kind, t.seconds, t.green, t.yellow, t.red, t.comment from timings t join people s on s.id=t.subject_id where t.role_id=$1 order by t.id`, [r.id]));

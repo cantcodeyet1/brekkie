@@ -392,3 +392,24 @@ test('multi-speech projects list their forms in speech order', async () => {
   assert.equal(r['Evaluation and Feedback'].forms.length, 3);
   assert.match(r['Evaluation and Feedback'].forms[0], /-1\.pdf$/);
 });
+
+/* ───────── the VPE reviews what role players submit before members see it ───────── */
+test('a submitted evaluation waits for the VPE: hidden from the speaker until approved, back in review when edited', async () => {
+  const [ev] = await q(`select e.id, e.role_id, p.token from evaluations e join people p on p.id=e.speaker_id order by e.id limit 1`);
+  assert.ok(ev);
+  const body = (r) => ({ method: 'POST', headers: { 'content-type': 'application/json', 'x-token': r }, body: JSON.stringify({}) });
+  await q(`update meeting_roles set review_status='pending' where id=$1`, [ev.role_id]);
+  assert.equal((await get(`/api/me/evaluations/${ev.id}`, ev.token)).status, 404);
+  assert.equal((await get('/api/me/evaluations', ev.token)).json.some((e) => e.id === ev.id), false);
+  assert.equal((await get(`/api/vpe/evaluations/${ev.id}`, vpe)).status, 200);          // the VPE reads it regardless
+  assert.equal((await fetch(`${base}/api/vpe/roles/${ev.role_id}/review`, body(member))).status, 403);
+  assert.equal((await fetch(`${base}/api/vpe/roles/${ev.role_id}/review`, body(vpe))).status, 200);
+  assert.equal((await get(`/api/me/evaluations/${ev.id}`, ev.token)).status, 200);
+  assert.equal((await get('/api/me/evaluations', ev.token)).json.some((e) => e.id === ev.id), true);
+  // a role player changing an approved sheet sends it back
+  const [rl] = await q('select token, sheet from meeting_roles where id=$1', [ev.role_id]);
+  const put = await fetch(`${base}/api/role/sheet`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-token': rl.token }, body: JSON.stringify({ ...(rl.sheet || {}), excelled: 'Something new' }) });
+  assert.equal(put.status, 200);
+  assert.equal((await q('select review_status from meeting_roles where id=$1', [ev.role_id]))[0].review_status, 'pending');
+  await q(`update meeting_roles set review_status='approved' where id=$1`, [ev.role_id]);
+});

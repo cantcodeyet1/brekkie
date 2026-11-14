@@ -3348,3 +3348,5 @@ button.it-go{background:none;border:0;padding:0;cursor:pointer}
 .bl{margin:2px 0;padding-left:20px;list-style:disc} .bl li{margin:1px 0} .ln{margin:0}
 .ln+.ln,.ln+.bl,.bl+.ln{margin-top:2px}
 .pt-fb>div,.rep-t{white-space:normal}
+
+.sv .dlbtn{max-width:none;margin:14px 0}
