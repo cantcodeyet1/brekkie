@@ -403,7 +403,7 @@ VPE, Champions Toastmasters Club`;
           <p className="lede" style={{ margin: 0 }}>{m.theme || 'No theme yet'}{m.word ? <> · Word of the day <b style={{ color: 'var(--ink)' }}>{m.word}</b></> : ''}</p>
         </div>
         <nav className="jump" aria-label="Sections">
-          {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received'], ...((!upcoming || m.date <= new Date().toLocaleDateString('en-CA')) && thanked.length ? [['thanks', 'Thank you']] : [])].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
+          {[['details', 'Theme and word'], ['roles', 'Roles'], ['links', 'Links'], ['recv', 'Received']].map(([k, l]) => <button type="button" key={k} onClick={() => jump(k)}>{l}</button>)}
         </nav>
       </div>
 
@@ -503,6 +503,20 @@ VPE, Champions Toastmasters Club`;
               </div>
             ) : <div className="linkrow" key={r.id}><div className="grow"><b>{r.label}</b><br /><span className="redpill">Assign someone to get a link</span></div></div>)}
           </div>
+          {(!upcoming || m.date <= new Date().toLocaleDateString('en-CA')) && thanked.length > 0 && (
+            <>
+              <p className="fl" style={{ margin: '18px 0 6px' }}>Thank you <i>(after the meeting, with a link to their own page)</i></p>
+              <div className="list">
+                {thanked.map((p) => (
+                  <div className="linkrow" key={p.id}>
+                    <div className="grow"><b>{p.name}</b>{p.kind === 'guest' && <GBadge />} <small>· {p.roles.join(', ')}</small></div>
+                    <Btn sm kind="ghost" onClick={async () => toast((await copyText(thanks(p))) ? 'Thank you copied' : 'Copy failed')}>{I.copy}Copy</Btn>
+                    <a className="btn sm ghost" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(thanks(p))} aria-label={`Send ${p.name} a thank you on WhatsApp`}>{I.send}</a>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </Panel>
 
         <Panel k="recv" title="Feedback received" hint={upcoming ? 'Opens up after the meeting. Open anyone to read what they submitted.' : `${pending ? `${pending} still to come. ` : 'Everyone has submitted. '}Read what each person submitted, then approve it. Members only see feedback once you have approved it.`}
@@ -520,19 +534,6 @@ VPE, Champions Toastmasters Club`;
             ))}
           </div>
         </Panel>
-        {(!upcoming || m.date <= new Date().toLocaleDateString('en-CA')) && thanked.length > 0 && (
-          <Panel k="thanks" title="Thank you" hint="Send everyone who had a role a thank you after the meeting, with a link to their own page.">
-            <div className="list">
-              {thanked.map((p) => (
-                <div className="linkrow" key={p.id}>
-                  <div className="grow"><b>{p.name}</b>{p.kind === 'guest' && <GBadge />} <small>· {p.roles.join(', ')}</small></div>
-                  <Btn sm kind="ghost" onClick={async () => toast((await copyText(thanks(p))) ? 'Thank you copied' : 'Copy failed')}>{I.copy}Copy</Btn>
-                  <a className="btn sm ghost" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer" href={wa(thanks(p))} aria-label={`Send ${p.name} a thank you on WhatsApp`}>{I.send}</a>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        )}
       </div>
 
       {viewing && <SubmissionViewer id={viewing} list={fb.filter((r) => r.person)} onGo={setViewing} onClose={() => setViewing(null)} remind={(r) => wa(msg(r, 'remind'))} onApprove={(rid) => review(rid)} />}

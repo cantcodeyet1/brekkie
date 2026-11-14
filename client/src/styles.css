@@ -2694,7 +2694,7 @@ html,body{background:#F5F5F7}
 .jtag{font:600 11px var(--head);letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:#EEF0F2;color:#4A4A50}
 .jtag.why{background:#FBEFD8;color:#7A5A00}.jtag.goals{background:#E8F1F6;color:var(--blue)}.jtag.strengths{background:#E3F3E8;color:#1E6B3A}
 .jtag.improve{background:#FBE5E3;color:#9A2A22}.jtag.speech{background:#EDE8F7;color:#5B3FA3}
-.jbtn{width:30px;height:30px;color:#6E6E73}
+.jlist .jbtn,.jmeta .jbtn{width:30px;height:30px;color:#6E6E73}
 .jtext{margin:6px 0 0;white-space:pre-wrap;line-height:1.5;font-size:15.5px}
 .jed{display:block}
 @media (max-width:640px){.ri-list .pdone,.pdone{flex:1 1 100%;grid-template-columns:1fr 1fr}.ri-t small{white-space:normal}}
