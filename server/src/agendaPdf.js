@@ -172,27 +172,40 @@ export async function renderAgendaPdf(ag, ctx) {
   if (prof) clubDetails(page, F, draw, ctx, prof);
   else if (ctx.clubNumber) { const cs = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(cs, 581.2 - width(F.b, 11, cs), 798.6, F.b, 11, rgb(1, 1, 1)); }
 
-  // heading: the date, then the theme and quotation on up to two centred lines
-  const cx = 369.5;
-  const dateW = width(F.bi, 11, plan.date);
-  draw(safe(F.bi, plan.date), cx - dateW / 2, 752.6, F.bi, 11, BLACK);
-  // theme on its own line, quotation on its own line (wrapping to a second only when it is long)
+  // heading: the date, then the theme and quotation, each on its own line and wrapping on to the next when it is long
+  const cx = 369.5, SPAN = 372;
+  // pasted text often carries no-break spaces, which would keep a whole quotation on one line
+  const tidy = (t) => String(t ?? '').replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g, ' ').replace(/\s+/g, ' ').trim();
   const wrapIt = (label, text, size) => {
-    const out = [[]]; let lw = 0;
-    const parts = [{ s: label, f: F.b, c: BLUE }, ...(' ' + text).split(/(?<= )/).map((w) => ({ s: w, f: F.i, c: BLACK }))];
-    for (const pc of parts) {
-      const w = width(pc.f, size, pc.s);
-      if (lw + w > 372 && out[out.length - 1].length && pc.f === F.i) { out.push([]); lw = 0; if (!pc.s.trim()) continue; }
-      out[out.length - 1].push(pc); lw += w;
+    // a word wider than a whole line is cut where it runs out
+    const words = tidy(text).split(' ').filter(Boolean).flatMap((w) => {
+      if (width(F.i, size, w) <= SPAN - 40) return [w];
+      const out = []; let cur = '';
+      for (const ch of w) { if (cur && width(F.i, size, cur + ch) > SPAN - 40) { out.push(cur); cur = ''; } cur += ch; }
+      return cur ? [...out, cur] : out;
+    });
+    const out = [[{ s: label, f: F.b, c: BLUE }]]; let lw = width(F.b, size, label);
+    for (const w of words) {
+      const sp = width(F.i, size, ` ${w}`);
+      if (lw + sp > SPAN) { out.push([{ s: w, f: F.i, c: BLACK }]); lw = width(F.i, size, w); }
+      else { out[out.length - 1].push({ s: ` ${w}`, f: F.i, c: BLACK }); lw += sp; }
     }
     return out;
   };
-  let size = 10, lines = [];
+  // size, line spacing, first baseline, lines allowed: it takes the largest type the heading fits in, and moves the date up a little when it needs a third line
+  const TIERS = [[10, 11, 741, 2, 752.6], [8.5, 9, 747.5, 3, 757], [7.5, 8, 748, 3, 757], [6.8, 7.4, 748.5, 3, 757]];
+  let size = 10, lines = [], tier = TIERS[0];
   const build = () => { lines = []; if (plan.theme) lines.push(...wrapIt('Theme:', plan.theme, size)); if (plan.quote) lines.push(...wrapIt('Quotation:', plan.quote, size)); };
-  build();
-  if (lines.length > 2) { size = 8.5; build(); }
-  const lead = size === 10 ? 11 : 9, top = size === 10 ? 741 : 742.5;
-  lines.slice(0, 3).forEach((ln, i) => {
+  for (const t of TIERS) { tier = t; size = t[0]; build(); if (lines.length <= t[3]) break; }
+  if (lines.length > tier[3]) {                    // too long even in the smallest type: the last line ends in an ellipsis
+    lines.length = tier[3];
+    const last = lines[lines.length - 1], tail = last[last.length - 1], used = last.slice(0, -1).reduce((a, pc) => a + width(pc.f, size, pc.s), 0);
+    tail.s = fit(tail.f, size, `${tail.s} …`, SPAN - used);
+  }
+  const [, lead, top, , dateY] = tier;
+  const dateW = width(F.bi, 11, plan.date);
+  draw(safe(F.bi, plan.date), cx - dateW / 2, dateY, F.bi, 11, BLACK);
+  lines.forEach((ln, i) => {
     let x = cx - ln.reduce((a, pc) => a + width(pc.f, size, pc.s), 0) / 2;
     for (const pc of ln) { draw(safe(pc.f, pc.s), x, top - i * lead, pc.f, size, pc.c); x += width(pc.f, size, pc.s); }
   });
