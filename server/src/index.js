@@ -5,7 +5,7 @@ import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initDb, q, tx } from './db.js';
+import { initDb, markBooted, needsBoot, q, tx } from './db.js';
 import { seedIfEmpty } from './seed.js';
 import { loadHist, progressFor, summary } from './progress.js';
 import { readAgendaTemplate } from './agendaRead.js';
@@ -1658,12 +1658,15 @@ app.use((err, _req, res, _next) => { if (err.type === 'entity.parse.failed' || e
 // leaving a warm function broken until it is recycled.
 let booting = null;
 const boot = () => (booting ||= startUp().catch((e) => { booting = null; throw e; }));
+const dataFiles = ['pathways.json', 'project-parts.json'].map((f) => { try { return fs.readFileSync(path.join(here, '..', 'data', f), 'utf8'); } catch { return ''; } }).join('');
 async function startUp() {
-  const kind = await initDb();
+  const kind = await initDb(dataFiles);
+  if (!needsBoot()) return kind;                 // set up already for this version: a cold start then costs a couple of queries, not hundreds
   await ensurePathways();
   await applyFormText();
   for (const c of await q('select id from clubs where join_code is null')) await q('update clubs set join_code=$1 where id=$2', [joinCode(), c.id]);
   if (DEMO && (await seedIfEmpty())) console.log('Empty database: loaded demo data for Champions Toastmasters Club.');
+  await markBooted();
   return kind;
 }
 export const ready = boot();
