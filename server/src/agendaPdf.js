@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { planOf } from './agenda.js';
+import { renderBrochure } from './brochurePdf.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BLUE = rgb(0, 0.255, 0.396), MAROON = rgb(0.467, 0.141, 0.196), GREY = rgb(0.4, 0.4, 0.4), DARK = rgb(0.263, 0.263, 0.263), BLACK = rgb(0, 0, 0), BAND = rgb(0.953, 0.953, 0.953);
@@ -246,6 +247,12 @@ export async function renderAgendaPdf(ag, ctx) {
   for (const op of p.ops) {
     if (op.rect) page.drawRectangle({ x: op.x, y: op.y, width: op.w, height: op.h, color: op.color });
     else if (op.s) page.drawText(op.s, { x: op.x, y: op.y, font: op.font, size: op.size, color: op.color });
+  }
+  // page 2: the club's take-home page, when it has one. The running order above is drawn on page 1 only, so it can never run on to it.
+  if (ctx.brochure && typeof ctx.brochure === 'object' && !ctx.brochureOff) {
+    const bro = await PDFDocument.load(await renderBrochure({ ...ctx.brochure, clubName: ctx.clubName, clubNumber: ctx.clubNumber, region: ctx.brochure.region || prof?.region || '' }));
+    const [second] = await pdf.copyPages(bro, [0]);
+    pdf.addPage(second);
   }
   pdf.setTitle(`Agenda, ${plan.date}`);
   pdf.setProducer('Brekkie');

@@ -380,3 +380,8 @@ alter table meeting_roles add column if not exists review_status text;
 update meeting_roles set review_status='pending' where submitted_at is not null and review_status is null;
 -- visitors are assumed to be Toastmasters (visiting from another club) unless the VPE says they are new to Toastmasters
 alter table people add column if not exists is_tm boolean not null default true;
+-- the take-home page that goes behind the agenda PDF: null means the club has none. Holds the club's own area line, meeting days,
+-- fees and the person to talk to (see brochurePdf.js). Champions' is set here once; any other club can have one added later.
+alter table clubs add column if not exists brochure jsonb;
+update clubs set brochure = '{"region":"Area 2, Division C, District 129","meets":"Every 2nd and 4th Friday","fees":{"dues":72,"joining":25,"months":6,"pay":[["Visa",false],["Cash",true],["EcoCash",true]],"note":"Cash and EcoCash payments carry a small extra to cover bank charges. Ask us for the amount.","renewal":"Your first period depends on our renewal cycle, so the amount at joining can differ a little. Ask us."},"contact":{"role":"VP Public Relations","name":"Seedwell Mpande","phone":"+263 77 354 3615"}}'::jsonb
+  where tm_number = '04647453' and brochure is null;

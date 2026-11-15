@@ -7,7 +7,7 @@ import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFo
 import PathCard from './PathCard.jsx';
 import RosterImport, { PathDone } from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
-import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, Lines, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Avatar, copyText, useDesk, useToast } from '../ui.jsx';
+import { Btn, Chip, DatePick, ErrorMsg, Foot, GBadge, I, Lines, SkPage, SkRows, Meter, Modal, Page, PersonSelect, ProjectPicker, Select, Seg, Avatar, confirmBox, copyText, useDesk, useToast } from '../ui.jsx';
 
 export const VPE_NAV = [
   { to: '/v', end: true, label: 'Dashboard', icon: I.chart },
@@ -349,7 +349,7 @@ VPE, Champions Toastmasters Club`;
   };
   const all = linkRows.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
   const resetFb = async () => {
-    if (!window.confirm(`Clear everything submitted for meeting ${m.number}? Every role sheet goes back to blank and the notes, counts, timings and evaluations built from them are removed. Room comments stay. This cannot be undone.`)) return;
+    if (!(await confirmBox(`Every role sheet goes back to blank and the notes, counts, timings and evaluations built from them are removed. Room comments stay. This cannot be undone.`, { title: `Clear everything for meeting ${m.number}?`, ok: 'Clear it all', danger: true }))) return;
     try { const r = await api(`/vpe/meetings/${id}/reset-feedback`, { method: 'POST' }); toast(`Cleared ${r.sheets} ${r.sheets === 1 ? 'sheet' : 'sheets'}`); reload(); } catch (e) { toast(e.message); }
   };
   const review = async (rid, approved = true) => {
@@ -459,7 +459,7 @@ VPE, Champions Toastmasters Club`;
           const cols = speakers.map((s) => { const mine = evs.filter((e) => e.target_role_id === s.id); mine.forEach((e) => used.add(e.id)); return { key: s.id, items: [s, ...mine] }; });
           evs.filter((e) => !used.has(e.id)).forEach((e) => cols.push({ key: e.id, items: [e] }));
           const addPair = async () => { try { await api(`/vpe/meetings/${id}/roles`, { method: 'POST', body: { role_key: 'speaker' } }); await api(`/vpe/meetings/${id}/roles`, { method: 'POST', body: { role_key: 'evaluator' } }); reload(); } catch (e) { toast(e.message); } };
-          const dropPair = async (c) => { const who = c.items.filter((r) => r.person).map((r) => r.person); if (who.length && !window.confirm(`Remove this speaker slot? ${who.join(' and ')} will be taken off it.`)) return; try { for (const r of [...c.items].reverse()) await api(`/vpe/roles/${r.id}`, { method: 'DELETE' }); reload(); } catch (e) { toast(e.message); reload(); } };
+          const dropPair = async (c) => { const who = c.items.filter((r) => r.person).map((r) => r.person); if (who.length && !(await confirmBox(`${who.join(' and ')} will be taken off it.`, { title: 'Remove this speaker slot?', ok: 'Remove', danger: true }))) return; try { for (const r of [...c.items].reverse()) await api(`/vpe/roles/${r.id}`, { method: 'DELETE' }); reload(); } catch (e) { toast(e.message); reload(); } };
           return <Strip>{cols.map((c) => (
             <div className="pcol" key={c.key}>
               {c.items.map(tile)}

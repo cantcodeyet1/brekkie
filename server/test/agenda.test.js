@@ -180,3 +180,20 @@ test('schema moves the Champions club number to the Champions club with the most
   assert.ok(!got.includes(a), 'the duplicate with fewer meetings gave the number up');
   await q('delete from meetings where club_id=$1', [b]); await q('delete from clubs where id in ($1,$2)', [a, b]);
 });
+
+test('a club with a take-home page gets it as page 2, and the running order always stays on page 1', async () => {
+  const { PDFDocument } = await import('pdf-lib');
+  const pagesOf = async (path) => (await PDFDocument.load((await call('GET', path, vpe)).buf)).getPageCount();
+  await q('update clubs set brochure=$1 where id=$2', [JSON.stringify({ meets: 'Every 2nd Friday', fees: { dues: 72, joining: 25, months: 6 }, contact: { role: 'VP Membership', name: 'Test Person', phone: '+263 77 000 0000' } }), meeting.club_id]);
+  try {
+    assert.equal(await pagesOf(`/api/vpe/meetings/${meeting.id}/agenda.pdf`), 2);
+    assert.equal(await pagesOf(`/api/vpe/meetings/${meeting.id}/agenda.pdf?brochure=0`), 1);
+    // a running order too long for the page is still drawn on page 1 only, followed by the take-home page
+    const ctx = await ctxOf(); const def = A.defaultAgenda(ctx);
+    const extra = Array.from({ length: 14 }, (_, i) => ({ id: 'x' + i, type: 'item', title: 'Extra item ' + i, min: 3, owner: 'Someone', topic: 'A note' }));
+    const many = A.mergeAgenda(def, { blocks: [...def.blocks, ...extra].slice(0, 30) });
+    assert.equal((await PDFDocument.load(await renderAgendaPdf(many, ctx))).getPageCount(), 2);
+    assert.equal((await PDFDocument.load(await renderAgendaPdf(def, ctx))).getPageCount(), 2);
+  } finally { await q('update clubs set brochure=null where id=$1', [meeting.club_id]); }
+  assert.equal(await pagesOf(`/api/vpe/meetings/${meeting.id}/agenda.pdf`), 1);
+});

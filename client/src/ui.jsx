@@ -182,6 +182,31 @@ export function Modal({ title, children, onClose, wide }) {
     </div>, document.body);
 }
 
+/* on-screen replacements for the browser's confirm and prompt boxes: `await confirmBox('...')` gives true or false,
+   `await promptBox('...')` gives the text or null. DialogHost (mounted once in main.jsx) draws them. */
+let openDialog = null;
+export const confirmBox = (message, o = {}) => (openDialog ? openDialog({ message, ...o }) : Promise.resolve(window.confirm(message)));
+export const promptBox = (message, o = {}) => (openDialog ? openDialog({ message, input: true, ...o }) : Promise.resolve(window.prompt(message)));
+export function DialogHost() {
+  const [d, setD] = useState(null);
+  const [text, setText] = useState('');
+  useEffect(() => { openDialog = (o) => new Promise((res) => { setText(''); setD({ ...o, res }); }); return () => { openDialog = null; }; }, []);
+  if (!d) return null;
+  const done = (v) => { d.res(v); setD(null); };
+  const cancel = () => done(d.input ? null : false);
+  const go = () => done(d.input ? text.trim() || null : true);
+  return (
+    <Modal title={d.title || (d.input ? 'Type here' : 'Are you sure?')} onClose={cancel}>
+      <p className="dlg-msg">{d.message}</p>
+      {d.input && <input className="inp" autoFocus value={text} placeholder={d.placeholder || ''} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && go()} />}
+      <div className="row-btns" style={{ justifyContent: 'flex-end' }}>
+        <Btn kind="ghost" onClick={cancel}>Cancel</Btn>
+        <Btn kind={d.danger ? 'warn' : ''} autoFocus={!d.input} onClick={go}>{d.ok || (d.input ? 'Add' : 'Yes')}</Btn>
+      </div>
+    </Modal>
+  );
+}
+
 /* ───────── brand dropdown ─────────
    Replaces every native <select>. White card, hairline border, Loyal Blue selection with a Happy Yellow marker,
    type-to-search on long lists, full keyboard support. */

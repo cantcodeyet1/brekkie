@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, getToken, useApi } from '../api.js';
 import { fmtDate } from '../data.js';
-import { Btn, DatePick, ErrorMsg, I, Page, Select, SkPage, useDebouncedSave, useDesk, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, I, Page, Select, confirmBox, promptBox, SkPage, useDebouncedSave, useDesk, useToast } from '../ui.jsx';
 import { clock, maxMinutes, schedule, shown, toHhmm } from './agendaTimes.js';
 
 const OWNERS = ['SAA', 'Chairperson', 'TMOD', 'General Evaluator', 'Table Topics Master', 'Grammarian', 'Ah Counter', 'Timer'];
@@ -134,7 +134,7 @@ export default function Agenda() {
     try { await api(`/vpe/meetings/${id}/agenda`, { method: 'PUT', body: ag }); await api('/vpe/agenda-standard', { method: 'PUT', body: ag }); toast('New agendas will start from this layout'); reload(); } catch (e) { toast(e.message); }
   };
   const reset = async (what) => {
-    if (what === 'all' && !window.confirm(data.standard ? 'Put this agenda back to your club standard?' : 'Put this agenda back to the standard layout?')) return;
+    if (what === 'all' && !(await confirmBox(data.standard ? 'Put this agenda back to your club standard?' : 'Put this agenda back to the standard layout?', { title: 'Reset the agenda', ok: 'Reset', danger: true }))) return;
     try { await api(`/vpe/meetings/${id}/agenda`, { method: 'PUT', body: ag }); await api(`/vpe/meetings/${id}/agenda/reset`, { method: 'POST', body: { what } }); setPin({}); reload(); toast(what === 'times' ? 'Fixed times cleared' : 'Agenda reset'); } catch (e) { toast(e.message); }
   };
   const clearStandard = async () => { try { await api('/vpe/agenda-standard', { method: 'DELETE' }); toast('Back to the built-in layout for new agendas'); reload(); } catch (e) { toast(e.message); } };
@@ -147,7 +147,7 @@ export default function Agenda() {
   const Who = ({ value, onChange }) => (
     <Select sm value={value || ''} onChange={onChange} placeholder="Who" searchable
       options={value && !ownerOptions.some((o) => o.value === value) ? [{ value, label: value }, ...ownerOptions] : ownerOptions}
-      addLabel="Someone else…" onAdd={() => { const v = window.prompt('Who is taking this part?'); if (v && v.trim()) onChange(v.trim()); }} />
+      addLabel="Someone else…" onAdd={async () => { const v = await promptBox('Who is taking this part?', { title: 'Someone else', placeholder: 'Name', ok: 'Add' }); if (v) onChange(v); }} />
   );
 
   const row = (b, i) => {

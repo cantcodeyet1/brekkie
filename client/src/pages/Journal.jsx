@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
 import { longDate } from '../data.js';
 import { Md } from '../md.jsx';
-import { Btn, DatePick, ErrorMsg, I, Page, SkPage, useDesk, useToast } from '../ui.jsx';
+import { Btn, DatePick, ErrorMsg, confirmBox, I, Page, SkPage, useDesk, useToast } from '../ui.jsx';
 
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -62,7 +62,7 @@ export default function JournalPage() {
   };
   const add = (v) => run(async () => { await api(`/vpe/people/${id}/journal`, { method: 'POST', body: v }); setFresh((n) => n + 1); }, 'Note saved');
   const save = (nid) => (v) => run(async () => { await api(`/vpe/journal/${nid}`, { method: 'PATCH', body: v }); setEditing(null); }, 'Note updated');
-  const remove = (n) => { if (window.confirm('Delete this note?')) run(() => api(`/vpe/journal/${n.id}`, { method: 'DELETE' }), 'Note deleted'); };
+  const remove = async (n) => { if (await confirmBox('Delete this note?', { title: 'Delete note', ok: 'Delete', danger: true })) run(() => api(`/vpe/journal/${n.id}`, { method: 'DELETE' }), 'Note deleted'); };
 
   return (
     <Page title="Journal" wide={desk} back={back}>

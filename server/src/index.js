@@ -892,6 +892,7 @@ const fileDate = (d) => { const x = new Date(d + 'T12:00:00'); return `${String(
 const sendAgenda = (ext) => async (req, res) => {
   const a = await agendaFor(req, res); if (!a) return;
   const pdf = ext === 'pdf';
+  if (req.query.brochure === '0') a.ctx.brochureOff = true;   // ?brochure=0 leaves the take-home page off
   // a club that uploaded its own Word agenda gets that file filled in; others get the standard page
   const [own] = pdf ? [] : await q('select agenda_template from clubs where id=$1', [req.person.club_id]);
   const buf = pdf ? await renderAgendaPdf(a.merged, a.ctx) : own?.agenda_template ? (await fillDocx(Buffer.from(own.agenda_template), a.merged, a.ctx)).buffer : await buildDocx(a.merged, a.ctx);
