@@ -8,6 +8,7 @@ import { STD_BLOCKS, cellsOf, elems, planOf, quiet, rowsOf, runsOf, schedule, se
 const txt = (n) => elems(n, 'w:t').map((t) => t.textContent).join('');
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
 const TIME = /^\s*\d{1,2}:?\d{2}\s*$/;
+const isProjectHead = (x) => x.startsWith('project') || x.includes('pathway') || x.includes('level');
 const paraOf = (n) => { let x = n; while (x && x.nodeName !== 'w:p') x = x.parentNode; return x; };
 const allParas = (doc) => elems(doc, 'w:p');
 const directParas = (tc) => Array.from(tc.childNodes).filter((n) => n.nodeName === 'w:p');
@@ -22,11 +23,17 @@ function put(p, text) {
   if (ts.length) { setTextNode(ts[0], text); ts.slice(1).forEach((t) => setTextNode(t, '')); }
   else { const t = doc.createElement('w:t'); first.appendChild(t); setTextNode(t, text); }
 }
+const isLabelRun = (r) => { const t = txt(r).trim(); return t.length <= 24 && /:\s*$/.test(t) && /(theme|quotation|quote)/i.test(t); };
+/** the runs after `from` in its paragraph, up to the next label, emptied */
+function clearAfter(from) {
+  const rs = runsOf(paraOf(from)); let on = false;
+  for (const r of rs) { if (r === from) { on = true; continue; } if (!on) continue; if (isLabelRun(r)) break; elems(r, 'w:t').forEach((t) => setTextNode(t, '')); }
+}
 const strip = (n) => { if (n.parentNode) n.parentNode.removeChild(n); };
 const fresh = (n) => { const c = n.cloneNode(true); if (c.removeAttribute) c.removeAttribute('w14:paraId'); return c; };
 
 /* ───────── what each part of the page looks like ───────── */
-const DATE_RES = [/\b(mon|tues|wednes|thurs|fri|satur|sun)day\b.{0,14}\d{1,2}(st|nd|rd|th)?\s+[A-Za-z]{3,9}\.?,?\s+\d{4}/i, /\b[A-Za-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?\s*,?\s*\d{4}/, /\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/];
+const DATE_RES = [/\b\d{1,2}(st|nd|rd|th)?\s+[A-Za-z]{3,9}\.?,?\s+\d{4}\b/, /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b.{0,14}\d{1,2}(st|nd|rd|th)?\s+[A-Za-z]{3,9}\.?,?\s+\d{4}/i, /\b[A-Za-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?\s*,?\s*\d{4}/, /\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/];
 const looksDate = (s) => s.length < 70 && DATE_RES.some((re) => re.test(s));
 const ROLE_LABELS = { tmod: /^(toastmaster|toastmasterofthe?day|tmod)$/, ge: /^generalevaluator$/, grammarian: /^grammarian$/, ah: /^ahcounter$/, timer: /^timer$/, ttm: /^(tabletopicsmaster|topicsmaster|tabletopics)$/ };
 
@@ -58,14 +65,17 @@ export async function fillDocx(buf, ag, ctx) {
 
   step('club_number', () => {
     const t = elems(doc, 'w:t').find((x) => /^\s*Club Number\s*:/i.test(x.textContent));
-    if (t && ctx.clubNumber) setTextNode(t, `Club Number: ${ctx.clubNumber}`);
-    return !!t;
+    if (t) { if (ctx.clubNumber) setTextNode(t, `Club Number: ${ctx.clubNumber}`); return true; }
+    const p = paras.find((x) => /^\s*Club Number\s*:/i.test(txt(x)));
+    if (p && ctx.clubNumber) put(p, `Club Number: ${ctx.clubNumber}`);
+    return !!p;
   });
 
   const nextAt = paras.findIndex((p) => /next\s+meeting/i.test(txt(p)));
   step('date', () => {
-    const p = paras.find((x, i) => (nextAt < 0 || i < nextAt) && looksDate(txt(x).trim()) && !/club number|theme|quotation/i.test(txt(x)));
-    if (p) put(p, `${plan.date} `);
+    const p = paras.find((x, i) => (nextAt < 0 || i < nextAt || /^\s*date\s*:/i.test(txt(x))) && looksDate(txt(x).trim()) && !/club number|theme|quotation|next\s+meeting/i.test(txt(x)));
+    const lab = p && /^\s*(date\s*:)/i.exec(txt(p));
+    if (p) put(p, lab ? `${lab[1]} ${plan.date}` : `${plan.date} `);
     return !!p;
   });
 
@@ -82,12 +92,12 @@ export async function fillDocx(buf, ag, ctx) {
       const hasT = /theme/.test(word), hasQ = /quot/.test(word);
       const kind = hasT && hasQ ? (seenBoth ? 'quote' : 'theme') : hasQ ? 'quote' : 'theme';
       if (hasT && hasQ) seenBoth = true;
-      const value = kind === 'theme' ? plan.theme : plan.quote, name = kind === 'theme' ? 'Theme:' : 'Quotation:';
-      if (inline) { setTextNode(t0, value ? `${name} ${value}` : ''); if (kind === 'theme') themeDone = true; continue; }
+      const value = kind === 'theme' ? plan.theme : plan.quote, name = hasT && hasQ ? (kind === 'theme' ? 'Theme:' : 'Quotation:') : `${(inline ? inline[1] : tr).replace(/\s*:\s*$/, '')}:`;
+      if (inline) { setTextNode(t0, value ? `${name} ${value}` : ''); clearAfter(r); if (kind === 'theme') themeDone = true; continue; }
       const p = paraOf(r), rs = runsOf(p), vr = rs.slice(rs.indexOf(r) + 1).find((x) => txt(x).trim());
       if (!vr) continue;
       setTextNode(t0, value ? name : ''); elems(r, 'w:t').slice(1).forEach((x) => setTextNode(x, ''));
-      const vt = elems(vr, 'w:t'); setTextNode(vt[0], value ? ` ${value}` : ''); vt.slice(1).forEach((x) => setTextNode(x, ''));
+      const vt = elems(vr, 'w:t'); setTextNode(vt[0], value ? ` ${value}` : ''); vt.slice(1).forEach((x) => setTextNode(x, '')); clearAfter(vr);
       if (kind === 'theme') themeDone = true;
     }
     return themeDone;
@@ -101,6 +111,7 @@ export async function fillDocx(buf, ag, ctx) {
       const n = plan.next, rs = runsOf(p).filter((r) => elems(r, 'w:t').length && txt(r).trim());
       if (rs.length >= 3 && /^(st|nd|rd|th)$/i.test(txt(rs[1]).trim())) {
         setTextNode(elems(rs[0], 'w:t')[0], `${n.month} ${n.day}`); setTextNode(elems(rs[1], 'w:t')[0], n.ord); setTextNode(elems(rs[2], 'w:t')[0], `, ${n.year}`);
+        rs.slice(3).forEach((x) => elems(x, 'w:t').forEach((t) => setTextNode(t, '')));
       } else {
         const lab = /next\s+meeting\s+date\s*:?\s*/i.exec(s);
         put(p, `${lab ? lab[0] : ''}${n.month} ${n.day}, ${n.year}`);
@@ -123,16 +134,24 @@ export async function fillDocx(buf, ag, ctx) {
       if (k >= 0 && !/word\s+of\s+the\s+day/i.test(txt(ps[k]))) ts = elems(ps[k], 'w:t').filter((x) => x.textContent.trim());
     }
     if (ts.length) {
-      const cased = (s) => (/^[^a-z]*$/.test(ts[0].textContent) ? s.toUpperCase() : s.charAt(0).toUpperCase() + s.slice(1));
-      setTextNode(ts[0], w ? cased(m.word) : '');
-      let posDone = false;
-      ts.slice(1).forEach((t) => {
-        if (/^\(.*\)$/.test(t.textContent.trim()) && !posDone) { posDone = true; setTextNode(t, w?.pos || ''); }
-        else setTextNode(t, w?.pron ? `${w.pron} ` : '');
+      const wi = Math.max(0, ts.findIndex((t) => /[A-Za-z]/.test(t.textContent) && !/^\(/.test(t.textContent.trim())));
+      const cased = (s) => (/^[^a-z]*$/.test(ts[wi].textContent) ? s.toUpperCase() : s.charAt(0).toUpperCase() + s.slice(1));
+      setTextNode(ts[wi], w ? cased(m.word) : '');
+      let posDone = false, pronDone = false, inParen = false, posT = null;
+      ts.slice(wi + 1).forEach((t) => {
+        const tt = t.textContent.trim();
+        if (/^[“”"'‘’]+$/.test(tt)) return;
+        if (tt.startsWith('(') && !posDone) { posDone = true; posT = t; inParen = !tt.includes(')'); setTextNode(t, w?.pos || ''); }
+        else if (inParen) { setTextNode(t, ''); if (tt.includes(')')) inParen = false; }
+        else if (!pronDone) { pronDone = true; setTextNode(t, w?.pron ? `${w.pron} ` : ''); }
+        else setTextNode(t, '');
       });
+      if (!pronDone && w?.pron && posT) setTextNode(posT, `${w.pos ? `${w.pos} ` : ''}${w.pron}`);
     }
     fillAfterLabel(doc, /^\s*Meaning\b/i, m.word ? m.meaning || '' : '');
-    fillAfterLabel(doc, /^\s*Example\b/i, m.word ? m.example || '' : '');
+    fillAfterLabel(doc, /^\s*(Example|In a Sentence)\b/i, m.word ? m.example || '' : '');
+    // a meaning written as 1. 2. 3. over several paragraphs: the ones after the first are cleared
+    { const ps = allParas(doc); let k = ps.indexOf(pm) + 1; while (k < ps.length && /^\s*\d+\s*\./.test(txt(ps[k]))) { elems(ps[k], 'w:t').forEach((t) => setTextNode(t, '')); k++; } }
     fillAfterLabel(doc, /^\s*Synonyms?\b/i, m.word ? m.synonyms || '' : '');
     fillAfterLabel(doc, /^\s*Origin\b/i, m.word ? m.origin || '' : '');
     return true;
@@ -153,7 +172,16 @@ export async function fillDocx(buf, ag, ctx) {
     }
     // the template shrinks long names by hand: give every name the first one's type so they read evenly
     const model = valueParas.length ? runsOf(valueParas[0]).find((r) => elems(r, 'w:t').length) : null, mpr = model && elems(model, 'w:rPr').find((x) => x.parentNode === model);
-    if (mpr) valueParas.slice(1).forEach((p) => { const run = runsOf(p).find((r) => elems(r, 'w:t').length); if (!run) return; elems(run, 'w:rPr').filter((x) => x.parentNode === run).forEach(strip); run.insertBefore(mpr.cloneNode(true), run.firstChild); });
+    if (mpr) {
+      const sizes = Array.from(mpr.childNodes).filter((c) => c.nodeName === 'w:sz' || c.nodeName === 'w:szCs');
+      valueParas.slice(1).forEach((p) => {
+        const run = runsOf(p).find((r) => elems(r, 'w:t').length); if (!run) return;
+        let rp = Array.from(run.childNodes).find((c) => c.nodeName === 'w:rPr');
+        if (!rp) { rp = doc.createElement('w:rPr'); run.insertBefore(rp, run.firstChild); }
+        Array.from(rp.childNodes).filter((c) => c.nodeName === 'w:sz' || c.nodeName === 'w:szCs').forEach(strip);
+        sizes.forEach((z) => rp.appendChild(z.cloneNode(true)));
+      });
+    }
     return n >= 2;
   });
 
@@ -161,7 +189,7 @@ export async function fillDocx(buf, ag, ctx) {
   const tables = elems(doc, 'w:tbl');
   const cellTexts = (tr) => cellsOf(tr).map((c) => txt(c).trim());
   const isItem = (tr) => { const c = cellTexts(tr); return c.length >= 3 && TIME.test(c[0]); };
-  const speechTbl = tables.find((t) => rowsOf(t).some((tr) => { const c = cellTexts(tr).map(norm); return c.some((x) => x === 'speaker') && c.some((x) => x.startsWith('project')) && c.some((x) => x === 'evaluator'); }));
+  const speechTbl = tables.find((t) => rowsOf(t).some((tr) => { const c = cellTexts(tr).map(norm); return c.some((x) => x === 'speaker') && c.some(isProjectHead) && c.some((x) => x === 'evaluator'); }));
   const itemTbls = tables.filter((t) => t !== speechTbl && rowsOf(t).filter(isItem).length >= 2 && !rowsOf(t).some((tr) => cellsOf(tr).some((c) => elems(c, 'w:tbl').length)));
   const order = [...tables];
   const sIdx = speechTbl ? order.indexOf(speechTbl) : -1;
@@ -211,8 +239,95 @@ export async function fillDocx(buf, ag, ctx) {
     list.forEach((it) => { const tr = it.type === 'reports' ? fillReports(it) : fillItem(it); if (tr) tbl.insertBefore(tr, anchor); });
     old.forEach(strip);
   };
+  // a running order written as tabbed lines in the page itself (the time, the item, then who or how long), each group under its own
+  // heading, rather than as table rows. Each group's lines are made again from the meeting's items, keeping the club's own look.
+  const bodyEl = doc.getElementsByTagName('w:body')[0];
+  const LINE_RE = /^\s*\d{1,2}\s*:\s*\d{2}(?!\d)/;
+  const lineStr = (p) => runsOf(p).map((r) => Array.from(r.childNodes).map((c) => (c.nodeName === 'w:tab' ? '\t' : c.nodeName === 'w:t' ? c.textContent : '')).join('')).join('');
+  const clock = (t) => (/^\d{4}$/.test(String(t)) ? `${String(t).slice(0, 2)}:${String(t).slice(2)}` : String(t || ''));
+  const MINISH = /\bmins?\b|^\d/i;
+  const parseLine = (p) => {
+    const m = /^\s*(\d{1,2}\s*:\s*\d{2})([ \t]*)([\s\S]*)$/.exec(lineStr(p));
+    const [title, tabs = '', third = ''] = m[3].split(/(\t+)/);
+    return { p, sep: m[2], title: title.trim(), tabs: tabs.length || 1, third: third.trim(), tail: [] };
+  };
+  const lineSegments = () => {
+    const ks = Array.from(bodyEl.childNodes).filter((n) => n.nodeType === 1), out = [];
+    for (let i = 0; i < ks.length; i++) {
+      if (ks[i].nodeName !== 'w:p' || !LINE_RE.test(lineStr(ks[i]))) continue;
+      let j = i; const ps = [];
+      while (j < ks.length && ks[j].nodeName === 'w:p' && txt(ks[j]).length) ps.push(ks[j++]);
+      while (ps.length && !/[A-Za-z0-9]/.test(txt(ps.at(-1)))) ps.pop();
+      const lines = [];
+      for (const q of ps) {
+        if (LINE_RE.test(lineStr(q))) lines.push(parseLine(q));
+        else if (!/^\s*-\s*\d/.test(txt(q)) && lines.length) lines.at(-1).tail.push(q);
+      }
+      out.push({ paras: ps, lines, at: i, prev: ks[i - 1] });
+      i = j - 1;
+    }
+    return { segs: out, ks };
+  };
+  const mkLine = (model, text) => {
+    const n = fresh(model), first = runsOf(n).find((r) => elems(r, 'w:t').length) || runsOf(n)[0];
+    const rpr = first && Array.from(first.childNodes).find((c) => c.nodeName === 'w:rPr');
+    Array.from(n.childNodes).forEach((c) => { if (c.nodeName !== 'w:pPr') n.removeChild(c); });
+    text.split(/(\t)/).filter((x) => x !== '').forEach((piece) => {
+      const r = doc.createElement('w:r'); if (rpr) r.appendChild(rpr.cloneNode(true));
+      if (piece === '\t') r.appendChild(doc.createElement('w:tab'));
+      else { const t = doc.createElement('w:t'); r.appendChild(t); setTextNode(t, piece); }
+      n.appendChild(r);
+    });
+    return n;
+  };
+  const sameTitle = (a, b) => { const x = norm(a), y = norm(b), [sh, lo] = x.length < y.length ? [x, y] : [y, x]; return sh.length >= 4 && lo.startsWith(sh); };
+  const fillLines = (seg, items) => {
+    const generic = seg.lines.find((l) => l.third) || seg.lines[0], segMin = !!generic && MINISH.test(generic.third);
+    const out = [], used = new Set();
+    for (const it of items) {
+      const o = seg.lines.find((l) => !used.has(l) && sameTitle(l.title, it.title));
+      if (o) used.add(o);
+      const base = o || generic, minMode = base.third ? MINISH.test(base.third) : segMin, third = minMode ? it.min || '' : it.owner || '';
+      out.push(mkLine(base.p, `${clock(it.time)}${base.sep || ' '}${it.title || ''}${third ? '\t'.repeat(base.tabs) + third : ''}`));
+      if (o && o.tail.length) o.tail.forEach((t) => out.push(fresh(t)));
+      else if (it.type === 'reports' && ag.reports?.items?.length) ag.reports.items.forEach((x) => out.push(mkLine(base.p, `\t${x.role}${x.min ? `\t${x.min}` : ''}`)));
+      else if (it.topic) out.push(mkLine(base.p, `\t${it.topic}`));
+    }
+    const ref = seg.paras[0], par = ref.parentNode;
+    if (!out.length && seg.prev && seg.prev.nodeName === 'w:tbl' && rowsOf(seg.prev).length === 1 && !/\d/.test(txt(seg.prev))) strip(seg.prev);   // a group with nothing in it loses its heading
+    out.forEach((n) => par.insertBefore(n, ref));
+    seg.paras.forEach(strip);
+  };
+  const lineOrder = () => {
+    const { segs, ks } = lineSegments();
+    if (!segs.length) return false;
+    let at = -1;
+    if (speechTbl) { let a = speechTbl; while (a && a.parentNode !== bodyEl) a = a.parentNode; at = ks.indexOf(a); }
+    const pre = at < 0 ? segs : segs.filter((x) => x.at < at), post = at < 0 ? [] : segs.filter((x) => x.at > at);
+    const alloc = new Map(segs.map((x) => [x, []]));
+    const first = at < 0 ? [...plan.before, ...plan.after] : plan.before;
+    if (!pre.length && first.length) return false;
+    if (pre.length) alloc.get(pre[0]).push(...first);
+    if (post.length === 1) alloc.get(post[0]).push(...plan.after);
+    else if (post.length > 1) {
+      const isTopics = (t) => /table\s*topic/i.test(t || '');
+      const topicSeg = post.find((x) => isTopics(x.lines[0]?.title)), last = post.at(-1), mids = post.filter((x) => x !== topicSeg && x !== last);
+      const closeAt = plan.after.findIndex((it) => /announce|business|adjourn|network|refresh|vote|award|break/i.test(it.title));
+      plan.after.forEach((it, i) => alloc.get(topicSeg && isTopics(it.title) ? topicSeg : closeAt >= 0 && i >= closeAt ? last : mids[0] || last).push(it));
+    } else if (plan.after.length) return false;
+    segs.forEach((x) => fillLines(x, alloc.get(x)));
+    if (/<w:cols[^>]*w:num="[2-9]"/.test(xml)) {
+      const anchor = allParas(doc).find((x) => x.parentNode === bodyEl && elems(x, 'w:drawing').length && /date\s*:/i.test(txt(x)));
+      if (anchor && !elems(anchor, 'w:br').some((b) => b.getAttribute('w:type') === 'column')) {
+        const r = doc.createElement('w:r'), b = doc.createElement('w:br'); b.setAttribute('w:type', 'column'); r.appendChild(b);
+        const pp = Array.from(anchor.childNodes).find((c) => c.nodeName === 'w:pPr');
+        anchor.insertBefore(r, pp ? pp.nextSibling : anchor.firstChild);
+      }
+    }
+    return true;
+  };
   step('running_order', () => {
-    if (!beforeT || !plainModel) return false;
+    if (!beforeT || !plainModel) return lineOrder();
     const everything = [...plan.before, ...(plan.speeches ? [] : []), ...plan.after];
     if (speechTbl && afterT) { rebuild(beforeT, plan.before); rebuild(afterT, plan.after); }
     else if (speechTbl) { rebuild(beforeT, plan.before); }
@@ -226,20 +341,37 @@ export async function fillDocx(buf, ag, ctx) {
     const data = rows.slice(hi + 1).filter((tr) => cellsOf(tr).length >= 3);
     if (!data.length) return false;
     const head = cellTexts(rows[hi]).map(norm);
-    const sp = head.findIndex((x) => x === 'speaker'), pj = head.findIndex((x) => x.startsWith('project')), ev = head.findIndex((x) => x === 'evaluator');
-    const tm = cellTexts(data[0]).findIndex((x) => TIME.test(x));
+    const ln = head.findIndex((x) => x === 'time' || x.startsWith('length') || x.startsWith('duration'));
+    const sp = head.findIndex((x) => x === 'speaker'), pj = head.findIndex(isProjectHead), ev = head.findIndex((x) => x === 'evaluator');
+    const tm = cellTexts(data[0]).findIndex((x) => TIME.test(x)), colonTimes = tm >= 0 && cellTexts(data[0])[tm].includes(':');
     const list = plan.speeches?.length ? plan.speeches : [{ time: '', name: '', project_line: '', project_name: '', title: '', length: '', evaluator: '' }];
     const models = data.slice(0, 2).map(fresh);
     list.forEach((s, idx) => {
       const tr = fresh(models[idx % models.length]), c = cellsOf(tr);
       const set = (i, v) => { if (i >= 0 && c[i]) { const p = directParas(c[i])[0]; if (p) put(p, v); } };
-      set(tm < 0 ? 0 : tm, s.time || ''); set(sp, s.name || ''); set(ev, s.evaluator || '');
+      set(tm < 0 ? 0 : tm, colonTimes ? clock(s.time || '') : s.time || ''); set(sp, s.name || ''); set(ev, s.evaluator || '');
+      if (ln >= 0 && ln !== (tm < 0 ? 0 : tm)) set(ln, s.length || '');
       if (pj >= 0 && c[pj]) {
         const rest = [s.title ? `“${String(s.title).replace(/^[“"]|[”"]$/g, '')}”` : '', s.length].filter(Boolean);
         let ps = directParas(c[pj]);
         const ts = elems(ps[0], 'w:t').filter((t) => t.textContent.trim());
         let lines;
-        if (ts.length >= 2) {
+        if (ps.filter((x) => /^\s*[A-Za-z][A-Za-z ]{2,14}:/.test(txt(x))).length >= 2) {
+          // each line has its own label: the value after each is replaced
+          const lv = /\(L(\d+)(?:P(\d+))?/i.exec(s.project_line || ''), path = String(s.project_line || '').replace(/\s*\(.*$/, '').trim();
+          const vals = [[/^\s*(pathway|path)\b/i, path], [/^\s*level\b/i, lv ? (lv[2] ? `${lv[1]}:${lv[2]}` : lv[1]) : ''], [/^\s*project\b/i, s.project_name || ''], [/^\s*(speech\s*)?title\b/i, s.title ? String(s.title).replace(/^[“"]|[”"]$/g, '') : '']];
+          for (const x of ps) {
+            const hit = vals.find(([re]) => re.test(txt(x))); if (!hit) continue;
+            const xs = elems(x, 'w:t'), ci = xs.findIndex((t) => t.textContent.includes(':'));
+            if (ci < 0) continue;
+            const after = xs[ci].textContent.slice(xs[ci].textContent.indexOf(':') + 1);
+            if (after.trim()) { setTextNode(xs[ci], xs[ci].textContent.slice(0, xs[ci].textContent.indexOf(':') + 1) + ' ' + hit[1]); xs.slice(ci + 1).forEach((t) => setTextNode(t, '')); continue; }
+            let j = ci + 1; while (j < xs.length && !xs[j].textContent.trim()) j++;
+            if (j < xs.length) { setTextNode(xs[j], hit[1]); xs.slice(j + 1).forEach((t) => setTextNode(t, '')); }
+            else setTextNode(xs[ci], xs[ci].textContent.replace(/\s*$/, ' ') + hit[1]);
+          }
+          lines = null;
+        } else if (ts.length >= 2) {
           // the first paragraph holds the project line and the project name; the title and length are its last paragraphs
           setTextNode(ts[0], s.project_line || ''); setTextNode(ts[1], s.project_name || ''); ts.slice(2).forEach((t) => setTextNode(t, ''));
           const tail = ps.slice(1);
