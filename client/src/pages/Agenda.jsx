@@ -52,7 +52,8 @@ export default function Agenda() {
   const [preview, setPreview] = useState('');
   const [drag, setDrag] = useState(null);
   const metaTimer = useRef(), rows = useRef({}), agRef = useRef(null), loaded = useRef(false);
-  useEffect(() => { if (data) { setAg(schedule(data.agenda)); setMt(data.meeting); setFits(data.fits); loaded.current = false; } }, [data]);
+  const touched = useRef({});   // the speech fields the VPE changed by hand: only those are saved, so a page opened before the roster changed cannot overwrite it
+  useEffect(() => { if (data) { touched.current = Object.fromEntries(Object.entries(data.overrides || {}).map(([k, v]) => [k, Object.fromEntries(v.map((f) => [f, 1]))])); setAg(schedule(data.agenda)); setMt(data.meeting); setFits(data.fits); loaded.current = false; } }, [data]);
   agRef.current = ag;
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
@@ -72,7 +73,7 @@ export default function Agenda() {
   useDebouncedSave(async () => {
     try {
       setSave('Saving…');
-      const r = await api(`/vpe/meetings/${id}/agenda`, { method: 'PUT', body: agRef.current });
+      const r = await api(`/vpe/meetings/${id}/agenda`, { method: 'PUT', body: { ...agRef.current, speeches: agRef.current.speeches.map((s) => ({ role_id: s.role_id, ...Object.fromEntries(Object.keys(touched.current[s.role_id] || {}).map((f) => [f, s[f]])) })) } });
       setFits(r.fits); setSave('Saved'); refreshPreview();
     } catch { setSave('Not saved'); }
   }, [ag], 700);
@@ -82,7 +83,10 @@ export default function Agenda() {
 
   const set = (patch) => setAg((a) => schedule({ ...a, ...patch }));
   const setBlock = (bid, patch) => setAg((a) => schedule({ ...a, blocks: a.blocks.map((b) => (b.id === bid ? { ...b, ...patch } : b)) }));
-  const setSpeech = (rid, patch) => setAg((a) => schedule({ ...a, speeches: a.speeches.map((s) => (s.role_id === rid ? { ...s, ...patch } : s)) }));
+  const setSpeech = (rid, patch) => {
+    touched.current[rid] = { ...touched.current[rid], ...Object.fromEntries(Object.keys(patch).map((f) => [f, 1])) };
+    setAg((a) => schedule({ ...a, speeches: a.speeches.map((s) => (s.role_id === rid ? { ...s, ...patch } : s)) }));
+  };
   const setMeta = (patch) => {
     setMt((x) => ({ ...x, ...patch }));
     clearTimeout(metaTimer.current);

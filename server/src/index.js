@@ -416,7 +416,7 @@ async function guestFor(clubId, name, email, via, meetingDate) {
   }
   const [cl] = await q('select guest_days from clubs where id=$1', [clubId]);
   const until = new Date((meetingDate ? meetingDate + 'T12:00:00' : Date.now())); until.setDate(until.getDate() + (cl?.guest_days || 30));
-  const [g] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,temp_until) values ($1,$2,$3,'guest','temporary',$4,$5,$6) returning *`,
+  const [g] = await q(`insert into people(club_id,name,email,kind,status,token,created_via,temp_until,credential) values ($1,$2,$3,'guest','temporary',$4,$5,$6,'TM') returning *`,
     [clubId, clean, email || null, token(), via, until.toISOString().slice(0, 10)]);
   return pub(g);
 }
@@ -854,7 +854,7 @@ async function agendaFor(req, res, startOverride) {
 }
 const agendaBody = async (a) => ({
   meeting: { id: a.ctx.m.id, number: a.ctx.m.number, date: a.ctx.m.date, theme: a.ctx.m.theme, theme_quote: a.ctx.m.theme_quote, theme_quote_by: a.ctx.m.theme_quote_by, word: a.ctx.m.word },
-  agenda: a.merged, edited: Object.keys(a.ctx.m.agenda || {}).length > 0, standard: Object.keys(a.ctx.standard || {}).length > 0,
+  agenda: a.merged, overrides: Object.fromEntries(Object.entries(a.ctx.m.agenda?.speeches || {}).map(([k, v]) => [k, Object.keys(v)])), edited: Object.keys(a.ctx.m.agenda || {}).length > 0, standard: Object.keys(a.ctx.standard || {}).length > 0,
   extras: EXTRAS, catalog: STD_BLOCKS, fits: await agendaFits(a.merged, a.ctx),
 });
 app.get('/api/vpe/meetings/:id/agenda', needPerson, needVpe, wrap(async (req, res) => {

@@ -385,3 +385,5 @@ alter table people add column if not exists is_tm boolean not null default true;
 alter table clubs add column if not exists brochure jsonb;
 update clubs set brochure = '{"region":"Area 2, Division C, District 129","meets":"Every 2nd and 4th Friday","fees":{"dues":72,"joining":25,"months":6,"pay":[["Visa",false],["Cash",true],["EcoCash",true]],"note":"Cash and EcoCash payments carry a small extra to cover bank charges. Ask us for the amount.","renewal":"Your first period depends on our renewal cycle, so the amount at joining can differ a little. Ask us."},"contact":{"role":"VP Public Relations","name":"Seedwell Mpande","phone":"+263 77 354 3615"}}'::jsonb
   where tm_number = '04647453' and brochure is null;
+-- every visitor is called TM by default (the agenda prints it after their name); visitors added before this had none
+update people set credential='TM' where kind='guest' and coalesce(credential,'')='';

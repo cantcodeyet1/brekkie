@@ -148,7 +148,8 @@ export function mergeAgenda(def, saved = {}) {
     });
   }
   if (saved.reports?.items) saved.reports.items.forEach((it, i) => { if (it && out.reports.items[i] && it.min) Object.assign(out.reports.items[i], { min: it.min }); });
-  if (saved.speeches) out.speeches.forEach((s) => { if (saved.speeches[s.role_id]) { const { time, ...rest } = saved.speeches[s.role_id]; Object.assign(s, rest); } });
+  // a blank project saved from a page that was opened before the roster was filled in is not an edit: the roster's project wins
+  if (saved.speeches) out.speeches.forEach((s) => { if (saved.speeches[s.role_id]) { const { time, ...rest } = saved.speeches[s.role_id]; for (const f of ['project_line', 'project_name']) if (!rest[f] || rest[f] === 'Project to be confirmed') delete rest[f]; Object.assign(s, rest); } });
   return schedule(out);
 }
 
