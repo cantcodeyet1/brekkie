@@ -98,8 +98,11 @@ export default function Roster() {
     const from = drag; setDrag(null); setOver(null);
     if (!from || from.role.id === role.id || !from.role.person_id) return;
     const mine = from.role.person_id, theirs = role.person_id || null;
-    await setRole(m, role, { person_id: mine });
-    await setRole(from.m, from.role, { person_id: theirs });
+    // a speaker takes the path, level, project and speech title along with them, so moving a person never leaves those behind in the slot
+    const bag = (r) => (r.role_key === 'speaker' && role.role_key === 'speaker' ? { path_name: r.path_name || null, path_level: r.path_level ?? null, project_id: r.project_id || null, part: r.part || 1, speech_title: r.speech_title || '' } : {});
+    const mineBag = bag(from.role), theirBag = bag(role);
+    await setRole(m, role, { person_id: mine, ...mineBag });
+    await setRole(from.m, from.role, { person_id: theirs, ...theirBag });
   };
   /* a dotted row under each list: add one to a single meeting, and take its empty last one away again */
   const addRowFor = (key, word) => (
