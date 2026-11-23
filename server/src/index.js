@@ -79,12 +79,14 @@ app.use(wrap(async (req, _res, next) => {
 }));
 const needPerson = (req, res, next) => (req.person ? next() : bad(res, 'Sign in required', 401));
 const needVpe = (req, res, next) => (req.person?.is_vpe ? next() : bad(res, 'VPE only', 403));
+// only the VPE themselves, not a committee member, can give or take away VPE access
+const needMainVpe = (req, res, next) => (req.person?.is_vpe && !req.person.committee ? next() : bad(res, 'Only the VPE can change who has VPE access', 403));
 // the platform owner: a flag in the database that nothing in the app can set (see schema.sql), and only with a password
 const isSuper = (p) => !!p?.is_super && !!p.password_hash;
 const needSuper = (req, res, next) => (isSuper(req.person) ? next() : bad(res, 'Not found', 404));
 const needRole = (req, res, next) => (req.role ? next() : bad(res, 'This link is not valid', 401));
 const clubOf = (req) => req.person?.club_id ?? req.role?.club_id;
-const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status, email: p.email, is_vpe: p.is_vpe, is_tm: p.is_tm !== false };
+const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status, email: p.email, is_vpe: p.is_vpe, committee: !!p.committee, is_tm: p.is_tm !== false };
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
@@ -977,6 +979,27 @@ app.get('/api/vpe/network', needPerson, needVpe, (_req, res) => {
   res.json({ ip: (ips.find((n) => /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))/.test(n.address)) || ips[0])?.address || null });
 });
 
+/* the VPE committee: members with the same access as the VPE. The club always keeps at least one. */
+const otherVpes = async (club, id) => (await q(`select count(*)::int as n from people where club_id=$1 and is_vpe and status<>'inactive' and id<>$2`, [club, id]))[0].n;
+const memberOf = async (club, id) => (await q(`select id, name, kind, status, is_vpe from people where id=$1 and club_id=$2`, [id, club]))[0];
+app.post('/api/vpe/people/:id/committee', needPerson, needMainVpe, wrap(async (req, res) => {
+  const p = await memberOf(req.person.club_id, req.params.id);
+  if (!p || p.kind !== 'member' || p.status === 'inactive') return bad(res, 'Only an active member can be on the committee');
+  const on = !!req.body?.on;
+  if (!on && p.is_vpe && !(await otherVpes(req.person.club_id, p.id))) return bad(res, 'The club needs at least one VPE. Add someone else first.', 409);
+  await q('update people set is_vpe=$1, committee=$1 where id=$2', [on, p.id]);
+  res.json({ ok: true, is_vpe: on });
+}));
+/* hand the VPE role to someone else: they get it, and the VPE steps down to an ordinary member */
+app.post('/api/vpe/transfer', needPerson, needMainVpe, wrap(async (req, res) => {
+  const p = await memberOf(req.person.club_id, req.body?.to);
+  if (!p || p.kind !== 'member' || p.status === 'inactive') return bad(res, 'Pick an active member');
+  if (p.id === req.person.id) return bad(res, 'That is you already');
+  await q('update people set is_vpe=true, committee=false where id=$1', [p.id]);
+  await q('update people set is_vpe=false, committee=false where id=$2 and club_id=$1', [req.person.club_id, req.person.id]);
+  res.json({ ok: true });
+}));
+
 app.patch('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
   const [r] = await q('select r.* from meeting_roles r join meetings m on m.id=r.meeting_id where r.id=$1 and m.club_id=$2', [req.params.id, req.person.club_id]);
   if (!r) return bad(res, 'Not found', 404);
@@ -1465,7 +1488,7 @@ app.post('/api/vpe/people/:id/projects', needPerson, needVpe, wrap(async (req, r
 app.get('/api/vpe/people', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
   await syncCredentials(club);
-  const people = await q(`select id,name,email,credential,credential_manual,path_name,path_level,join_requested_at,kind,status,is_vpe,is_tm,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
+  const people = await q(`select id,name,email,credential,credential_manual,path_name,path_level,join_requested_at,kind,status,is_vpe,committee,is_tm,case when kind='guest' then token end as token,phone,(password_hash is not null) as has_pw,invited_at,last_login_at,created_via,${DATE('temp_until')} as temp_until, ${DATE('created_at')} as added from people where club_id=$1 order by name`, [club]);
   // plain counts that can be checked by hand
   const counts = async (sql) => Object.fromEntries((await q(sql, [club])).map((r) => [r.pid, r.n]));
   const speeches = await counts(`select e.speaker_id as pid, count(*)::int as n from evaluations e join meetings m on m.id=e.meeting_id where m.club_id=$1 group by e.speaker_id`);
@@ -1567,7 +1590,7 @@ async function givenFor(pid) {
 app.get('/api/vpe/people/:id/profile', needPerson, needVpe, wrap(async (req, res) => {
   const club = req.person.club_id;
   await syncCredentials(club);
-  const [p] = await q(`select id,name,email,phone,credential,credential_manual,path_name,path_level,kind,status,is_vpe,is_tm,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
+  const [p] = await q(`select id,name,email,phone,credential,credential_manual,path_name,path_level,kind,status,is_vpe,committee,is_tm,case when kind='guest' then token end as token,(password_hash is not null) as has_pw,invited_at,${DATE('temp_until')} as temp_until from people where id=$1 and club_id=$2`, [req.params.id, club]);
   if (!p) return bad(res, 'Not found', 404);
   const hist = await loadHist(club);
   const projects = hist.evals.filter((e) => e.pid === p.id).reverse().map((e) => ({ id: e.id, title: e.title, project: e.project, path: e.path, level: e.level, date: e.date, number: e.number, by: e.by, work: e.work }));

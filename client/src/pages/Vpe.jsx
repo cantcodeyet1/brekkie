@@ -690,7 +690,7 @@ export function VpePeople() {
 
   const memberRow = (p) => (
     <Link className="prow m" key={p.id} to={`/v/members/${p.id}`}>
-      <span className="who"><Avatar name={p.name} /><span><b>{p.name}{p.is_vpe && <Chip style={{ marginLeft: 8 }}>VPE</Chip>}</b><small>{desk ? p.email : `${p.path_name ? `${p.path_name}, L${p.path_level || 1} · ` : ''}${p.speeches} ${p.speeches === 1 ? 'speech' : 'speeches'} · ${p.roles_done} ${p.roles_done === 1 ? 'role' : 'roles'} · ${p.feedback_given} feedback given`}</small></span></span>
+      <span className="who"><Avatar name={p.name} /><span><b>{p.name}{p.is_vpe && <Chip style={{ marginLeft: 8 }}>{p.committee ? 'VPEc' : 'VPE'}</Chip>}</b><small>{desk ? p.email : `${p.path_name ? `${p.path_name}, L${p.path_level || 1} · ` : ''}${p.speeches} ${p.speeches === 1 ? 'speech' : 'speeches'} · ${p.roles_done} ${p.roles_done === 1 ? 'role' : 'roles'} · ${p.feedback_given} feedback given`}</small></span></span>
       {desk && <span className="pth">{p.path_name ? <><b>{p.path_name}</b><span className="lvs" aria-label={`Level ${p.path_level || 1} of 5`}>{[1, 2, 3, 4, 5].map((k) => <i key={k} className={k < (p.path_level || 1) ? 'dn' : k === (p.path_level || 1) ? 'now' : ''} />)}<small>Level {p.path_level || 1}</small></span></> : <small className="dim">No path set</small>}</span>}
       {desk && <><span className="num cnt0">{p.speeches}</span><span className="num cnt0">{p.roles_done}</span><span className="num cnt0">{p.feedback_given}</span></>}
       <span className="pact">{I.chev}</span>
@@ -1022,6 +1022,7 @@ export function VpePerson() {
   const [removing, setRemoving] = useState(false);
   useEffect(() => { if (!menu) return undefined; const f = () => setMenu(false); window.addEventListener('click', f); return () => window.removeEventListener('click', f); }, [menu]);
   const sess = useApi('/session');
+  const mainVpe = sess.data?.person?.is_vpe && !sess.data?.person?.committee;   // only the VPE can give or take away VPE access
   if (loading) return <Page title="Members" wide back="/v/members"><SkPage plain rows={6} stats={3} pill={false} /></Page>;
   if (error) return <Page title="Members" wide back="/v/members"><ErrorMsg error={error} /></Page>;
   const { person: p, projects, roles, given, received } = data;
@@ -1036,7 +1037,7 @@ export function VpePerson() {
       <div className="phero">
         <Avatar name={p.name} size={84} tone={visitor ? 'gray' : undefined} />
         <div className="pi">
-          <p className="reyebrow" style={{ margin: 0 }}>{visitor ? `Visitor${p.is_tm === false ? ', new to Toastmasters' : ', Toastmaster'}, temporary access` : p.is_vpe ? 'VPE' : 'Member'}</p>
+          <p className="reyebrow" style={{ margin: 0 }}>{visitor ? `Visitor${p.is_tm === false ? ', new to Toastmasters' : ', Toastmaster'}, temporary access` : p.is_vpe ? (p.committee ? 'VPE committee' : 'VPE') : 'Member'}</p>
           <h1 className="rtitle" style={{ fontSize: 40, margin: '2px 0 6px' }}>{p.name}</h1>
           <div className="pmeta">
             <span>{p.email || 'No email'}</span>
@@ -1053,6 +1054,12 @@ export function VpePerson() {
               <button type="button" role="menuitem" onClick={() => { setMenu(false); setEditing(true); }}>Edit details</button>
               {!visitor && <button type="button" role="menuitem" onClick={() => { setMenu(false); setResetting(p.has_pw ? 'reset' : 'invite'); }} disabled={!p.has_pw && false}>{p.has_pw ? 'Send reset link' : p.invited_at ? 'Resend invite' : 'Send invite'}</button>}
               {visitor && <button type="button" role="menuitem" onClick={async () => { setMenu(false); try { await api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { is_tm: p.is_tm === false } }); toast(p.is_tm === false ? 'Marked as a Toastmaster' : 'Marked as new to Toastmasters'); reload(); } catch (e) { toast(e.message); } }}>{p.is_tm === false ? 'Mark as a Toastmaster' : 'Mark as new to Toastmasters'}</button>}
+              {!visitor && mainVpe && p.id !== sess.data?.person?.id && <button type="button" role="menuitem" onClick={async () => { setMenu(false); try { await api(`/vpe/people/${p.id}/committee`, { method: 'POST', body: { on: !p.is_vpe } }); toast(p.is_vpe ? `${p.name} is off the VPE committee` : `${p.name} is on the VPE committee, with the same access as you`); reload(); } catch (e) { toast(e.message); } }}>{p.is_vpe ? 'Remove from VPE committee' : 'Add to VPE committee'}</button>}
+              {!visitor && mainVpe && p.id !== sess.data?.person?.id && <button type="button" role="menuitem" onClick={async () => {
+                setMenu(false);
+                if (!(await confirmBox(`${p.name} becomes the VPE and you become an ordinary member.${p.has_pw ? '' : ' They have not signed in yet, so send them an invite first.'} To share the work instead, add them to the committee.`, { title: `Hand over as VPE to ${p.name}?`, ok: 'Hand over', danger: true }))) return;
+                try { await api('/vpe/transfer', { method: 'POST', body: { to: p.id } }); toast(`${p.name} is now the VPE`); nav('/', { replace: true }); window.location.reload(); } catch (e) { toast(e.message); }
+              }}>Hand over as VPE</button>}
               <button type="button" role="menuitem" className="danger" onClick={() => { setMenu(false); setRemoving(true); }}>Remove {visitor ? 'visitor' : 'member'}</button>
             </div>)}
         </div>

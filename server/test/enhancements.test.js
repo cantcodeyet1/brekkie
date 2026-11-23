@@ -180,3 +180,28 @@ test('an Evaluator requirement placed on a meeting roster carries the project pa
   await q('update meeting_roles set person_id=null, project_id=null where meeting_id=$1 and person_id=$2', [m.id, pid]);
   await q('delete from member_enh where person_id=$1', [pid]);
 });
+
+test('VPE committee: a member can be added and removed, the club keeps one VPE, and the role can be handed over', async () => {
+  const demo = await (await fetch(base + '/api/dev/accounts')).json();
+  const me = demo.people.find((p) => p.is_vpe);
+  const meId = me.id;
+  try {
+    assert.equal((await call('POST', `/api/vpe/people/${pid}/committee`, { on: true })).status, 200);
+    assert.equal((await q('select is_vpe from people where id=$1', [pid]))[0].is_vpe, true);
+    // a committee member has the VPE's access, but cannot hand VPE access to anyone
+    const theirs = demo.people.find((x) => x.id === pid).token;
+    const asCommittee = await fetch(base + `/api/vpe/people/${meId}/committee`, { method: 'POST', headers: { 'x-token': theirs, 'content-type': 'application/json' }, body: JSON.stringify({ on: true }) });
+    assert.equal(asCommittee.status, 403);
+    assert.equal((await fetch(base + '/api/vpe/meetings', { headers: { 'x-token': theirs } })).status < 400, true);
+    assert.equal((await call('POST', `/api/vpe/people/${pid}/committee`, { on: false })).status, 200);
+    // the only VPE cannot be taken off
+    const only = await call('POST', `/api/vpe/people/${meId}/committee`, { on: false });
+    assert.equal(only.status, 409);
+    // handing over: the other member becomes the VPE and the old one steps down
+    assert.equal((await call('POST', '/api/vpe/transfer', { to: pid })).status, 200);
+    const rows = await q('select id, is_vpe from people where id in ($1,$2)', [meId, pid]);
+    assert.equal(rows.find((r) => r.id === pid).is_vpe, true);
+    assert.equal(rows.find((r) => r.id === meId).is_vpe, false);
+    assert.equal((await call('POST', `/api/vpe/people/${pid}/committee`, { on: true })).status, 403, 'a member without the role cannot change it');
+  } finally { await q('update people set is_vpe=(id=$1) where id in ($1,$2)', [meId, pid]); }
+});

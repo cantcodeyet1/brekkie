@@ -387,3 +387,5 @@ update clubs set brochure = '{"region":"Area 2, Division C, District 129","meets
   where tm_number = '04647453' and brochure is null;
 -- every visitor is called TM by default (the agenda prints it after their name); visitors added before this had none
 update people set credential='TM' where kind='guest' and coalesce(credential,'')='';
+-- a member added to the VPE committee has the VPE's access and is shown as VPEc
+alter table people add column if not exists committee boolean not null default false;
