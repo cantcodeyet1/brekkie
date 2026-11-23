@@ -4,7 +4,6 @@ import { api, setToken } from '../api.js';
 import { PwPair, pwGood } from './Landing.jsx';
 import { HeroText } from './AuthFrame.jsx';
 import RosterImport from './RosterImport.jsx';
-import AgendaTemplate from './AgendaTemplate.jsx';
 import { toMembers } from '../roster.js';
 import { Btn, DatePick, I, Select, Seg, Wordmark, copyText, useToast } from '../ui.jsx';
 
@@ -60,40 +59,40 @@ export function PatternFields({ value: p, onChange }) {
 export const newPattern = () => ({ day: 5, mode: 'monthly', weeks: [2, 4], time: '18:00', place: '', start: firstOn(5) });
 
 /* ───────── the wizard ───────── */
-const STEPS = ['You', 'Your club', 'Your agenda', 'When you meet', 'First meeting', 'Your members'];
+const STEPS = ['You', 'Your club', 'When you meet', 'First meeting', 'Your members'];
 
 export default function Wizard() {
   const nav = useNavigate();
   const toast = useToast();
+  const another = new URLSearchParams(window.location.search).has('another');   // a signed-in VPE starting a second club with the same login
   const [step, setStep] = useState(0);
   const [me, setMe] = useState({ name: '', email: '', password: '', again: '' });
   const [club, setClub] = useState('');
   const [tmNum, setTmNum] = useState('');
   const [numTaken, setNumTaken] = useState(false);
+  const [found, setFound] = useState(null);   // what toastmasters.org knows about the club number
   const [pat, setPat] = useState(newPattern);
   const [num, setNum] = useState(1);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   const [roster, setRoster] = useState([]);
-  const [agenda, setAgenda] = useState(null);
 
   const preview = useMemo(() => datesFor(pat, pat.start, 6), [pat]);
   const startOk = !!pat.start && datesFor(pat, pat.start, 1)[0] === pat.start;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(me.email.trim());
   const can = [
-    me.name.trim().length > 1 && emailOk && pwGood(me.password, me.again),
+    another || (me.name.trim().length > 1 && emailOk && pwGood(me.password, me.again)),
     club.trim().length > 1 && tmNum.length >= 3 && !numTaken,
-    true,
     pat.day != null && (pat.mode !== 'monthly' || pat.weeks.length > 0),
     startOk && num >= 1,
     true,
   ];
-  const next = () => { setErr(''); if (!can[step]) return; if (step === 3) setPat((p) => ({ ...p, start: firstMatch(p) })); setStep(step + 1); };
+  const next = () => { setErr(''); if (!can[step]) return; if (step === 2) setPat((p) => ({ ...p, start: firstMatch(p) })); setStep(step + 1); };
   const create = async () => {
     setBusy(true); setErr('');
     try {
-      const r = await api('/clubs', { method: 'POST', body: { name: me.name, email: me.email, password: me.password, club: { name: club, number: tmNum, pattern: pat, firstNumber: num, agenda }, members: toMembers(roster) } });
+      const r = await api('/clubs', { method: 'POST', body: { another, name: me.name, email: me.email, password: me.password, club: { name: club, number: tmNum, pattern: pat, firstNumber: num, agenda: (found?.region ? { profile: { region: found.region, mission: '', officers: [] }, blocks: [], start: '' } : undefined) }, members: toMembers(roster) } });
       setToken(r.token); setDone(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
@@ -121,9 +120,15 @@ export default function Wizard() {
           </div>
         ) : (
           <div className="panel-in">
-            {step === 0 && <Seg className="auth-tabs" value="up" onChange={(v) => v === 'in' && nav('/start')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />}
+            {step === 0 && !another && <Seg className="auth-tabs" value="up" onChange={(v) => v === 'in' && nav('/start')} options={[['in', 'Sign in'], ['up', 'Sign up']]} />}
             <p className="kick">Step {step + 1} of {STEPS.length}</p>
-            {step === 0 && (
+            {step === 0 && another && (
+              <>
+                <h2>Another club.</h2>
+                <p className="lede">You will be the VPE of the new club too. It uses the email and password you are signed in with, and you can switch between your clubs from the menu in the side bar.</p>
+              </>
+            )}
+            {step === 0 && !another && (
               <>
                 <h2>First, you.</h2>
                 <p className="lede">You will be the VPE. Your email and password are how you sign in.</p>
@@ -139,8 +144,9 @@ export default function Wizard() {
                 <h2>Name your club.</h2>
                 <p className="lede">Your club number keeps a club from being set up twice. The name is what members see when they join.</p>
                 <label className="fl" htmlFor="w-num">Toastmasters club number</label>
-                <input id="w-num" className="inp" inputMode="numeric" value={tmNum} maxLength={10} placeholder="e.g. 1234567" onChange={(e) => { setTmNum(e.target.value.replace(/\D/g, '')); setNumTaken(false); }}
-                  onBlur={() => tmNum.length >= 3 && api(`/clubs/number/${tmNum}`).then((r) => setNumTaken(r.taken)).catch(() => {})} />
+                <input id="w-num" className="inp" inputMode="numeric" value={tmNum} maxLength={10} placeholder="e.g. 1234567" onChange={(e) => { setTmNum(e.target.value.replace(/\D/g, '')); setNumTaken(false); setFound(null); }}
+                  onBlur={() => { if (tmNum.length < 3) return; api(`/clubs/number/${tmNum}`).then((r) => setNumTaken(r.taken)).catch(() => {}); api(`/clubs/lookup/${tmNum}`).then((r) => { setFound(r.club || null); if (r.club?.name && !club.trim()) setClub(r.club.name); }).catch(() => setFound(null)); }} />
+                {found && <p className="fine">Found on toastmasters.org: {found.name}, {found.region}. Your agenda will show this.</p>}
                 {numTaken && <p className="err">A club with that number is already on Brekkie. Ask its VPE for the join link.</p>}
                 <label className="fl" htmlFor="w-club">Club name</label>
                 <input id="w-club" className="inp" value={club} onChange={(e) => setClub(e.target.value)} placeholder="e.g. Champions Toastmasters Club" onKeyDown={(e) => e.key === 'Enter' && next()} />
@@ -148,19 +154,12 @@ export default function Wizard() {
             )}
             {step === 2 && (
               <>
-                <h2>Your agenda.</h2>
-                <p className="lede">Upload the agenda your club already uses and Brekkie will read your club details and running order from it. This is optional: you can skip it and add it later in your club settings.</p>
-                <AgendaTemplate value={agenda} onChange={setAgenda} onFound={(c) => { if (c.name && !club.trim()) setClub(c.name); if (c.number && !tmNum) setTmNum(c.number); }} />
-              </>
-            )}
-            {step === 3 && (
-              <>
                 <h2>When do you meet?</h2>
                 <p className="lede">Brekkie will create your meetings from this, so the roster fills itself.</p>
                 <PatternFields value={pat} onChange={setPat} />
               </>
             )}
-            {step === 4 && (
+            {step === 3 && (
               <>
                 <h2>Your first meeting.</h2>
                 <p className="lede">Pick the date of the next meeting. We will plan a year from there.</p>
@@ -174,7 +173,7 @@ export default function Wizard() {
                 )}
               </>
             )}
-            {step === 5 && (
+            {step === 4 && (
               <>
                 <h2>Your members.</h2>
                 <p className="lede">Add your whole roster in one go. In Club Central, open your club roster and export it, then choose that file here. You can skip this and add members later.</p>

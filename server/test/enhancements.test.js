@@ -205,3 +205,72 @@ test('VPE committee: a member can be added and removed, the club keeps one VPE, 
     assert.equal((await call('POST', `/api/vpe/people/${pid}/committee`, { on: true })).status, 403, 'a member without the role cannot change it');
   } finally { await q('update people set is_vpe=(id=$1) where id in ($1,$2)', [meId, pid]); }
 });
+
+test('one login at two clubs: signing in links them, and the switcher lists both', async () => {
+  const { hashPw } = await import('../src/club.js');
+  const [c2] = await q(`insert into clubs(name) values ('Switch Test Club') returning id`);
+  const h = hashPw('Switch-Test-1');
+  const [a] = await q(`insert into people(club_id,name,email,kind,status,is_vpe,token,password_hash) values (1,'Switcher One','switcher@example.com','member','active',true,'tok-sw-a',$1) returning id`, [h]);
+  const [b] = await q(`insert into people(club_id,name,email,kind,status,is_vpe,token,password_hash) values ($1,'Switcher Two','switcher@example.com','member','active',false,'tok-sw-b',$2) returning id`, [c2.id, hashPw('Switch-Test-1')]);
+  try {
+    const si = await (await fetch(base + '/api/auth/signin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'switcher@example.com', password: 'Switch-Test-1' }) })).json();
+    assert.equal(si.choose.length, 2);
+    const list = await (await fetch(base + '/api/me/clubs', { headers: { 'x-token': 'tok-sw-a' } })).json();
+    assert.deepEqual(list.clubs.map((c) => c.club).sort(), ['Champions Toastmasters Club', 'Switch Test Club']);
+    assert.equal(list.clubs.find((c) => c.current).type, 'vpe');
+    assert.equal(list.clubs.find((c) => !c.current).type, 'member');
+    // someone who is in one club sees no switcher
+    const solo = await (await fetch(base + '/api/me/clubs', { headers: { 'x-token': vpe } })).json();
+    assert.deepEqual(solo.clubs, []);
+  } finally { await q('delete from people where id in ($1,$2)', [a.id, b.id]); await q('delete from clubs where id=$1', [c2.id]); }
+});
+
+test('starting another club gives a clean, separate club: no members, meetings or tokens shared with the first', async () => {
+  const { hashPw } = await import('../src/club.js');
+  const h = hashPw('Another-Test-1');
+  const [a] = await q(`insert into people(club_id,name,email,kind,status,is_vpe,token,password_hash) values (1,'Starter One','starter@example.com','member','active',true,'tok-start-a',$1) returning id`, [h]);
+  const post = (tok, body) => fetch(base + '/api/clubs', { method: 'POST', headers: { 'content-type': 'application/json', 'x-token': tok }, body: JSON.stringify(body) });
+  const club = { name: 'Fresh Start Club', number: '8812345', firstNumber: 1, pattern: { day: 3, mode: 'weekly', start: '2026-07-01' } };
+  let newClub;
+  try {
+    const before1 = (await q('select count(*)::int as n from people where club_id=1'))[0].n, meet1 = (await q('select count(*)::int as n from meetings where club_id=1'))[0].n;
+    assert.equal((await post('', { another: true, club })).status, 401);                    // signed out: refused
+    const r = await post('tok-start-a', { another: true, club });
+    assert.equal(r.status, 200);
+    const s = await r.json();
+    assert.notEqual(s.token, 'tok-start-a');
+    [newClub] = await q('select id, tm_number from clubs where tm_number=$1', ['8812345']);
+    assert.notEqual(newClub.id, 1);
+    // the new club holds only its own VPE and its own meetings
+    const ppl = await q('select name, is_vpe, token from people where club_id=$1', [newClub.id]);
+    assert.equal(ppl.length, 1); assert.equal(ppl[0].is_vpe, true); assert.equal(ppl[0].name, 'Starter One');
+    assert.ok((await q('select count(*)::int as n from meetings where club_id=$1', [newClub.id]))[0].n > 0);
+    assert.equal((await q('select count(*)::int as n from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=$1 and r.person_id in (select id from people where club_id<>$1)', [newClub.id]))[0].n, 0);
+    // the first club is untouched
+    assert.equal((await q('select count(*)::int as n from people where club_id=1'))[0].n, before1);
+    assert.equal((await q('select count(*)::int as n from meetings where club_id=1'))[0].n, meet1);
+    // the new token sees only the new club
+    const mine = await (await fetch(base + '/api/vpe/people', { headers: { 'x-token': s.token } })).json();
+    const names = (Array.isArray(mine) ? mine : mine.people || []).map((p) => p.name);
+    assert.deepEqual(names, ['Starter One']);
+    // both clubs are listed to the owner, from either one
+    for (const tok of ['tok-start-a', s.token]) {
+      const l = await (await fetch(base + '/api/me/clubs', { headers: { 'x-token': tok } })).json();
+      assert.equal(l.clubs.length, 2);
+    }
+    // a club number already in use is refused, and nothing is created
+    assert.equal((await post('tok-start-a', { another: true, club: { ...club, name: 'Copy Club' } })).status, 409);
+    assert.equal((await q('select count(*)::int as n from clubs where name=$1', ['Copy Club']))[0].n, 0);
+  } finally {
+    if (newClub) { await q('delete from meeting_roles where meeting_id in (select id from meetings where club_id=$1)', [newClub.id]); await q('delete from meetings where club_id=$1', [newClub.id]); await q('delete from people where club_id=$1', [newClub.id]); await q('delete from clubs where id=$1', [newClub.id]); }
+    await q('delete from people where id=$1', [a.id]);
+  }
+});
+
+test('the agenda preview draws the club page from the details on screen, saved or not', async () => {
+  const r = await fetch(base + '/api/vpe/club/agenda-preview', { method: 'POST', headers: { 'x-token': vpe, 'content-type': 'application/json' }, body: JSON.stringify({ profile: { region: 'Area 9, Division Z, District 1', officers: [{ role: 'President', name: 'Test Person', phone: '' }] } }) });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /pdf/);
+  assert.equal(Buffer.from(await r.arrayBuffer()).subarray(0, 4).toString(), '%PDF');
+  assert.equal((await fetch(base + '/api/vpe/club/agenda-preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+});

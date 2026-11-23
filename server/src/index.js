@@ -1,3 +1,4 @@
+import { lookupClub } from './clubLookup.js';
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
@@ -90,8 +91,9 @@ const pub = (p) => p && { id: p.id, name: p.name, kind: p.kind, status: p.status
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+const THEMES = ['blue', 'maroon', 'yellow', 'grey', 'black'];   // the Toastmasters palette: keep in step with client/src/themes.js
 app.get('/api/session', wrap(async (req, res) => {
-  if (req.person) { const [c] = await q('select name from clubs where id=$1', [req.person.club_id]); return res.json({ type: req.person.is_vpe ? 'vpe' : 'member', person: pub(req.person), club: c?.name, super: isSuper(req.person) }); }
+  if (req.person) { const [c] = await q('select name, theme from clubs where id=$1', [req.person.club_id]); return res.json({ type: req.person.is_vpe ? 'vpe' : 'member', person: pub(req.person), club: c?.name, theme: c?.theme || 'blue', super: isSuper(req.person) }); }
   if (req.role) return res.json({ type: 'role', role: { key: req.role.role_key, label: req.role.label }, person: pub(req.rolePerson) });
   res.status(401).json({ error: 'No valid link' });
 }));
@@ -116,8 +118,16 @@ app.post('/api/auth/signin', wrap(async (req, res) => {
   const ok = rows.filter((r) => checkPw(pw, r.password_hash) || (pw !== pw.trim() && checkPw(pw.trim(), r.password_hash)));
   if (!ok.length) { await noteFailure(emailKey, ipKey); return bad(res, 'That email and password do not match', 401); }
   await q('update people set last_login_at=now() where id = any($1)', [ok.map((r) => r.id)]);
+  if (ok.length > 1) { const key = ok.find((r) => r.link_key)?.link_key || token(); await q('update people set link_key=$1 where id = any($2)', [key, ok.map((r) => r.id)]); }
   if (ok.length === 1) return res.json(sessionFor(ok[0]));
   res.json({ choose: ok.map((r) => ({ club: r.club_name, ...sessionFor(r) })) });
+}));
+
+/* the clubs one person can switch between: the accounts that one sign-in matched together */
+app.get('/api/me/clubs', needPerson, wrap(async (req, res) => {
+  if (!req.person.link_key) return res.json({ clubs: [] });
+  const rows = await q(`select p.id, p.token, p.is_vpe, c.name as club, c.theme from people p join clubs c on c.id=p.club_id where p.link_key=$1 and p.status<>'inactive' and p.password_hash is not null order by c.name`, [req.person.link_key]);
+  res.json({ clubs: rows.length > 1 ? rows.map((r) => ({ club: r.club, theme: r.theme || 'blue', token: r.token, type: r.is_vpe ? 'vpe' : 'member', current: r.id === req.person.id })) : [] });
 }));
 
 /* invites and password resets: there is no email, so the VPE sends a link on WhatsApp.
@@ -180,6 +190,10 @@ async function upsertMember(run, clubId, m) {
 }
 
 const cleanNum = (v) => String(v || '').replace(/\D/g, '');
+app.get('/api/clubs/lookup/:n', wrap(async (req, res) => {
+  const club = await lookupClub(req.params.n);
+  res.json({ club });
+}));
 app.get('/api/clubs/number/:n', wrap(async (req, res) => {
   const [c] = await q('select name from clubs where tm_number=$1', [cleanNum(req.params.n)]);
   res.json({ taken: !!c });
@@ -308,6 +322,10 @@ app.post('/api/vpe/club/agenda-template', needPerson, needVpe, wrap(async (req, 
 
 /* the wizard: a new club, its VPE, and its first year of meetings */
 app.post('/api/clubs', wrap(async (req, res) => {
+  // a signed-in person starting another club keeps their name, email and password: the new account is linked to the one they have
+  const another = !!req.body.another && !!req.person?.password_hash && !!req.person.email;
+  if (req.body.another && !another) return bad(res, 'Sign in first to start another club', 401);
+  if (another) { req.body.name = req.person.name; req.body.email = req.person.email; req.body.password = 'Another-club-1'; }
   const name = String(req.body.name || '').trim().replace(/\s+/g, ' '), email = normEmail(req.body.email);
   const clubName = String(req.body.club?.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
   if (name.length < 2 || name.length > 80) return bad(res, 'Enter your name');
@@ -322,7 +340,8 @@ app.post('/api/clubs', wrap(async (req, res) => {
   const out = await tx(async (t) => {
     let code; for (let i = 0; i < 8; i++) { code = joinCode(); if (!(await t('select 1 as x from clubs where join_code=$1', [code])).length) break; }
     const [club] = await t('insert into clubs(name,pattern,join_code,tm_number) values ($1,$2,$3,$4) returning id, name, pattern, join_code', [clubName, JSON.stringify(pc.pattern), code, tmNum]);
-    const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), hashPw(newPw(req.body.password))]);
+    const [vpe] = await t(`insert into people(club_id,name,email,kind,status,is_vpe,token,created_via,credential,password_hash) values ($1,$2,$3,'member','active',true,$4,'wizard','TM',$5) returning *`, [club.id, name, email, token(), another ? req.person.password_hash : hashPw(newPw(req.body.password))]);
+    if (another) { const key = req.person.link_key || token(); await t('update people set link_key=$1 where id=$2 or id=$3', [key, req.person.id, vpe.id]); }
     const made = await generateMeetings(t, club, { months: 12, firstNumber: number });
     await applyTemplate(t, club.id, req.body.club?.agenda);
     let added = 0;
@@ -356,7 +375,7 @@ app.put('/api/account', needPerson, wrap(async (req, res) => {
   const [dup] = await q('select 1 as x from people where club_id=$1 and lower(email)=$2 and id<>$3', [req.person.club_id, email, req.person.id]);
   if (dup) return bad(res, 'Someone in your club already uses that email', 409);
   if (pw || !req.person.password_hash) { const bp = pwProblem(pw); if (bp) return bad(res, bp); }
-  await q('update people set email=$1, password_hash=coalesce($2, password_hash) where id=$3', [email, pw ? hashPw(pw) : null, req.person.id]);
+  await q('update people set link_key=case when lower(email)=lower($1) then link_key else null end, email=$1, password_hash=coalesce($2, password_hash) where id=$3', [email, pw ? hashPw(pw) : null, req.person.id]);
   if ('path_name' in req.body) await q('update people set path_name=$1, path_level=$2 where id=$3', [req.body.path_name || null, req.body.path_name ? (Number(req.body.path_level) || null) : null, req.person.id]);
   res.json({ ok: true });
 }));
@@ -364,9 +383,9 @@ app.put('/api/account', needPerson, wrap(async (req, res) => {
 function cleanProfile(p) {
   if (!p || typeof p !== 'object') return null;
   const s = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
-  const officers = (Array.isArray(p.officers) ? p.officers : []).slice(0, 7).map((o) => ({ role: s(o?.role, 40), name: s(o?.name, 60), phone: s(o?.phone, 30) })).filter((o) => o.role);
-  const out = { region: s(p.region, 80), mission: s(p.mission, 600), officers };
-  return out.region || out.mission || officers.length ? out : null;
+  const officers = (Array.isArray(p.officers) ? p.officers : []).slice(0, 10).map((o) => ({ role: s(o?.role, 40), name: s(o?.name, 60), phone: s(o?.phone, 30) })).filter((o) => o.role);
+  const out = { region: s(p.region, 80), mission: '', officers };
+  return out.region || officers.length ? out : null;
 }
 app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
   const pc = cleanPattern(req.body.pattern); if (pc.error) return bad(res, pc.error);
@@ -384,6 +403,12 @@ app.put('/api/vpe/club', needPerson, needVpe, wrap(async (req, res) => {
   await q("update clubs set pattern=$1, name=coalesce(nullif($2, ''), name), guest_days=$4, venue=$5, meeting_time=$6, tm_number=case when $7::boolean then $8 else tm_number end where id=$3", [JSON.stringify(pc.pattern), name, req.person.club_id, gd, venue, mtime, 'number' in req.body, tm ?? null]);
   if ('agenda_profile' in req.body) await q('update clubs set agenda_profile=$1 where id=$2', [cleanProfile(req.body.agenda_profile) ? JSON.stringify(cleanProfile(req.body.agenda_profile)) : null, req.person.club_id]);
   res.json({ ok: true });
+}));
+app.put('/api/vpe/club/theme', needPerson, needVpe, wrap(async (req, res) => {
+  const theme = String(req.body?.theme || '');
+  if (!THEMES.includes(theme)) return bad(res, 'Pick one of the colours');
+  await q('update clubs set theme=$1 where id=$2', [theme === 'blue' ? null : theme, req.person.club_id]);
+  res.json({ ok: true, theme });
 }));
 app.post('/api/vpe/club/meetings', needPerson, needVpe, wrap(async (req, res) => {
   const made = await tx(async (t) => {
@@ -889,6 +914,18 @@ app.put('/api/vpe/agenda-standard', needPerson, needVpe, wrap(async (req, res) =
 app.delete('/api/vpe/agenda-standard', needPerson, needVpe, wrap(async (req, res) => {
   await q('update clubs set agenda_default=null where id=$1', [req.person.club_id]);
   res.json({ ok: true });
+}));
+/* what the club's agenda page looks like with the details on the screen (saved or not), drawn on its next meeting */
+app.post('/api/vpe/club/agenda-preview', needPerson, needVpe, wrap(async (req, res) => {
+  const [m] = await q(`select id from meetings where club_id=$1 order by (date >= current_date) desc, case when date >= current_date then date end asc, date desc limit 1`, [req.person.club_id]);
+  if (!m) return bad(res, 'Create your meetings first, then you can see the agenda page', 404);
+  req.params.id = m.id;
+  const a = await agendaFor(req, res); if (!a) return;
+  a.ctx.profile = cleanProfile(req.body?.profile) || {};
+  a.ctx.brochureOff = true;
+  const buf = await renderAgendaPdf(a.merged, a.ctx);
+  res.set({ 'Content-Type': 'application/pdf', 'Cache-Control': 'no-store' });
+  res.send(Buffer.from(buf));
 }));
 const fileDate = (d) => { const x = new Date(d + 'T12:00:00'); return `${String(x.getDate()).padStart(2, '0')}.${String(x.getMonth() + 1).padStart(2, '0')}.${String(x.getFullYear()).slice(-2)}`; };
 const sendAgenda = (ext) => async (req, res) => {

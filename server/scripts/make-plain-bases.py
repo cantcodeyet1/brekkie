@@ -6,17 +6,18 @@ here = os.path.dirname(os.path.abspath(__file__))
 tpl = os.path.join(here, '..', 'templates')
 for n in range(3):
     d = pymupdf.open(os.path.join(tpl, f'agenda-base-{n}.pdf')); p = d[0]
-    hit = p.search_for('CALLING ALL CHAMPIONS')[0]
-    ty = hit.y0
+    hit = p.search_for('CALLING ALL CHAMPIONS')   # the conference banner is gone from the base pages now
+    ty = hit[0].y0 if hit else None
     # the left column stops short of the role table, which starts at x=183
     for b in [(196, 3, 590, 34), (455, 33, 590, 46), (420, 46, 590, 59), (10, 164.5, 180, 273), (10, 288, 180, 582)]: p.add_redact_annot(pymupdf.Rect(*b), fill=False)
     p.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE, graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED)
     # the conference banner: its blue box and QR code go too
-    p.add_redact_annot(pymupdf.Rect(172, ty - 24, 574, ty + 62), fill=False)
-    p.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_REMOVE, graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED)
+    if ty is not None:
+        p.add_redact_annot(pymupdf.Rect(172, ty - 24, 574, ty + 62), fill=False)
+        p.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_REMOVE, graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED)
     for l in p.get_links(): p.delete_link(l)
     d.save(os.path.join(tpl, f'agenda-plain-{n}.pdf'), garbage=3, deflate=True)
-    print(n, 'banner text at', round(ty, 1))
+    print(n, 'banner text at', ty and round(ty, 1))
 # where the text sits, for drawing: baselines of the first mission line and each officer heading
 d = pymupdf.open(os.path.join(tpl, 'agenda-base-0.pdf')); p = d[0]
 for b in p.get_text('dict')['blocks']:

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, useApi } from '../api.js';
+import { api, setToken, useApi } from '../api.js';
+import { THEMES, themeGradient } from '../themes.js';
 import { Avatar, Btn, ErrorMsg, I, SkPage, SkRows, Modal, Page, PathPick, Select, copyText, useToast } from '../ui.jsx';
 import { PwPair, pwGood } from './Landing.jsx';
 import { BulkInvite } from './Vpe.jsx';
@@ -23,7 +24,7 @@ export default function Club() {
   const sess = useApi('/session');
   const [bulk, setBulk] = useState(false);
   const [agenda, setAgenda] = useState(undefined);
-  useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setTm(data.club.number || ''); setGd(data.club.guest_days || 30); setAgenda((a) => (a === undefined ? (data.club.agenda_profile ? { profile: data.club.agenda_profile, blocks: [], start: '' } : null) : a)); } }, [data]);
+  useEffect(() => { if (data) { setPat(data.club.pattern || newPattern()); setName(data.club.name); setTm(data.club.number || ''); setGd(data.club.guest_days || 30); setAgenda((a) => (a === undefined ? { profile: data.club.agenda_profile || { region: '', mission: '', officers: [] }, blocks: [], start: '' } : a)); } }, [data]);
   if (loading || !pat) return <Page title="Club" root wide full><SkPage stats={3} rows={4} pill={false} /></Page>;
   if (error) return <Page title="Club" root wide full><ErrorMsg error={error} /></Page>;
 
@@ -97,7 +98,18 @@ export default function Club() {
           </section>
 
           <section className="cl-sec">
-            <div className="cl-l"><h2>Your agenda</h2><p>Upload the Word agenda your club already uses. Brekkie keeps it as your template and fills it in for every meeting, so the Word file you download is yours.</p></div>
+            <div className="cl-l"><h2>Club colour</h2><p>Colours the side bar, so you can tell your clubs apart at a glance when you run more than one.</p></div>
+            <div className="cl-r">
+              <div className="theme-pick" role="radiogroup" aria-label="Club colour">
+                {THEMES.map((t) => <button type="button" key={t.key} role="radio" aria-checked={(sess.data?.theme || 'blue') === t.key} className={(sess.data?.theme || 'blue') === t.key ? 'on' : ''} title={t.name}
+                  onClick={async () => { try { await api('/vpe/club/theme', { method: 'PUT', body: { theme: t.key } }); sess.reload(); window.dispatchEvent(new Event('brekkie-session')); toast(`${t.name} it is`); } catch (e) { toast(e.message); } }}>
+                  <i style={{ background: themeGradient(t.key) }} />{t.name}</button>)}
+              </div>
+            </div>
+          </section>
+
+          <section className="cl-sec">
+            <div className="cl-l"><h2>Your agenda</h2><p>Your club's area line and executive committee, drawn down the side of every agenda. The area comes from your club number.</p></div>
             <div className="cl-r">
               {data.club.agenda_template && !agenda?.file && (
                 <div className="at-tpl">
@@ -106,7 +118,7 @@ export default function Club() {
                   <button type="button" className="lnk" onClick={removeTemplate}>Stop using this file</button>
                 </div>
               )}
-              <AgendaTemplate value={agenda || null} onChange={setAgenda} />
+              <AgendaTemplate value={agenda || null} onChange={setAgenda} number={tm} members={ppl.data || []} />
               {(agenda || data.club.agenda_profile) && <div className="cl-btns"><Btn onClick={saveAgenda} disabled={busy === 'agenda'}>{busy === 'agenda' ? 'Saving…' : agenda ? 'Save agenda details' : 'Use the standard page'}</Btn></div>}
             </div>
           </section>
@@ -136,9 +148,24 @@ export default function Club() {
   );
 }
 
+/* the clubs this person can manage or belong to with one login: choosing one signs in to it */
+export const switchClub = (c) => { setToken(c.token); window.location.assign(c.type === 'vpe' ? '/v' : '/m'); };
+export function ClubSwitch({ clubs }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (!open) return undefined; const f = () => setOpen(false); window.addEventListener('click', f); return () => window.removeEventListener('click', f); }, [open]);
+  const cur = clubs.find((c) => c.current) || clubs[0];
+  return (
+    <div className="clubsw" onClick={(e) => e.stopPropagation()}>
+      <button type="button" className="clubhead" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} title="Switch club"><b>{cur.club}</b><span className="ch-c">{I.chev}</span></button>
+      {open && <div className="rmenu clubsw-m" role="menu">{clubs.map((c) => <button type="button" role="menuitem" key={c.token} className={c.current ? 'on' : ''} onClick={() => (c.current ? setOpen(false) : switchClub(c))}><i className="swatch" style={{ background: themeGradient(c.theme) }} /><b>{c.club}</b><small>{c.type === 'vpe' ? 'VPE' : 'Member'}{c.current ? ' · here now' : ''}</small></button>)}<Link role="menuitem" className="clubsw-new" to="/start/club?another=1">{I.plus}<span>Start another club</span></Link></div>}
+    </div>
+  );
+}
+
 /* ───────── your account: email and password ───────── */
 export function AccountModal({ account: data, onClose, onSignOut, showPath = false, admin = false, portal = false, vpe = false }) {
   const toast = useToast();
+  const mine = useApi('/me/clubs');
   const cat = useApi('/pathways');
   const [f, setF] = useState({ email: '', current: '', password: '' });
   const [err, setErr] = useState('');
@@ -157,6 +184,11 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
             <Avatar name={data.name || ''} size={52} />
             <div><b>{data.name}</b><span>{data.club?.name}</span></div>
           </div>
+
+          {mine.data?.clubs?.length > 1 && <section className="ac-sec">
+            <h3>Your clubs</h3>
+            <div className="ac-clubs">{mine.data.clubs.map((c) => <button type="button" key={c.token} className={c.current ? 'on' : ''} onClick={() => (c.current ? onClose() : switchClub(c))}><i className="swatch" style={{ background: themeGradient(c.theme) }} /><b>{c.club}</b><small>{c.type === 'vpe' ? 'VPE' : 'Member'}{c.current ? ' · here now' : ''}</small></button>)}</div>
+          </section>}
 
           <section className="ac-sec">
             <h3>Sign in</h3>
@@ -188,6 +220,7 @@ export function AccountModal({ account: data, onClose, onSignOut, showPath = fal
           {(portal || vpe || admin) && (
             <div className="ac-links">
               {portal && <Link to="/m" onClick={onClose}>{I.home} My member page</Link>}
+              {(portal || vpe) && <Link to="/start/club?another=1" onClick={onClose}>{I.plus} Start another club</Link>}
               {vpe && <Link to="/v" onClick={onClose}>{I.back} Back to the VPE view</Link>}
               {admin && <Link to="/admin" onClick={onClose}>{I.chart} Super admin</Link>}
             </div>

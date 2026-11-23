@@ -389,3 +389,8 @@ update clubs set brochure = '{"region":"Area 2, Division C, District 129","meets
 update people set credential='TM' where kind='guest' and coalesce(credential,'')='';
 -- a member added to the VPE committee has the VPE's access and is shown as VPEc
 alter table people add column if not exists committee boolean not null default false;
+-- accounts of one person at several clubs share a key, set when one sign-in matches them all, so they can switch club without signing in again
+alter table people add column if not exists link_key text;
+create index if not exists people_link_key on people(link_key) where link_key is not null;
+-- the colour of the club's side bar (a key from client/src/themes.js); null is Brekkie's blue
+alter table clubs add column if not exists theme text;

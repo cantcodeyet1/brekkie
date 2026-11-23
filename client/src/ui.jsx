@@ -52,10 +52,11 @@ export function ToastProvider({ children }) {
 }
 
 /* ───────── page chrome ───────── */
+import { isLight, themeVars } from './themes.js';
 const ShellCtx = createContext({ nav: [], who: '', onSignOut: null });
 export const Wordmark = ({ className = '' }) => <Link to="/start" className={'wm ' + className} aria-label="Brekkie home">Brekkie<i /></Link>;
 
-export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide, bare, topNav, children }) {
+export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide, bare, topNav, switcher, theme, children }) {
   const desk = useDesk();
   return (
     <ShellCtx.Provider value={{ nav, who, sub, onSignOut, onAccount, bare }}>
@@ -73,8 +74,9 @@ export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide,
         )}
         <div className="screen">
           {desk && !noSide && !topNav && (
-            <aside className="side">
+            <aside className={'side' + (isLight(theme) ? ' light' : '')} style={themeVars(theme)}>
               <Wordmark />
+              {sub && (switcher || <div className="clubhead static"><b>{sub}</b></div>)}
               {nav.map((it, i) => it.label && !it.to
                 ? <div className="sl" key={i}>{it.label}</div>
                 : <NavLink key={it.to} to={it.to} end={it.end} className={({ isActive }) => (isActive ? 'on' : '')} style={{ textDecoration: 'none' }}>{it.icon}{it.label}</NavLink>)}
@@ -83,7 +85,6 @@ export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide,
                   ? <button type="button" className="me-id me-btn" onClick={onAccount} aria-label={`Your account, ${who}`}><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b><small>{tag && <em className="role-tag">{tag}</em>}Your account</small></span></button>
                   : <div className="me-id"><Avatar name={who} size={38} tone="gold" /><span><b>{who}</b></span>{tag && <em className="role-tag">{tag}</em>}</div>}
                 {views?.length > 0 && <div className="me-views">{views.map((v) => <Link key={v.to} to={v.to}>{v.icon}{v.label}</Link>)}</div>}
-                {sub && <div className="clubpill" title={sub}>{sub}</div>}
                 {onSignOut && <button type="button" className="me-out" onClick={onSignOut}>{I.out}<span>Sign out</span></button>}
               </div>
             </aside>

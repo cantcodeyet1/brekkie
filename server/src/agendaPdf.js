@@ -140,6 +140,7 @@ export async function agendaFits(ag, ctx) {
 }
 
 /** a club's own name, number, area line, mission and officers, drawn where the Champions ones are on the original page */
+const MISSION = 'We provide a supportive and positive learning experience in which members are empowered to develop communication and leadership skills, resulting in greater self-confidence and personal growth.';   // the same for every club
 function clubDetails(page, F, draw, ctx, prof) {
   const white = rgb(1, 1, 1), RIGHT = 581.2, Y = (top) => 841.89 - top;
   let size = 26; const name = safe(F.b, ctx.clubName || '');
@@ -147,13 +148,16 @@ function clubDetails(page, F, draw, ctx, prof) {
   draw(name, RIGHT - width(F.b, size, name), Y(27.6), F.b, size, white);
   if (ctx.clubNumber) { const s = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(s, RIGHT - width(F.b, 11, s), 798.6, F.b, 11, white); }
   if (prof.region) { const s = fit(F.b, 11, prof.region, 300); draw(s, RIGHT - width(F.b, 11, s), 785.7, F.b, 11, white); }
-  if (prof.mission) wrap(F.r, 10, prof.mission, 140, { limit: 8 }).forEach((l, i) => draw(l, 12.2, Y(174.7 + i * 13.2), F.r, 10, BLACK));
+  wrap(F.r, 10, MISSION, 140, { limit: 8 }).forEach((l, i) => draw(l, 12.2, Y(174.7 + i * 13.2), F.r, 10, BLACK));
   const OFF = rgb(7 / 255, 68 / 255, 102 / 255);
-  (Array.isArray(prof.officers) ? prof.officers : []).slice(0, 7).forEach((o, i) => {
-    const top = 299.4 + i * 42.4;
-    draw(fit(F.b, 11, o.role || '', 165), 12.2, Y(top), F.b, 11, BLUE);
-    if (o.name) draw(fit(F.b, 9, o.name, 165), 12.2, Y(top + 12.8), F.b, 9, OFF);
-    if (o.phone) draw(fit(F.i, 9, o.phone, 165), 12.2, Y(top + 25.1), F.i, 9, BLACK);
+  // seven fit at the page's own spacing; up to ten are packed closer so they stay above the next-meeting box
+  const offs = (Array.isArray(prof.officers) ? prof.officers : []).slice(0, 10), tight = offs.length > 7, gap = tight ? 290 / offs.length : 42.4;
+  const [rs, ns] = tight ? [10, 8] : [11, 9];
+  offs.forEach((o, i) => {
+    const top = 299.4 + i * gap;
+    draw(fit(F.b, rs, o.role || '', 165), 12.2, Y(top), F.b, rs, BLUE);
+    if (o.name) draw(fit(F.b, ns, o.name, 165), 12.2, Y(top + (tight ? 9.8 : 12.8)), F.b, ns, OFF);
+    if (o.phone) draw(fit(F.i, ns, o.phone, 165), 12.2, Y(top + (tight ? 18.6 : 25.1)), F.i, ns, BLACK);
   });
 }
 

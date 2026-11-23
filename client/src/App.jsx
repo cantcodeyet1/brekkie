@@ -15,7 +15,7 @@ import Calendar from './pages/Calendar.jsx';
 import Landing from './pages/Landing.jsx';
 import Wizard from './pages/Wizard.jsx';
 import Reset from './pages/Reset.jsx';
-import Club, { AccountModal } from './pages/Club.jsx';
+import Club, { AccountModal, ClubSwitch } from './pages/Club.jsx';
 import Admin from './pages/Admin.jsx';
 
 export default function App() {
@@ -53,6 +53,7 @@ const readCache = () => { try { const c = JSON.parse(localStorage.getItem(CACHE)
 function useSession() {
   const nav = useNavigate();
   const s = useApi('/session');
+  useEffect(() => { const f = () => s.reload(); window.addEventListener('brekkie-session', f); return () => window.removeEventListener('brekkie-session', f); }, [s.reload]);
   useEffect(() => { if (s.error) nav('/', { replace: true }); }, [s.error, nav]);
   useEffect(() => { if (s.data) { try { localStorage.setItem(CACHE, JSON.stringify({ t: getToken(), d: s.data })); } catch { /* storage blocked */ } } }, [s.data]);
   const [cached] = useState(readCache);
@@ -89,11 +90,13 @@ function VpeArea() {
   const nav = useNavigate();
   const [acct, setAcct] = useState(false);
   const acc = useApi('/account');
+  const mine = useApi('/me/clubs');
+  useEffect(() => { const f = () => mine.reload(); window.addEventListener('brekkie-session', f); return () => window.removeEventListener('brekkie-session', f); }, [mine.reload]);
   const { data } = useSession();
   if (!data) return <Loading />;
   if (data.type !== 'vpe') return <Navigate to="/m" replace />;
   return (
-    <Shell nav={VPE_NAV} who={data.person.name} tag="VPE" sub={data.club || 'Your club'}
+    <Shell nav={VPE_NAV} theme={data.theme} who={data.person.name} tag={data.person.committee ? 'VPEc' : 'VPE'} sub={data.club || 'Your club'} switcher={<ClubSwitch clubs={mine.data?.clubs?.length > 1 ? mine.data.clubs.map((c) => (c.current ? { ...c, theme: data.theme } : c)) : [{ club: data.club || 'Your club', theme: data.theme, current: true, token: 'here', type: 'vpe' }]} />}
       views={[...(data.super ? [{ to: '/admin', label: 'Super admin', icon: I.chart }] : []), { to: '/m', label: 'My member page', icon: I.home }]} onSignOut={signOut(nav)} onAccount={() => setAcct(true)}>
       <Routes>
         <Route index element={<Dashboard />} />

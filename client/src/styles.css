@@ -3356,3 +3356,78 @@ button.it-go{background:none;border:0;padding:0;cursor:pointer}
 .modal .inp{margin-top:10px}
 .btn.warn{background:#B3261E;color:#fff}
 .btn.warn:hover{background:#9C2019}
+/* the side bar takes its colour from the club (--sd darkest, --sm middle, --sl lightest) and shows the club name at the top */
+.app.desk .side{background:radial-gradient(120% 70% at 100% 0%,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 46%),radial-gradient(110% 80% at 0% 108%,var(--sl,#0d6a93) 0%,rgba(0,0,0,0) 58%),linear-gradient(165deg,var(--sd,#00263d) 0%,var(--sm,#004165) 58%,var(--sl,#0a5a85) 100%)}
+.app.desk .side a.on{color:var(--sm,var(--blue))}
+.clubsw{position:relative;margin:-8px 0 12px}
+.app.desk .side .clubhead{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;padding:12px 38px 12px 14px;border-radius:16px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);color:#fff;text-align:left;cursor:pointer}
+.app.desk .side .clubhead.static{margin:-8px 0 12px;cursor:default}
+.app.desk .side .clubhead:hover,.app.desk .side .clubhead[aria-expanded="true"]{background:rgba(255,255,255,.2);color:#fff}
+.app.desk .side .clubhead small{font:700 10.5px var(--head);letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.app.desk .side .clubhead b{font:800 17px/1.2 var(--head);color:#fff;white-space:normal;overflow:visible;text-overflow:clip;display:block}
+.app.desk .side .clubhead .ch-c{position:absolute;right:12px;top:50%;margin-top:-8px;display:flex}
+.app.desk .side .clubhead .ch-c svg{width:16px;height:16px;transform:rotate(90deg)}
+.app .side .clubsw-m{position:absolute;left:0;right:0;top:calc(100% + 6px);bottom:auto;min-width:0;width:auto;z-index:30;background:#0B3555;box-shadow:0 12px 36px -8px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.16)}
+.app .side .clubsw-m>*{display:grid;grid-template-columns:16px 1fr;column-gap:10px;row-gap:1px;align-items:center;color:#fff;font:600 13px var(--head);white-space:normal;line-height:1.25;background:none;text-align:left}
+.app.desk .side .clubsw-m>button b{color:#fff;font:700 13px var(--head);white-space:normal;grid-column:2}
+.app .side .clubsw-m>button small{color:rgba(255,255,255,.72);display:block;margin:0;font-size:12px;grid-column:2}
+.app .side .clubsw-m>button .swatch{grid-row:1/3;grid-column:1;width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
+.app .side .clubsw-m>*:hover,.app .side .clubsw-m>button.on{background:rgba(255,255,255,.14)}
+.app .side .clubsw-m>.clubsw-new{display:flex;align-items:center;gap:8px;margin-top:4px;border-top:1px solid rgba(255,255,255,.16);border-radius:0 0 9px 9px;padding-top:10px}
+.app .side .clubsw-m>.clubsw-new svg{width:15px;height:15px;flex:none}
+.ac-clubs>button{flex-direction:row;align-items:center;flex-wrap:wrap;column-gap:10px}
+.ac-clubs .swatch{width:18px;height:18px;border-radius:50%;flex:none}
+.ac-clubs>button small{flex-basis:100%;padding-left:28px;margin-top:-2px}
+.theme-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.theme-pick button{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1.5px solid #E3E6EA;background:#fff;border-radius:12px;font:600 13.5px var(--head);color:#1D1D1F;cursor:pointer}
+.theme-pick button i{width:26px;height:26px;border-radius:50%;flex:none}
+.theme-pick button.on{border-color:#1D1D1F;box-shadow:0 0 0 1px #1D1D1F inset}
+.ac-clubs{display:flex;flex-direction:column;gap:6px}
+.ac-clubs>button{display:flex;text-align:left;border:1px solid #E3E6EA;background:#fff;border-radius:12px;padding:10px 12px;font:600 14px var(--head);color:#1D1D1F;cursor:pointer}
+.ac-clubs>button.on{background:#EAF3F8}
+.ac-clubs small{font:500 12px var(--body);color:#6E6E73}
+/* pale club colours (yellow, grey): the side bar text turns dark */
+.app.desk .side.light a.wm,.app.desk .side.light a.wm:hover,.app.desk .side.light .wm{color:#1a1a1a}
+.app.desk .side.light .wm i{box-shadow:0 0 0 1.5px #1a1a1a inset}
+.app.desk .side.light a{color:rgba(0,0,0,.74)}
+.app.desk .side.light a:hover{background:rgba(0,0,0,.07);color:#000}
+.app.desk .side.light a.on{background:#fff;color:#000}
+.app.desk .side.light .sl{color:rgba(0,0,0,.5)}
+.app.desk .side.light .me{border-top-color:rgba(0,0,0,.16);color:rgba(0,0,0,.72)}
+.app.desk .side.light .me b,.app.desk .side.light .me-btn b{color:#1a1a1a}
+.app.desk .side.light .me-id small,.app.desk .side.light .me-btn small{color:rgba(0,0,0,.62)}
+.app.desk .side.light .me-btn:hover{background:rgba(0,0,0,.07)}
+.app.desk .side.light .me-views a{color:rgba(0,0,0,.78);background:rgba(0,0,0,.07)}
+.app.desk .side.light .me-views a:hover{background:rgba(0,0,0,.14);color:#000}
+.app.desk .side.light .me-out{color:rgba(0,0,0,.7)}
+.app.desk .side.light .me-out:hover{background:rgba(0,0,0,.07);color:#000}
+.app.desk .side.light .clubhead{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.18);color:#1a1a1a}
+.app.desk .side.light .clubhead:hover,.app.desk .side.light .clubhead[aria-expanded="true"]{background:rgba(0,0,0,.14);color:#000}
+.app.desk .side.light .clubhead small{color:rgba(0,0,0,.6)}
+.app.desk .side.light .clubhead b{color:#1a1a1a}
+/* the switcher menu is the same neutral dark whatever the club colour */
+.app .side .clubsw-m{background:var(--sm,#004165);box-shadow:0 14px 34px -10px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.22)}
+.app.desk .side.light .clubsw-m{box-shadow:0 14px 34px -10px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.18)}
+.app.desk .side.light .clubsw-m>*,.app.desk .side.light .clubsw-m>button b{color:#1a1a1a}
+.app.desk .side.light .clubsw-m>button small{color:rgba(0,0,0,.62)}
+.app.desk .side.light .clubsw-m>*:hover,.app.desk .side.light .clubsw-m>button.on{background:rgba(0,0,0,.09)}
+.app.desk .side.light .clubsw-m>.clubsw-new{border-top-color:rgba(0,0,0,.16)}
+.app.desk .side.light .clubsw-m>button .swatch{box-shadow:0 0 0 1.5px rgba(0,0,0,.55)}
+.app.desk .side.light .me-id .role-tag{background:rgba(0,0,0,.14);color:#1a1a1a}
+/* the club name block, lighter: no label, smaller type, no heavy frame */
+.app.desk .side .clubhead{padding:9px 30px 9px 12px;gap:0;border-radius:14px;border:0;background:rgba(255,255,255,.11)}
+.app.desk .side .clubhead b{font:700 15px/1.22 var(--head);letter-spacing:-.005em}
+.app.desk .side .clubhead .ch-c{right:9px;margin-top:-7px;opacity:.75}
+.app.desk .side .clubhead .ch-c svg{width:14px;height:14px}
+.app.desk .side .clubhead.static,.clubsw{margin:-10px 0 10px}
+.app.desk .side.light .clubhead{background:rgba(0,0,0,.06);border:0}
+.app.desk .side.light .clubhead:hover,.app.desk .side.light .clubhead[aria-expanded="true"]{background:rgba(0,0,0,.11)}
+/* club number lookup beside the area line, and the executive committee rows */
+.at-reg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.at-reg .inp{flex:1 1 220px;min-width:0}
+.at-off>*{min-width:0}
+.at-off{grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1fr) 84px}
+.at-acts{display:flex;gap:2px;align-items:center}
+.at-acts .at-x svg{width:16px;height:16px}
+.at-up svg{transform:rotate(-90deg)}.at-dn svg{transform:rotate(90deg)}
+.at-acts .at-x:disabled{opacity:.3;cursor:default}
+@media (max-width:640px){.at-off{grid-template-columns:1fr 1fr 84px}}
