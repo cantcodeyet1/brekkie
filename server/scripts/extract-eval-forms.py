@@ -17,7 +17,10 @@ def text(f):
 
 
 def squash(s):
-    return re.sub(r'\s+', ' ', s).strip()
+    # the PDF's bullet glyphs come through as control characters, and one form's header row sits inside its purpose box
+    s = re.sub(r'Date \W* Speech Length .*?Project Purpose ', '', re.sub(r'\s+', ' ', s))
+    s = re.sub(r'[\x00-\x1f]', '', s)
+    return re.sub(r'\b([Ww]ell)(organized|written|delivered|executed)\b', r'\1-\2', re.sub(r'\s+', ' ', s)).strip()
 
 
 def between(t, start, ends):

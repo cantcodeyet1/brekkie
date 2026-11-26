@@ -313,3 +313,13 @@ test('role links and the member page carry their own club and VPE, not a fixed o
   const [c] = await q('select name from clubs where id=1');
   assert.equal(o.club, c.name);
 });
+
+test('project purposes hold only the purpose: no form header text or stray control characters', async () => {
+  const rows = await q('select name, purpose, notes, about, parts from projects');
+  const bad = [];
+  const walk = (v, name) => { if (typeof v === 'string') { if (/[\u0000-\u0008]|Speech Length|Project Purpose/.test(v)) bad.push(name); } else if (v && typeof v === 'object') Object.values(v).forEach((x) => walk(x, name)); };
+  for (const r of rows) walk([r.purpose, r.notes, r.about, r.parts], r.name);
+  assert.deepEqual(bad, []);
+  const [w] = await q(`select purpose from projects where name='Writing a Speech with Purpose'`);
+  assert.match(w.purpose[0], /^The purpose of this project/);
+});

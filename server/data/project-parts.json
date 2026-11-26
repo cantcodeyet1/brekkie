@@ -438,7 +438,7 @@
   "purpose": [
    "The purpose of this project is for the member to practice writing and delivering a speech that inspires others."
   ],
-  "notes": "• The member needs to present a speech that inspires the audience. • The speech content should be engaging and the speaker entertaining or moving. • The speaker should be aware of audience response and adapt the speech as needed. • \u0007If the member appears to be talking “at” the audience instead of interacting with them, they are not fulfilling the goal of the speech.",
+  "notes": "• The member needs to present a speech that inspires the audience. • The speech content should be engaging and the speaker entertaining or moving. • The speaker should be aware of audience response and adapt the speech as needed. • If the member appears to be talking “at” the audience instead of interacting with them, they are not fulfilling the goal of the speech.",
   "about": [],
   "min": 5,
   "max": 7,
@@ -570,7 +570,7 @@
   "notes": "During the completion of this project, the member developed a change management plan about any real or hypothetical change in their past or a current change that affects a group that they are part of (including the Toastmasters club).",
   "about": [
    "The member will give specific information about the plan.",
-   "\u0007The speech may be any type, including humorous.",
+   "The speech may be any type, including humorous.",
    "It should not be a report on the content of the Manage Change project."
   ],
   "min": 5,
@@ -589,7 +589,7 @@
  },
  "Manage Projects Successfully": {
   "purpose": [
-   "\u0007The purpose of this project is for the member to practice developing a plan, building a team, and fulfilling the plan with the help of their team.",
+   "The purpose of this project is for the member to practice developing a plan, building a team, and fulfilling the plan with the help of their team.",
    "The purpose of the first speech is for the member to give a short overview of the plan for their project."
   ],
   "notes": "The member completing this project has committed a great deal of time to building a team and developing a project plan. This is a 2- to 3-minute report on the member's plan. Listen for: • An explanation of what the member intends to accomplish • Information about the team the member has built to help them accomplish the plan • A well-organized informational speech",
@@ -603,7 +603,7 @@
     "max": 3,
     "length_text": "2–3 minutes",
     "purpose": [
-     "\u0007The purpose of this project is for the member to practice developing a plan, building a team, and fulfilling the plan with the help of their team.",
+     "The purpose of this project is for the member to practice developing a plan, building a team, and fulfilling the plan with the help of their team.",
      "The purpose of the first speech is for the member to give a short overview of the plan for their project."
     ],
     "notes": "The member completing this project has committed a great deal of time to building a team and developing a project plan. This is a 2- to 3-minute report on the member's plan. Listen for: • An explanation of what the member intends to accomplish • Information about the team the member has built to help them accomplish the plan • A well-organized informational speech",
@@ -618,10 +618,10 @@
     "max": 7,
     "length_text": "5–7 minutes",
     "purpose": [
-     "\u0007The purpose of this project is for the member to practice developing a plan, building a team, and fulfilling the plan with the help of their team.",
-     "\u0007The purpose of the second speech is for the member to share some aspect of their experience managing a project."
+     "The purpose of this project is for the member to practice developing a plan, building a team, and fulfilling the plan with the help of their team.",
+     "The purpose of the second speech is for the member to share some aspect of their experience managing a project."
     ],
-    "notes": "The member completing this project has committed a great deal of time to developing a project plan, building a team, and fulfilling the plan. This is a 5- to 7-minute speech about the member's experience managing a project. This speech can be humorous, informational, or any type the member feels is appropriate. Listen for: • \u0007Information about what the member learned from planning, building a team, and leading that team through the completion of their project • The speech should not be a report on the content of the Manage Projects Successfully project.",
+    "notes": "The member completing this project has committed a great deal of time to developing a project plan, building a team, and fulfilling the plan. This is a 5- to 7-minute speech about the member's experience managing a project. This speech can be humorous, informational, or any type the member feels is appropriate. Listen for: • Information about what the member learned from planning, building a team, and leading that team through the completion of their project • The speech should not be a report on the content of the Manage Projects Successfully project.",
     "about": [],
     "form": "/api/eval-forms/manage-projects-successfully-2.pdf"
    }
@@ -764,8 +764,8 @@
  },
  "Question-and-Answer Session": {
   "purpose": [
-   "\u0007The purpose of this project is for the member to learn about and practice facilitating a question-and-answer session.",
-   "\u0007The purpose of this speech is for the member to practice delivering an informative speech and running a wellorganized question-and-answer session.",
+   "The purpose of this project is for the member to learn about and practice facilitating a question-and-answer session.",
+   "The purpose of this speech is for the member to practice delivering an informative speech and running a well-organized question-and-answer session.",
    "The member is responsible for managing time so there is adequate opportunity for both."
   ],
   "notes": "Evaluate the member's speech and their facilitation of a question-and-answer session. Listen for: A well-organized informational speech about any topic, followed by a well-facilitated question-and-answer session.",
@@ -776,8 +776,8 @@
  },
  "Reflect on Your Path": {
   "purpose": [
-   "\u0007The purpose of this project is for the member to reflect on their growth during the completion of an entire path.",
-   "\u0007The purpose of the speech is for the member to share some aspect of their growth during the completion of a path."
+   "The purpose of this project is for the member to reflect on their growth during the completion of an entire path.",
+   "The purpose of the speech is for the member to share some aspect of their growth during the completion of a path."
   ],
   "notes": "This member is completing the last speech in their current path. The member may speak on any aspect of the journey completed. The speech may be persuasive, humorous, informational, or crafted in any style that appeals to the member and supports the speech content.",
   "about": [],
@@ -961,7 +961,7 @@
   ],
   "notes": "During the completion of this project, the member reviewed or learned about presentation software and the most effective methods for developing clear, comprehensive, and enhancing slides.",
   "about": [
-   "\u0007The member will deliver a well-organized speech on any topic.",
+   "The member will deliver a well-organized speech on any topic.",
    "The topic should lend itself well to using presentation software.",
    "Watch for clear, legible, and effective slides that enhance the speech and the topic.",
    "The speech may be humorous, informational, or any style of the member's choosing.",
@@ -989,9 +989,9 @@
  },
  "Writing a Speech with Purpose": {
   "purpose": [
-   "Date \b Speech Length 5–7 minutes Project Purpose The purpose of this project is for the member to learn or review basic methods for writing a speech with a defined purpose and to present a well-organized speech on any topic."
+   "The purpose of this project is for the member to learn or review basic methods for writing a speech with a defined purpose and to present a well-organized speech on any topic."
   ],
-  "notes": "The member completing this project is working to write a speech with purpose. The speech they create must be wellwritten and clearly focused. Their goal is to meet their expressed purpose statement with a well-executed speech.",
+  "notes": "The member completing this project is working to write a speech with purpose. The speech they create must be well-written and clearly focused. Their goal is to meet their expressed purpose statement with a well-executed speech.",
   "about": [
    "The member will present a well-organized, well-delivered speech.",
    "The speech may be humorous, informational, or any style the member chooses.",
