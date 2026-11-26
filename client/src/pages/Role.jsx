@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, useApi } from '../api.js';
-import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, evalFormUrl, partOf, longDate, mmss, secs, sum } from '../data.js';
+import { CARDTXT, CRIT, DEFAULT_FILLERS, GE_SECTIONS, LEVELN, ROLE_META, SCRIPTS, TIMER, cardOf, cap, evalFormUrl, partOf, longDate, meetingTitle, waChat, mmss, secs, sum } from '../data.js';
 import { printEval } from '../EvalSheet.jsx';
 import { Avatar, Btn, Chip, ErrorMsg, Foot, I, Lines, Loading, Modal, Page, PersonSelect, Select, Seg, Shell, Wcard, Wordmark, useDebouncedSave, useDesk } from '../ui.jsx';
 
@@ -38,7 +38,7 @@ function evalDoc(data, sheet, people, blank) {
   const target = data.roles.find((x) => x.id === data.role.target_role_id), proj = target && partOf(data.projects.find((p) => p.id === target.project_id), target.part);
   if (!target?.person_id || !proj) return null;
   return {
-    form_title: proj.form_title, project: proj.name, member: people.find((p) => p.id === target.person_id)?.name || '', date: data.meeting.date, by: data.me?.name || '',
+    club: data.club, form_title: proj.form_title, project: proj.name, member: people.find((p) => p.id === target.person_id)?.name || '', date: data.meeting.date, by: data.me?.name || '',
     length_text: proj.length_text, title: target.speech_title || '', purpose: proj.purpose || [], notes: proj.notes || proj.overview || '', about: proj.about || [],
     ratings: blank ? [] : sheet.ratings, comments: blank ? [] : sheet.comments, excelled: blank ? '' : sheet.excelled, work: blank ? '' : sheet.work, challenge: blank ? '' : sheet.challenge,
   };
@@ -62,7 +62,7 @@ export default function RoleApp() {
   const { data, error, loading } = useApi('/role', { token });
   if (loading) return <Shell nav={[]} who="" noSide bare><div className="main"><div className="rwel rwel-sk" aria-busy="true" aria-label="Loading"><Wordmark className="wm-light" /><div className="rwel-in"><i className="sk1 s-tag" /><i className="sk1 s-h" /><i className="sk1 s-h b" /><i className="sk1 s-p" /><i className="sk1 s-btn" /></div></div></div></Shell>;
   if (error) return <Shell nav={[]} who="" noSide bare><div className="main"><div className="rwel"><Wordmark className="wm-light" /><div className="rwel-in"><div className="tag">Brekkie</div><h1>This link is not valid.</h1><p className="sub">It may have been replaced by a newer one. Ask your VPE to send your link again.</p></div></div></div></Shell>;
-  return <Shell nav={[]} who={data.me?.name || ''} noSide bare>{data.role.key === 'speaker' ? <SpeakerBody data={data} token={token} /> : <RoleBody data={data} token={token} />}</Shell>;
+  return <Shell nav={[]} who={data.me?.name || ''} sub={data.club} noSide bare>{data.role.key === 'speaker' ? <SpeakerBody data={data} token={token} /> : data.role.key === 'toastmaster' ? <ToastmasterBody data={data} token={token} /> : <RoleBody data={data} token={token} />}</Shell>;
 }
 
 
@@ -131,14 +131,65 @@ function SpeakerBody({ data, token }) {
   );
 }
 
+/* the Toastmaster's own link: every speaker, with a ready-written WhatsApp message asking how they would like to be introduced */
+function ToastmasterBody({ data, token }) {
+  const { partners = [], meeting } = data;
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const first = (data.me?.name || '').split(' ')[0];
+  const agenda = async () => {
+    setBusy(true); setErr('');
+    try {
+      const res = await fetch('/api/role/agenda.pdf', { headers: { 'x-token': token } });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not get the agenda');
+      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'Agenda.pdf';
+      const url = URL.createObjectURL(await res.blob()), a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const ask = (p) => `Hi ${meetingTitle(p.credential)} ${p.name.split(' ')[0]}, I am ${data.me?.name || 'your Toastmaster'}, your Toastmaster for our meeting on ${longDate(meeting.date)}. How would you like to be introduced?`;
+  return (
+    <Page root wide full>
+      <div className="rpage mb"><div className="mb-in">
+        <div className="rhead"><div><p className="reyebrow">{data.club} · Meeting {meeting.number} · {longDate(meeting.date)}</p><h1 className="rtitle">Hi {first}</h1>
+          <p className="rsub">You are the Toastmaster of the Day. Contact all the speakers and ask how they would like to be introduced.</p></div></div>
+        <div className="mb-stack">
+          {partners.length === 0 && <div className="mb-card pt-card"><div className="pt-lab">Your speakers</div><p className="pt-none">No speakers have been picked yet. They will appear here as soon as they are.</p></div>}
+          {partners.map((p) => {
+            const chat = waChat(p.phone, ask(p));
+            return (
+              <div className="mb-card pt-card" key={p.role_id}>
+                <div className="pt-lab">{p.label}</div>
+                <div className="pt-who"><Avatar name={p.name} size={48} /><span className="pt-t"><b>{meetingTitle(p.credential)} {p.name}</b><span>{[p.title && `“${p.title}”`, p.project].filter(Boolean).join(' · ') || 'Speech to be confirmed'}</span></span></div>
+                <div className="pt-acts">
+                  {chat && <a className="mh-btn mh-main" href={chat} target="_blank" rel="noreferrer">{I.send} WhatsApp</a>}
+                  {p.phone && <a className="mh-btn" href={`tel:${p.phone}`}>Call {p.phone}</a>}
+                  {p.email && <a className="mh-btn" href={`mailto:${p.email}?subject=${encodeURIComponent('Your introduction')}&body=${encodeURIComponent(ask(p))}`}>Email</a>}
+                  {!p.phone && !p.email && <span className="pt-none">No contact details yet. Ask your VPE.</span>}
+                </div>
+              </div>
+            );
+          })}
+          <div className="mb-card pt-card"><div className="pt-lab">Meeting agenda</div>
+            <div className="pt-acts"><button type="button" className="mh-btn mh-main" onClick={agenda} disabled={busy}>{I.dl} {busy ? 'Getting it…' : 'Download the agenda'}</button></div>
+            {err && <p className="err">{err}</p>}
+          </div>
+        </div>
+      </div></div>
+    </Page>
+  );
+}
+
 /* shown to visitors: one tap tells the VPE, and opens a ready-written WhatsApp message to them */
-export const VPE_WHATSAPP = '263719373950';
 export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) {
   const [asked, setAsked] = useState(!!data.me?.join_requested);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   if (data.me?.kind !== 'guest') return null;
-  const wa = () => `https://wa.me/${VPE_WHATSAPP}?text=${encodeURIComponent(`Hi, it's ${data.me.name}. I enjoyed being a visitor at Champions Toastmasters Club and would like to join as a member. What are the next steps?`)}`;
+  const club = data.club || 'the club';
+  const hello = `Hi, it's ${data.me.name}. I enjoyed being a visitor at ${club} and would like to join as a member. What are the next steps?`;
+  // the club's own VPE; without a usable number, WhatsApp asks which contact to send it to
+  const wa = () => waChat(data.vpe?.phone, hello) || `https://wa.me/?text=${encodeURIComponent(hello)}`;
   const send = async () => {
     const win = window.open('', '_blank');           // opened on the tap so the browser lets it through
     setBusy(true); setErr('');
@@ -150,8 +201,8 @@ export function JoinAsk({ data, token, dark, endpoint = '/role/join-request' }) 
     <div className={'joinask' + (dark ? ' dark' : '')}>
       <span className="jic" aria-hidden="true">{I.ppl}</span>
       <div className="jtx">
-        <b>{asked ? 'Thanks, your VPE knows.' : 'Want to join Champions?'}</b>
-        <span>{asked ? 'They will make you a member of Champions Toastmasters Club.' : 'One tap tells the VPE and opens a message to them on WhatsApp.'}</span>
+        <b>{asked ? 'Thanks, your VPE knows.' : `Want to join ${club}?`}</b>
+        <span>{asked ? `They will make you a member of ${club}.` : 'One tap tells the VPE and opens a message to them on WhatsApp.'}</span>
         {err && <p className="err">{err}</p>}
         {asked
           ? <a className="jbtn ghost" href={wa()} target="_blank" rel="noreferrer">Message the VPE again</a>
@@ -320,11 +371,12 @@ function Modes({ mode, script, form, report }) {
   // on a computer the script sits beside the notes, so you can read and write at once
   return mode === 'script' ? <div className="solo">{script}</div> : <div className="solo">{form}</div>;
 }
-function ScriptDoc({ k, vars, before, body }) {
+function ScriptDoc({ k, vars, before, body, after }) {
   return (
     <div className="sv">
       {before}
       {body || SCRIPTS[k].map(([h, t]) => <section key={h}><h5>{h}</h5><Paras t={t} v={vars} /></section>)}
+      {after}
     </div>
   );
 }
@@ -721,6 +773,30 @@ function EvalForm({ data, sheet, setSheet, people, mode }) {
 }
 
 /* ───────── General Evaluator ───────── */
+/* what the General Evaluator reads out before each speaker comes on: the project and its objectives, from the roster */
+function SpeechPurposes({ data, people }) {
+  const speakers = data.roles.filter((r) => r.role_key === 'speaker' && r.person_id);
+  return speakers.map((s) => {
+    const proj = partOf(data.projects.find((p) => p.id === s.project_id), s.part);
+    const path = s.path_name || proj?.path, level = s.path_level ?? proj?.level;
+    const where = [level ? `Level ${level}` : '', path].filter(Boolean).join(' of ');
+    const titled = (id) => `${meetingTitle(people.find((p) => p.id === id)?.credential)} ${subjectName(people, id)}`;
+    const name = titled(s.person_id);
+    const by = joinNames(data.roles.filter((r) => r.role_key === 'evaluator' && r.target_role_id === s.id && r.person_id).map((r) => titled(r.person_id)));
+    return (
+      <section key={s.id}>
+        <h5>Before {s.label}: {name}</h5>
+        {proj ? (
+          <>
+            <p>“{name} will be evaluated{by ? <> by <b>{by}</b></> : ''} on the project <b>{proj.name}</b>{where ? `, from ${where}` : ''}{proj.part_label ? ` (${proj.part_label})` : ''}.</p>
+            {(proj.purpose || []).map((t, i) => <p key={i}>{t}{i === proj.purpose.length - 1 ? '”' : ''}</p>)}
+            {!(proj.purpose || []).length && <p>Ask {name} for the objectives of this project.”</p>}
+          </>
+        ) : <p>{name}’s project has not been chosen yet. Ask them for it before the meeting.</p>}
+      </section>
+    );
+  });
+}
 // each checklist section carries the comments for the role players it covers
 const GE_ROLES = { Toastmaster: ['toastmaster'], 'General Evaluator': ['grammarian', 'timer', 'ah_counter'], Topicsmaster: ['topicsmaster'] };
 function GESheet({ data, sheet, setSheet, people, mode }) {
@@ -744,7 +820,7 @@ function GESheet({ data, sheet, setSheet, people, mode }) {
   const evalCards = cards(['evaluator']);
   return (
     <Modes mode={mode}
-      script={<ScriptDoc k="general_evaluator" />}
+      script={<ScriptDoc k="general_evaluator" after={<SpeechPurposes data={data} people={people} />} />}
       report={<GEReport data={data} sheet={sheet} people={people} />}
       form={<>
         <p style={{ margin: '0 0 4px', color: 'var(--mute)', fontSize: 14.5 }}>Tick each question. Where a section covers role players, leave a comment for each of them. They will see it under the role they played.</p>

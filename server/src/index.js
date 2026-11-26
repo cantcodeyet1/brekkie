@@ -455,11 +455,14 @@ app.post('/api/people/guest', wrap(async (req, res) => {
   res.json(g);
 }));
 
+/* who a visitor messages to join: the club's VPE (not the committee), with the number saved on their profile */
+const vpeOf = async (clubId) => (await q(`select name, phone from people where club_id=$1 and is_vpe and status<>'inactive' order by committee, id limit 1`, [clubId]))[0] || null;
+
 /* ───────── role player (link only) ───────── */
 app.get('/api/role', needRole, wrap(async (req, res) => {
   const r = req.role;
   const [meeting] = await q(`select id, number, ${DATE('date')} as date, theme, word, pos, pron, meaning, example, synonyms, origin from meetings where id=$1`, [r.meeting_id]);
-  const people = await q(`select id,name,kind,status from people where club_id=$1 and status<>'inactive' order by name`, [r.club_id]);
+  const people = await q(`select id,name,kind,status,credential from people where club_id=$1 and status<>'inactive' order by name`, [r.club_id]);
   const roles = await q(`select id, role_key, label, position, person_id, project_id, part, path_name, path_level, speech_title, target_role_id from meeting_roles where meeting_id=$1 order by position`, [r.meeting_id]);
   const projects = await q('select * from projects order by level, id');
   const [club] = await q('select name from clubs where id=$1', [r.club_id]);
@@ -478,11 +481,15 @@ app.get('/api/role', needRole, wrap(async (req, res) => {
     const res0 = pr && EVAL_RESOURCES[pr.name];
     mine = { project: pr?.name || null, level: r.path_level ?? pr?.level ?? null, path: r.path_name ?? pr?.path ?? null, part: r.part, title: r.speech_title,
       form: res0 ? (res0.forms?.[Math.max(0, (r.part || 1) - 1)] || res0.pdf || null) : null };
+  } else if (r.role_key === 'toastmaster') {
+    // the Toastmaster asks each speaker how they would like to be introduced
+    partners = await q(`select r2.id as role_id, r2.label, r2.speech_title as title, pr.name as project, p.credential, ${contact} from meeting_roles r2 join people p on p.id=r2.person_id left join projects pr on pr.id=r2.project_id
+      where r2.meeting_id=$1 and r2.role_key='speaker' and p.club_id=$2 order by r2.position`, [r.meeting_id, r.club_id]);
   } else if (r.role_key === 'evaluator' && r.target_role_id) {
     partners = await q(`select r2.id as role_id, r2.label, r2.speech_title as title, ${contact} from meeting_roles r2 join people p on p.id=r2.person_id where r2.id=$1 and r2.meeting_id=$2 and p.club_id=$3`, [r.target_role_id, r.meeting_id, r.club_id]);
   }
   res.json({
-    club: club?.name || '', partners, mine,
+    club: club?.name || '', vpe: await vpeOf(r.club_id), partners, mine,
     role: { id: r.id, key: r.role_key, label: r.label, submitted_at: r.submitted_at, target_role_id: r.target_role_id },
     me: req.rolePerson && { ...pub(req.rolePerson), join_requested: !!req.rolePerson.join_requested_at }, meeting, people, roles, projects, sheet: r.sheet || {}, evalResources: r.role_key === 'evaluator' ? EVAL_RESOURCES : undefined,
   });
@@ -620,7 +627,8 @@ app.get('/api/me/overview', needPerson, wrap(async (req, res) => {
     focus = { name: prog.criteria[k], avg: prog.avgs[k], comment: c, work: prog.evals[0]?.work || '', by: prog.evals[0]?.by };
   }
   const [nextMeeting] = await q(`select id, number, ${DATE('date')} as date from meetings where club_id=$1 and date >= current_date order by date limit 1`, [me.club_id]);
-  res.json({ next_meeting: nextMeeting || null, path: me.kind === 'guest' ? null : await pathProgress(me), person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
+  const [myClub] = await q('select name from clubs where id=$1', [me.club_id]);
+  res.json({ club: myClub?.name || '', vpe: me.kind === 'guest' ? await vpeOf(me.club_id) : undefined, next_meeting: nextMeeting || null, path: me.kind === 'guest' ? null : await pathProgress(me), person: { ...pub(me), join_requested: !!me.join_requested_at }, ...summary(me.id, hist), focus, latest: meetings[0] || null, upcoming: up, meetings: meetings.length, given: (await givenFor(me.id)).length });
 }));
 app.get('/api/me/given', needPerson, wrap(async (req, res) => res.json(await givenFor(req.person.id))));
 app.get('/api/me/given/:id', needPerson, wrap(async (req, res, next) => {
@@ -702,7 +710,7 @@ app.get('/api/me/evaluations/:id/form.pdf', needPerson, wrap((req, res) => evalF
 app.get('/api/vpe/evaluations/:id/form.pdf', needPerson, needVpe, wrap((req, res) => evalFormFor(req, res, null)));
 async function evalDetail(req, res, onlyMe) {
   const [e] = await q(`select e.*, ${DATE('m.date')} as date, m.number, m.club_id, p.name as project, coalesce(e.path_level, p.level) as level, coalesce(e.path_name, p.path) as path, p.form_title, p.length_text, p.purpose, p.notes, p.about, p.green, p.yellow, p.red,
-      sp.name as member, ev.name as by, r.review_status
+      sp.name as member, ev.name as by, r.review_status, (select c.name from clubs c where c.id=m.club_id) as club
     from evaluations e join meetings m on m.id=e.meeting_id join projects p on p.id=e.project_id join people sp on sp.id=e.speaker_id
     join meeting_roles r on r.id=e.role_id left join people ev on ev.id=r.person_id where e.id=$1`, [req.params.id]);
   if (!e || e.club_id !== req.person.club_id || (onlyMe && (e.speaker_id !== onlyMe || e.review_status !== 'approved'))) return bad(res, 'Not found', 404);
@@ -852,10 +860,22 @@ app.post('/api/vpe/meetings/:id/roles', needPerson, needVpe, wrap(async (req, re
   if (!m) return bad(res, 'Not found', 404);
   res.json(await addSlot(m.id, key));
 }));
+// speakers and evaluators are always numbered 1, 2, 3 down the meeting: removing one moves the later ones up
+const renumberSlots = async (t, meetingId, key) => {
+  const rows = await t('select id, label from meeting_roles where meeting_id=$1 and role_key=$2 order by position, id', [meetingId, key]);
+  for (const [i, row] of rows.entries()) {
+    const label = `${key === 'speaker' ? 'Speaker' : 'Speech Evaluator'} ${i + 1}`;
+    if (row.label !== label) await t('update meeting_roles set label=$1 where id=$2', [label, row.id]);
+  }
+};
 app.delete('/api/vpe/roles/:id', needPerson, needVpe, wrap(async (req, res) => {
-  const r = await q(`delete from meeting_roles where id=$1 and role_key in ('speaker','evaluator') and submitted_at is null
-    and meeting_id in (select id from meetings where club_id=$2) returning id`, [req.params.id, req.person.club_id]);
-  r.length ? res.json({ ok: true }) : bad(res, 'Only a speaker or evaluator row that has not submitted yet can be removed', 400);
+  const gone = await tx(async (t) => {
+    const [r] = await t(`delete from meeting_roles where id=$1 and role_key in ('speaker','evaluator') and submitted_at is null
+      and meeting_id in (select id from meetings where club_id=$2) returning meeting_id, role_key`, [req.params.id, req.person.club_id]);
+    if (r) await renumberSlots(t, r.meeting_id, r.role_key);
+    return !!r;
+  });
+  gone ? res.json({ ok: true }) : bad(res, 'Only a speaker or evaluator row that has not submitted yet can be removed', 400);
 }));
 
 /* ───────── agenda: edits the club's Word template ───────── */

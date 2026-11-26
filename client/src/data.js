@@ -71,6 +71,13 @@ export const partOf = (proj, n) => {
 };
 
 /** how a member is greeted in a message: TM, or DTM, never a path code like PM3 or EH1 (those are for the agenda) */
+/* how a member is called in a meeting: DTM for a Distinguished Toastmaster, otherwise TM */
+export const meetingTitle = (credential) => (/\bDTM\b/.test(String(credential || '')) ? 'DTM' : 'TM');
+/* a WhatsApp chat link needs the country code: a local number starting with 0 gives none */
+export const waChat = (phone, text) => {
+  const raw = String(phone || '').trim(), d = raw.replace(/\D/g, '');
+  return d.length >= 10 && !raw.startsWith('0') ? `https://wa.me/${d}${text ? `?text=${encodeURIComponent(text)}` : ''}` : '';
+};
 export function greetTitle(credential) {
   const t = String(credential || '').trim();
   if (!t) return '';

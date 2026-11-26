@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { printEval, printPoster } from '../EvalSheet.jsx';
 import { api, getToken, useApi } from '../api.js';
-import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFormUrl, fmtDate, greetTitle, longDate, mean, mmss, sum } from '../data.js';
+import { CARDTXT, CRIT, FEEDBACK_ROLES, GE_SECTIONS, LEVELN, cap, cardOf, evalFormUrl, fmtDate, greetTitle, longDate, meetingTitle, waChat, mean, mmss, sum } from '../data.js';
 import PathCard from './PathCard.jsx';
 import RosterImport, { PathDone } from './RosterImport.jsx';
 import { toMembers } from '../roster.js';
@@ -52,6 +52,9 @@ function QrCard({ code, meeting, base }) {
 const wa = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
 /* ───────── meetings table ───────── */
+/* the signed-in VPE's club, for headings and the messages they send */
+const useClubName = () => useApi('/session').data?.club || 'our club';
+
 export function VpeHome() {
   const { data, error, loading, reload, setData } = useApi('/vpe/meetings');
   const desk = useDesk();
@@ -166,6 +169,7 @@ function EvalCounts({ role, onChange }) {
 }
 
 export function VpeMeeting() {
+  const clubName = useClubName();
   const { id } = useParams();
   const toast = useToast();
   const base = useBaseUrl();
@@ -205,7 +209,7 @@ export function VpeMeeting() {
   const setRole = async (r, body) => { try { await api(`/vpe/roles/${r.id}`, { method: 'PATCH', body }); await reload(); if (body.person_id !== undefined) peopleQ.reload(); } catch (e) { toast(e.message); } };
   const addGuest = async (name) => { const g = await api('/people/guest', { method: 'POST', body: { name } }); await peopleQ.reload(); return g; };
   const fb = roles.filter((r) => FEEDBACK_ROLES.includes(r.role_key));
-  const linkRows = roles.filter((r) => FEEDBACK_ROLES.includes(r.role_key) || r.role_key === 'speaker');
+  const linkRows = roles.filter((r) => FEEDBACK_ROLES.includes(r.role_key) || r.role_key === 'speaker' || r.role_key === 'toastmaster');
   const speakers = roles.filter((r) => r.role_key === 'speaker');
   const personChip = (r) => r.person_kind === 'guest' && <GBadge />;
   const fillWord = async () => {
@@ -286,10 +290,34 @@ Good luck, we are looking forward to your speech!
 
 Kind regards,
 ${sender || 'Your VPE'}
-VPE, Champions Toastmasters Club`;
+VPE, ${clubName}`;
+  };
+  // the Toastmaster is asked to contact every speaker, each with their WhatsApp link
+  const tmodMsg = (r, kind) => {
+    const who = personOf(r.person_id), sender = people.find((p) => p.is_vpe)?.name;
+    const list = speakers.filter((x) => x.person_id).map((x) => {
+      const p = personOf(x.person_id), talk = talkOf(x);
+      return `• ${meetingTitle(p?.credential)} ${p?.name || x.person}${talk ? `, ${talk}` : ''}\n${waChat(p?.phone) || (p?.phone ? `WhatsApp ${p.phone}` : 'No number saved yet, ask me for it')}`;
+    }).join('\n\n');
+    return `Hello ${meetingTitle(who?.credential)} ${r.person.split(' ')[0]},
+
+${kind === 'remind' ? 'A gentle reminder that you are' : 'Thank you for agreeing to be'} the Toastmaster of the Day at our club meeting on ${fmtDate(m.date)}.${m.theme ? ` The theme for the evening is "${m.theme}".` : ''}
+
+Please contact all the speakers and ask how they would like to be introduced.
+
+${list || 'The speakers have not been picked yet. They will show on your link as soon as they are.'}
+
+Your link below has a WhatsApp button for each speaker and the agenda, with no sign-in:
+
+${roleLink(base, r.token)}
+
+Kind regards,
+${sender || 'Your VPE'}
+VPE, ${clubName}`;
   };
   const msg = (r, kind = 'send') => {
     if (r.role_key === 'speaker') return speakerMsg(r, kind);
+    if (r.role_key === 'toastmaster') return tmodMsg(r, kind);
     const who = people.find((p) => p.id === r.person_id), title = greetTitle(who?.credential) ? `${greetTitle(who.credential)} ` : '';
     const sender = people.find((p) => p.is_vpe)?.name;
     const theme = m.theme ? ` The theme for the evening is "${m.theme}".` : '';
@@ -315,7 +343,7 @@ ${intro}${kind === 'remind' ? '' : word}${kind === 'remind' ? '' : analyse}${pai
 
 ${kind === 'remind'
     ? 'Your link is below. It opens your sheet with your notes as you left them, and you can edit and resubmit at any time.'
-    : 'At Champions, we use a tool called Brekkie to run our meetings and share feedback. Your link below opens your personal script and sheet for the role, with no sign-in or app to install. You will still give your report at the meeting as usual, and your notes will be there on the sheet. When you submit it, the feedback goes straight to the people you wrote about.'}
+    : `At ${clubName}, we use a tool called Brekkie to run our meetings and share feedback. Your link below opens your personal script and sheet for the role, with no sign-in or app to install. You will still give your report at the meeting as usual, and your notes will be there on the sheet. When you submit it, the feedback goes straight to the people you wrote about.`}
 
 ${roleLink(base, r.token)}
 
@@ -323,7 +351,7 @@ ${kind === 'remind' ? 'Let me know if you would like any help with it. Thank you
 
 Kind regards,
 ${sender || 'Your VPE'}
-VPE, Champions Toastmasters Club`;
+VPE, ${clubName}`;
   };
   const copy = async (text) => { toast((await copyText(text)) ? 'Copied' : 'Copy failed'); };
   // after the meeting: a thank-you to everyone who had a role, with a link to their own page (a visitor's link signs them straight in)
@@ -345,7 +373,7 @@ ${visitor ? 'We would love to see you again.' : 'See you at the next meeting!'}
 
 Kind regards,
 ${sender || 'Your VPE'}
-VPE, Champions Toastmasters Club`;
+VPE, ${clubName}`;
   };
   const all = linkRows.filter((r) => r.person).map((r) => `${r.label} (${r.person}): ${roleLink(base, r.token)}`).join('\n');
   const resetFb = async () => {
@@ -365,7 +393,7 @@ VPE, Champions Toastmasters Club`;
   const projOf = (id) => projects.find((p) => p.id === id);
   const tile = (r) => (
     <div className={'rtile ' + (r.person_id ? 'filled' : 'open')} key={r.id}>
-      <div className="rl"><b><i className="dot" aria-hidden="true" />{r.label}</b>{!r.person_id ? <span className="openpill">Needs someone</span> : FEEDBACK_ROLES.includes(r.role_key) && <span>Gets a link</span>}</div>
+      <div className="rl"><b><i className="dot" aria-hidden="true" />{r.label}</b>{!r.person_id ? <span className="openpill">Needs someone</span> : (FEEDBACK_ROLES.includes(r.role_key) || r.role_key === 'toastmaster') && <span>Gets a link</span>}</div>
       {locked
         ? <div style={{ fontSize: 16, fontWeight: 600 }}>{r.person || 'None'}{personChip(r)}</div>
         : <PersonSelect value={r.person_id} placeholder="Unassigned" allowClear people={people} onAddGuest={addGuest} onChange={(v) => setRole(r, { person_id: v })} />}
@@ -666,6 +694,7 @@ export function SubmissionViewer({ id, list, onGo, onClose, remind, mine, onAppr
 
 /* ───────── people: members and visitors ───────── */
 export function VpePeople() {
+  const clubName = useClubName();
   const { data, error, loading, reload } = useApi('/vpe/people');
   const desk = useDesk();
   const toast = useToast();
@@ -721,7 +750,7 @@ export function VpePeople() {
       <div className="rpage">
       <div className="rhead">
         <div>
-          <p className="reyebrow">Champions Toastmasters Club</p>
+          <p className="reyebrow">{clubName}</p>
           <h1 className="rtitle">Members</h1>
           <p className="rsub">Open anyone to see what they have delivered and the feedback they have given.</p>
         </div>
@@ -786,6 +815,7 @@ function ImportModal({ onClose, onDone }) {
 }
 
 function AddPerson({ onClose, onDone, onInvite }) {
+  const clubName = useClubName();
   const [kind, setKind] = useState('member');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -804,7 +834,7 @@ function AddPerson({ onClose, onDone, onInvite }) {
   return (
     <Modal title="Add a member or visitor" onClose={onClose}>
       <Seg style={{ margin: '12px 0 4px' }} value={kind} onChange={setKind} options={[['member', 'Club member'], ['guest', 'Visitor (temporary)']]} />
-      <p style={{ color: 'var(--mute)', fontSize: 14, margin: '6px 0 0' }}>{kind === 'guest' ? 'For someone outside the club taking a role. They get a temporary link, and their data is kept with Champions.' : 'A full member with their own sign in and history. Next you can send them an invite on WhatsApp.'}</p>
+      <p style={{ color: 'var(--mute)', fontSize: 14, margin: '6px 0 0' }}>{kind === 'guest' ? 'For someone outside the club taking a role. They get a temporary link, and their data is kept with your club.' : 'A full member with their own sign in and history. Next you can send them an invite on WhatsApp.'}</p>
       <label className="fl">Full name</label><input className="inp" autoFocus autoComplete="off" name="person-name" data-bwignore="true" data-lpignore="true" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name as it should appear" />
       <label className="fl">Email (optional)</label><input className="inp" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@mail.com" />
       <label className="fl">Phone (optional)</label><input className="inp" type="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+263 7…" maxLength={30} />
@@ -1011,6 +1041,7 @@ function RemovePerson({ person, onClose }) {
 }
 
 export function VpePerson() {
+  const clubName = useClubName();
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
@@ -1068,7 +1099,7 @@ export function VpePerson() {
       {removing && <RemovePerson person={p} onClose={() => setRemoving(false)} />}
       {resetting && <InviteModal person={p} mode={resetting} club={sess.data?.club || 'our club'} onClose={() => setResetting(null)} onDone={reload} />}
       {visitor && (
-        <div className="banner"><b>Temporary status.</b> {p.temp_until ? `Access runs until ${longDate(p.temp_until)}. ` : ''}Everything they record is already stored under Champions.
+        <div className="banner"><b>Temporary status.</b> {p.temp_until ? `Access runs until ${longDate(p.temp_until)}. ` : ''}Everything they record is already stored under {clubName}.
           <div style={{ marginTop: 10 }}><Btn sm onClick={async () => { await api(`/vpe/people/${p.id}`, { method: 'PATCH', body: { convert: true } }); toast(`${p.name} is now a member`); reload(); }}>Make a member</Btn></div></div>)}
 
       {!visitor && <PathCard person={p} initial={data.path} />}

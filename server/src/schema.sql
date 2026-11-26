@@ -308,12 +308,12 @@ create table if not exists admin_log (
 );
 
 -- the platform owner. Only this flag grants the super admin page, and no route in the app sets it. It is given to
--- Nyasha N. Mpofu in the oldest club called Champions Toastmasters Club, so someone signing up later with the same
+-- Nyasha N. Mpofu in the club with Champions' club number (04647453), so someone signing up later with the same
 -- email in a new club does not get it.
 alter table people add column if not exists is_super boolean not null default false;
 update people set is_super = true
  where lower(email) = 'nyashanmpofu@outlook.com' and kind = 'member'
-   and club_id = (select id from clubs where name = 'Champions Toastmasters Club' order by id limit 1);
+   and club_id = (select id from clubs where tm_number = '04647453');   -- the number is unique, so a club that merely shares the name cannot be picked
 
 -- projects made of several parts (two speeches, or two speeches and an evaluation): each part has its own purpose, length and form.
 -- A speaker slot, speech plan, evaluation or finished mark says which part it is for; part 1 is the default.
@@ -394,3 +394,8 @@ alter table people add column if not exists link_key text;
 create index if not exists people_link_key on people(link_key) where link_key is not null;
 -- the colour of the club's side bar (a key from client/src/themes.js); null is Brekkie's blue
 alter table clubs add column if not exists theme text;
+-- meetings still to come that were left with gaps (Speaker 1, 3, 4) by an earlier removal are numbered 1, 2, 3 again
+update meeting_roles r set label = x.label
+  from (select mr.id, (case mr.role_key when 'speaker' then 'Speaker ' else 'Speech Evaluator ' end) || row_number() over (partition by mr.meeting_id, mr.role_key order by mr.position, mr.id) as label
+          from meeting_roles mr join meetings m on m.id = mr.meeting_id where mr.role_key in ('speaker','evaluator') and m.date >= current_date) x
+ where r.id = x.id and r.label <> x.label and r.label ~ '^(Speaker|Speech Evaluator) [0-9]+$';

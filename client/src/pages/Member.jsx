@@ -88,7 +88,7 @@ export function MemberHome() {
     ...(d.given > 0 ? [{ to: '/m/given', icon: I.send, n: d.given, title: 'Notes I wrote', sub: 'My role sheets for other people' }] : []),
   ];
   return (
-    <MPage root eyebrow="Champions Toastmasters" title={`Hi ${first}`} sub="Your feedback from the club, all in one place.">
+    <MPage root eyebrow={d.club} title={`Hi ${first}`} sub="Your feedback from the club, all in one place.">
       <div className="mb-stack">
         {d.upcoming.map((u) => {
           const act = u.role_key !== 'speaker';
@@ -109,7 +109,7 @@ export function MemberHome() {
         {!d.upcoming.length && d.next_meeting && (
           <p className="mr-foot">Our next meeting is {fmtDate(d.next_meeting.date, { weekday: 'long', day: 'numeric', month: 'long' })}. You do not have a role yet.</p>
         )}
-        {guest && <div className="mb-card mr-join"><JoinAsk data={{ me: d.person }} endpoint="/me/join-request" /></div>}
+        {guest && <div className="mb-card mr-join"><JoinAsk data={{ me: d.person, club: d.club, vpe: d.vpe }} endpoint="/me/join-request" /></div>}
       </div>
     </MPage>
   );

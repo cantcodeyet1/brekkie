@@ -99,13 +99,13 @@ export function Shell({ nav, who, sub, tag, views, onSignOut, onAccount, noSide,
 /* One screen. `root` pages show the brand bar and (on phones) the bottom nav; others show a back button. */
 export function Page({ title, root, wide, narrow, full, foot, back, onBack, children }) {
   const desk = useDesk();
-  const { nav, who, onSignOut, onAccount, bare } = useContext(ShellCtx);
+  const { nav, who, sub, onSignOut, onAccount, bare } = useContext(ShellCtx);
   const go = useNavigate();
   const topBar = !root ? <div className="top"><button className="back" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} aria-label="Back">{I.back}</button><span className="ttl" onClick={() => (onBack ? onBack() : back ? go(back) : go(-1))} style={{ cursor: 'pointer' }}>{title}</span>{!desk && <span style={{ marginLeft: 'auto', paddingRight: 10 }}><Wordmark /></span>}</div> : null;
   return (
     <div className="main">
-      {bare && desk && <div className="hdr-r"><Wordmark /><span style={{ fontSize: 13, color: 'var(--mute)' }}>Champions Toastmasters Club</span></div>}
-      {bare && !desk && root && <div className="brand"><Wordmark /><span className="who">Champions Toastmasters Club</span></div>}
+      {bare && desk && <div className="hdr-r"><Wordmark /><span style={{ fontSize: 13, color: 'var(--mute)' }}>{sub}</span></div>}
+      {bare && !desk && root && <div className="brand"><Wordmark /><span className="who">{sub}</span></div>}
       {!root && !desk && topBar}
       {root && !desk && !bare && <div className="brand"><Wordmark /><span className="who">{onAccount ? <button type="button" className="tn-me" onClick={onAccount} aria-label={`Your account, ${who}`}><span className="tn-av" aria-hidden="true">{who.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span></button> : <b>{who}</b>}{!onAccount && onSignOut && <button className="lnk" style={{ marginLeft: 10 }} onClick={onSignOut}>Sign out</button>}</span></div>}
       <div className="scroll"><div className={'in' + (wide ? ' wide' : '') + (narrow ? ' narrow' : '') + (full ? ' full' : '')}>{desk && topBar}{children}</div></div>
@@ -364,7 +364,7 @@ export function PersonSelect({ value, onChange, people, onAddGuest, placeholder 
           <button type="button" className="x" onClick={() => { setAdding(false); setErr(''); }} aria-label="Cancel">{I.close}</button>
         </div>
       )}
-      {adding && <p className="s" style={{ margin: '6px 2px 0', fontSize: 13, color: 'var(--mute)' }}>Visitors get temporary access. Their notes still count as Champions data.</p>}
+      {adding && <p className="s" style={{ margin: '6px 2px 0', fontSize: 13, color: 'var(--mute)' }}>Visitors get temporary access. Their notes still count as your club’s data.</p>}
       {err && <p className="err">{err}</p>}
     </>
   );

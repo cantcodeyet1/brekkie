@@ -149,7 +149,7 @@ export default function Wizard() {
                 {found && <p className="fine">Found on toastmasters.org: {found.name}, {found.region}. Your agenda will show this.</p>}
                 {numTaken && <p className="err">A club with that number is already on Brekkie. Ask its VPE for the join link.</p>}
                 <label className="fl" htmlFor="w-club">Club name</label>
-                <input id="w-club" className="inp" value={club} onChange={(e) => setClub(e.target.value)} placeholder="e.g. Champions Toastmasters Club" onKeyDown={(e) => e.key === 'Enter' && next()} />
+                <input id="w-club" className="inp" value={club} onChange={(e) => setClub(e.target.value)} placeholder="e.g. Riverside Toastmasters Club" onKeyDown={(e) => e.key === 'Enter' && next()} />
               </>
             )}
             {step === 2 && (

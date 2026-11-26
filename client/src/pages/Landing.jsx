@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api.js';
 import { Btn, Seg, Wordmark } from '../ui.jsx';
 import { HeroText } from './AuthFrame.jsx';
-import { VPE_WHATSAPP } from './Role.jsx';
 
 export const PW_MIN = 6;
 export const pwGood = (pw, again) => pw.length >= PW_MIN && pw === again;
@@ -166,7 +165,7 @@ export default function Landing({ force }) {
               {forgot && (
                 <div className="forgot-box">
                   <p>Ask your VPE for a reset link. They send it to you on WhatsApp, and it lets you choose a new password.</p>
-                  <a className="btn ghost sm" href={`https://wa.me/${VPE_WHATSAPP}?text=${encodeURIComponent('Hi, I forgot my Brekkie password. Could you send me a reset link?')}`} target="_blank" rel="noreferrer">Message the VPE on WhatsApp</a>
+                  <a className="btn ghost sm" href={`https://wa.me/?text=${encodeURIComponent('Hi, I forgot my Brekkie password. Could you send me a reset link?')}`} target="_blank" rel="noreferrer">Message the VPE on WhatsApp</a>
                 </div>
               )}
               {err && <p className="err">{err}</p>}

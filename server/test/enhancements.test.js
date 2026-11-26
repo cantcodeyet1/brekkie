@@ -274,3 +274,42 @@ test('the agenda preview draws the club page from the details on screen, saved o
   assert.equal(Buffer.from(await r.arrayBuffer()).subarray(0, 4).toString(), '%PDF');
   assert.equal((await fetch(base + '/api/vpe/club/agenda-preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
 });
+
+test('removing a speaker moves the later speakers and evaluators up, so the numbers have no gaps', async () => {
+  const [m] = await q(`select id from meetings where club_id=1 and date >= current_date order by date desc limit 1`);
+  const slots = async (key) => q('select id, label, target_role_id from meeting_roles where meeting_id=$1 and role_key=$2 order by position', [m.id, key]);
+  await call('POST', `/api/vpe/meetings/${m.id}/roles`, { role_key: 'speaker' });
+  await call('POST', `/api/vpe/meetings/${m.id}/roles`, { role_key: 'evaluator' });
+  const sp = await slots('speaker'), ev = await slots('evaluator'), n = sp.length;
+  assert.ok(n >= 3);
+  const gone = sp[1], its = ev.find((e) => e.target_role_id === gone.id) || ev[1];
+  await call('DELETE', `/api/vpe/roles/${its.id}`);
+  await call('DELETE', `/api/vpe/roles/${gone.id}`);
+  const sp2 = await slots('speaker'), ev2 = await slots('evaluator');
+  assert.deepEqual(sp2.map((r) => r.label), Array.from({ length: n - 1 }, (_, i) => `Speaker ${i + 1}`));
+  assert.deepEqual(ev2.map((r) => r.label), ev2.map((_, i) => `Speech Evaluator ${i + 1}`));
+  assert.equal(sp2[1].id, sp[2].id);   // the third speaker is now the second
+});
+
+test('the Toastmaster link lists every speaker with contact details, and role sheets get credentials', async () => {
+  const [m] = await q(`select m.id from meetings m where m.club_id=1 and m.date >= current_date order by m.date limit 1`);
+  const [tm] = await q(`select id, token from meeting_roles where meeting_id=$1 and role_key='toastmaster'`, [m.id]);
+  const [sp] = await q(`select id, person_id from meeting_roles where meeting_id=$1 and role_key='speaker' order by position limit 1`, [m.id]);
+  const who = sp.person_id || pid;
+  await q('update meeting_roles set person_id=$1 where id=$2', [who, sp.id]);
+  await q(`update people set phone='+263 77 000 0000' where id=$1`, [who]);
+  await q('update meeting_roles set person_id=coalesce(person_id,$1) where id=$2', [pid, tm.id]);
+  const d = await (await fetch(base + '/api/role', { headers: { 'x-token': tm.token } })).json();
+  assert.ok(d.partners.some((p) => p.person_id === who && p.phone === '+263 77 000 0000' && p.label === 'Speaker 1'));
+  assert.ok(d.people.every((p) => 'credential' in p));
+});
+
+test('role links and the member page carry their own club and VPE, not a fixed one', async () => {
+  const [tm] = await q(`select r.token from meeting_roles r join meetings m on m.id=r.meeting_id where m.club_id=1 and r.person_id is not null order by m.date desc limit 1`);
+  const d = await (await fetch(base + '/api/role', { headers: { 'x-token': tm.token } })).json();
+  const [v] = await q(`select name from people where club_id=1 and is_vpe and status<>'inactive' order by committee, id limit 1`);
+  assert.equal(d.vpe.name, v.name);
+  const o = await (await fetch(base + '/api/me/overview', { headers: { 'x-token': vpe } })).json();
+  const [c] = await q('select name from clubs where id=1');
+  assert.equal(o.club, c.name);
+});

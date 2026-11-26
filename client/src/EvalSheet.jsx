@@ -3,11 +3,10 @@ import { createPortal } from 'react-dom';
 import { Lines } from './ui.jsx';
 import { CRIT, LEVELN, longDate } from './data.js';
 
-const CLUB = 'Champions Toastmasters Club';
 
 /* Three Letter pages laid out like the Pathways evaluation form. */
 export function EvalSheet({ e }) {
-  const Foot = ({ n }) => <div className="pf"><span>{CLUB}</span><span>Page {n} of 3</span></div>;
+  const Foot = ({ n }) => <div className="pf"><span>{e.club || ''}</span><span>Page {n} of 3</span></div>;
   const Head = () => <div className="ph sm"><i className="g" /><div className="hb"><b>EVALUATION FORM –</b> {e.form_title}</div></div>;
   return (
     <div className="doc">
