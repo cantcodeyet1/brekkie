@@ -323,3 +323,14 @@ test('project purposes hold only the purpose: no form header text or stray contr
   const [w] = await q(`select purpose from projects where name='Writing a Speech with Purpose'`);
   assert.match(w.purpose[0], /^The purpose of this project/);
 });
+
+test('the Champions agenda keeps its banner and QR code, with or without saved club details; other clubs get neither', async () => {
+  const { loadContext, defaultAgenda } = await import('../src/agenda.js');
+  const { renderAgendaPdf } = await import('../src/agendaPdf.js');
+  const [m] = await q('select id from meetings where club_id=1 order by date desc limit 1');
+  const ctx = await loadContext(m.id, 1);
+  const size = async (over) => (await renderAgendaPdf(defaultAgenda({ ...ctx, ...over }), { ...ctx, ...over, brochure: null })).length;
+  const prof = { region: 'Area 2', officers: [] };
+  const withBanner = await size({ champions: true, profile: prof }), without = await size({ champions: false, profile: prof });
+  assert.ok(withBanner > without + 1000, `${withBanner} v ${without}`);
+});

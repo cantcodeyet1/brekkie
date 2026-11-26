@@ -62,7 +62,7 @@ export async function loadContext(meetingId, clubId) {
   const [club] = await q('select name, agenda_default, tm_number, agenda_profile, brochure from clubs where id=$1', [clubId]);
   let standard = {};
   try { standard = club?.agenda_default ? JSON.parse(club.agenda_default) : {}; } catch { standard = {}; }
-  return { m, roles, next: next?.date || null, standard, clubNumber: club?.tm_number || '', clubName: club?.name || '', profile: club?.agenda_profile || (/^0*4647453$/.test(club?.tm_number || '') ? null : {}), brochure: club?.brochure || null };
+  return { m, roles, next: next?.date || null, standard, clubNumber: club?.tm_number || '', clubName: club?.name || '', champions: /^0*4647453$/.test(club?.tm_number || ''), profile: club?.agenda_profile || (/^0*4647453$/.test(club?.tm_number || '') ? null : {}), brochure: club?.brochure || null };
 }
 
 /** one block, cleaned up: unknown fields are dropped and every value is kept to a sensible size */

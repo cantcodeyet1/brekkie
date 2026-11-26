@@ -21,6 +21,7 @@ const BASE_FILES = [path.join(here, '..', 'templates', 'agenda-base-0.pdf'), pat
 // the same pages with the Champions details taken out (scripts/make-plain-bases.py), for clubs that bring their own
 const PLAIN_FILES = [path.join(here, '..', 'templates', 'agenda-plain-0.pdf'), path.join(here, '..', 'templates', 'agenda-plain-1.pdf'), path.join(here, '..', 'templates', 'agenda-plain-2.pdf')];
 const bases = [], plains = [];
+const BANNER_TOP = [618.9, 698.9, 778.8];   // where the Champions banner's heading sits on each page, from the top
 const baseBytes = async (n, plain) => (plain ? (plains[n] ||= await fs.readFile(PLAIN_FILES[n])) : (bases[n] ||= await fs.readFile(BASE_FILES[n])));
 
 async function fontsOf(pdf) {
@@ -174,6 +175,12 @@ export async function renderAgendaPdf(ag, ctx) {
   // the club number in the banner: the page has the template's own, so it is covered with the banner blue and drawn again
   if (!prof) page.drawRectangle({ x: 450, y: 796, width: 140, height: 15, color: rgb(0, 63 / 255, 98 / 255) });
   if (prof) clubDetails(page, F, draw, ctx, prof);
+  // Champions keeps its banner and QR code at the foot of the page, also once its details are filled in on the blank page
+  if (prof && ctx.champions) {
+    const [own] = (await PDFDocument.load(await baseBytes(v, false))).getPages(), H = own.getHeight(), top = BANNER_TOP[v];
+    const box = { left: 172, bottom: H - (top + 62), right: 574, top: H - (top - 24) };
+    page.drawPage(await pdf.embedPage(own, box), { x: box.left, y: box.bottom });
+  }
   else if (ctx.clubNumber) { const cs = safe(F.b, `Club Number: ${ctx.clubNumber}`); draw(cs, 581.2 - width(F.b, 11, cs), 798.6, F.b, 11, rgb(1, 1, 1)); }
 
   // heading: the date, then the theme and quotation, each on its own line and wrapping on to the next when it is long
